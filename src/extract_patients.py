@@ -1,130 +1,85 @@
+from __future__ import annotations
+
 import csv
 import json
+import logging
 import os
 import re
 import sys
-import time
 from datetime import datetime, timedelta
+from typing import Any
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from selenium.webdriver.remote.webdriver import WebDriver
 
+from src.api_client import (
+    build_session_from_driver,
+    fetch_pacientes_for_date,
+    load_api_config,
+)
+from src.constants import DATE_FORMAT
 from src.credentials import load_credentials
-from src.browser_automation import run_login
 from src.logger_config import setup_logger
 
-CONFIG_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "config",
-    "api_config.json",
-)
-DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data",
-)
-CSV_PATH = os.path.join(DATA_DIR, "pacientes_2026.csv")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
 RAW_DIR = os.path.join(DATA_DIR, "raw_responses")
+CSV_PATH = os.path.join(DATA_DIR, "pacientes_2026.csv")
+CHECKPOINT_PATH = os.path.join(DATA_DIR, ".checkpoint.json")
+FIELDNAMES = [
+    "fecha",
+    "hora_cita",
+    "hora_llegada",
+    "estado",
+    "nombre_paciente",
+    "rut",
+    "numero_ficha",
+    "genero",
+    "sector",
+    "prevision",
+    "tipo_cupo",
+    "razon",
+    "tipo_atencion",
+    "instrumento",
+    "observacion",
+    "citado_por",
+    "nodo",
+    "es_teleconsulta",
+]
 
 
-def load_api_config():
-    if not os.path.exists(CONFIG_PATH):
-        print("Error: No se encuentra api_config.json. Ejecute primero discover_api.py")
-        sys.exit(1)
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def working_days_to_today():
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    end = min(today, datetime(2026, 12, 31))
-    start = datetime(2026, 1, 1)
+def working_days(start: datetime, end: datetime) -> list[datetime]:
     current = start
+    days: list[datetime] = []
     while current <= end:
         if current.weekday() < 5:
-            yield current
+            days.append(current)
         current += timedelta(days=1)
+    return days
 
 
-def inject_interceptor(driver):
-    driver.execute_script("""
-        window.__capturedApi = null;
-
-        var nativeOpen = XMLHttpRequest.prototype.open;
-        var nativeSend = XMLHttpRequest.prototype.send;
-
-        XMLHttpRequest.prototype.open = function(method, url) {
-            this.__method = method;
-            this.__url = typeof url === 'string' ? url : (url ? url.toString() : '');
-            return nativeOpen.apply(this, arguments);
-        };
-
-        XMLHttpRequest.prototype.send = function() {
-            var xhr = this;
-            xhr.addEventListener('load', function() {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    if (Array.isArray(data)) {
-                        window.__capturedApi = { response: data };
-                    }
-                } catch(e) {}
-            });
-            return nativeSend.apply(this, arguments);
-        };
-
-        var nativeFetch = window.fetch.bind(window);
-        window.fetch = function() {
-            var url = typeof arguments[0] === 'string' ? arguments[0] : (arguments[0] ? arguments[0].url : '');
-            return nativeFetch.apply(this, arguments).then(function(response) {
-                var clone = response.clone();
-                if (clone.headers.get('content-type') && clone.headers.get('content-type').includes('json')) {
-                    clone.json().then(function(data) {
-                        if (Array.isArray(data)) {
-                            window.__capturedApi = { response: data };
-                        }
-                    }).catch(function() {});
-                }
-                return response;
-            });
-        };
-    """)
+def load_checkpoint() -> set[str]:
+    if not os.path.exists(CHECKPOINT_PATH):
+        return set()
+    try:
+        with open(CHECKPOINT_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        return set(data.get("processed", []))
+    except (json.JSONDecodeError, OSError):
+        return set()
 
 
-def change_date(driver, fecha_str):
-    driver.execute_script(
-        """
-        var input = document.querySelector('input.date-input');
-        if (!input) throw new Error('No se encontró input.date-input');
-
-        var nativeSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype, 'value'
-        ).set;
-        nativeSetter.call(input, arguments[0]);
-
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        """,
-        fecha_str,
-    )
+def save_checkpoint(processed: set[str]) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp = CHECKPOINT_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"processed": sorted(processed)}, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, CHECKPOINT_PATH)
 
 
-def wait_for_capture(driver, timeout=5):
-    for _ in range(timeout * 10):
-        result = driver.execute_script("return window.__capturedApi")
-        if result and result.get("response"):
-            return result["response"]
-        time.sleep(0.1)
-    return None
+def extract_flat_record(item: dict[str, Any], date_str: str) -> dict[str, Any]:
+    obs = (item.get("Observacion") or "").strip()
 
-
-def clear_capture(driver):
-    driver.execute_script("window.__capturedApi = null;")
-
-
-def extract_flat_record(item, date_str):
-    obs = item.get("Observacion") or ""
-    if obs.strip():
-        obs = obs.strip()
-
-    cupos = item.get("Cupos", [])
+    cupos = item.get("Cupos") or []
     citado_por_nombre = ""
     if cupos:
         desc = cupos[0].get("Descripcion", "")
@@ -132,13 +87,13 @@ def extract_flat_record(item, date_str):
         if m:
             citado_por_nombre = m.group(1).strip()
 
-    estado = item.get("EstadoCita", {})
-    tipo_atencion = item.get("TipoDeAtencion", {})
-    instrumento = item.get("Instrumento", {})
-    usuario = item.get("UsuarioAps", {})
-    genero = usuario.get("Genero", {})
-    prevision = usuario.get("InstitucionPrevisional", {})
-    sector = usuario.get("Sector", {})
+    estado = item.get("EstadoCita") or {}
+    tipo_atencion = item.get("TipoDeAtencion") or {}
+    instrumento = item.get("Instrumento") or {}
+    usuario = item.get("UsuarioAps") or {}
+    genero = usuario.get("Genero") or {}
+    prevision = usuario.get("InstitucionPrevisional") or {}
+    sector = usuario.get("Sector") or {}
 
     return {
         "fecha": date_str,
@@ -162,119 +117,142 @@ def extract_flat_record(item, date_str):
     }
 
 
-def main():
-    logger = setup_logger()
-    logger.info("=" * 50)
-    logger.info("Extraccion masiva de pacientes 2026 iniciada")
-    logger.info("=" * 50)
+def load_existing_ids() -> set[tuple[str, int]]:
+    if not os.path.exists(CSV_PATH):
+        return set()
+    seen: set[tuple[str, int]] = set()
+    with open(CSV_PATH, encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            fecha = row.get("fecha", "")
+            try:
+                hora = int(
+                    (row.get("hora_cita") or "").split(" ")[-1].split("-")[0].replace(":", "")
+                )
+            except (ValueError, IndexError):
+                hora = 0
+            seen.add((fecha, hora))
+    return seen
 
+
+def write_csv(records: list[dict[str, Any]], path: str = CSV_PATH) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDNAMES, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(records)
+
+
+def run_extraction(
+    driver: WebDriver,
+    logger: logging.Logger,
+    resume: bool = True,
+) -> dict[str, int]:
     config = load_api_config()
-    logger.info(f"API: {config['method']} {config['url']}")
+    logger.info(f"API: {config['method']} {config['url'][:80]}...")
 
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(RAW_DIR, exist_ok=True)
 
-    driver = None
-    try:
-        user_id = input("Ingrese identificador de usuario: ").strip()
-        if not user_id:
-            print("Error: El identificador de usuario no puede estar vacio.")
-            sys.exit(1)
+    session = build_session_from_driver(driver)
+    processed = load_checkpoint() if resume else set()
+    logger.info(f"Checkpoint: {len(processed)} dias ya procesados")
 
-        credentials = load_credentials(user_id)
-        logger.info("Iniciando sesion...")
-        driver = run_login(credentials, logger, headless=False)
+    start = datetime(2026, 1, 1)
+    end = min(
+        datetime.now().replace(hour=0, minute=0, second=0, microsecond=0), datetime(2026, 12, 31)
+    )
+    days = working_days(start, end)
+    todo = [d for d in days if d.strftime(DATE_FORMAT) not in processed]
+    logger.info(f"Dias habiles {start.date()}..{end.date()}: {len(days)} | Pendientes: {len(todo)}")
 
-        logger.info("Inyectando interceptor de API...")
-        inject_interceptor(driver)
+    all_records: list[dict[str, Any]] = []
+    stats = {"dias": 0, "con_datos": 0, "vacias": 0, "errores": 0, "registros": 0}
 
-        logger.info("Probando con fecha actual...")
-        today_str = datetime.now().strftime("%d-%m-%Y")
-        change_date(driver, today_str)
-        test_data = wait_for_capture(driver)
-        if test_data is None:
-            logger.error("No se pudo obtener datos de prueba. Saliendo.")
-            sys.exit(1)
-        logger.info(f"Prueba exitosa: {len(test_data)} registros para hoy")
-        clear_capture(driver)
+    for idx, day in enumerate(todo, 1):
+        date_str = day.strftime(DATE_FORMAT)
+        stats["dias"] += 1
 
-        all_records = []
-        total_days = 0
-        total_errors = 0
-        total_empty = 0
+        try:
+            data = fetch_pacientes_for_date(session, config["url"], date_str)
+        except Exception as e:
+            stats["errores"] += 1
+            logger.warning(f"{date_str}: error -> {e}")
+            continue
 
-        days = list(working_days_to_today())
+        raw_path = os.path.join(RAW_DIR, f"{date_str}.json")
+        with open(raw_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
-        for idx, day in enumerate(days, 1):
-            date_str = day.strftime("%d-%m-%Y")
-            total_days += 1
+        if not data:
+            stats["vacias"] += 1
+        else:
+            stats["con_datos"] += 1
+            for item in data:
+                all_records.append(extract_flat_record(item, date_str))
+            stats["registros"] += len(data)
 
-            change_date(driver, date_str)
-            data = wait_for_capture(driver)
+        processed.add(date_str)
+        save_checkpoint(processed)
 
-            if data is None:
-                total_errors += 1
-                if idx == 1 or idx % 50 == 0:
-                    logger.info(f"{date_str}: sin respuesta")
-                continue
+        if idx % 25 == 0 or idx == len(todo):
+            logger.info(
+                f"Progreso {idx}/{len(todo)}: {date_str} "
+                f"(reg:{stats['registros']} err:{stats['errores']} vacias:{stats['vacias']})"
+            )
 
-            clear_capture(driver)
-
-            raw_path = os.path.join(RAW_DIR, f"{date_str}.json")
-            with open(raw_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-
-            if not data:
-                total_empty += 1
-            else:
-                for item in data:
-                    record = extract_flat_record(item, date_str)
-                    all_records.append(record)
-
-            if idx % 50 == 0 or idx == len(days):
-                logger.info(
-                    f"{date_str}: {len(data)} pctes "
-                    f"({idx}/{len(days)}, E:{total_errors}, V:{total_empty})"
-                )
-
-        if not all_records:
-            logger.warning("No se extrajeron registros.")
-            sys.exit(0)
-
-        fieldnames = [
-            "fecha", "hora_cita", "hora_llegada", "estado",
-            "nombre_paciente", "rut", "numero_ficha", "genero",
-            "sector", "prevision", "tipo_cupo", "razon",
-            "tipo_atencion", "instrumento", "observacion",
-            "citado_por", "nodo", "es_teleconsulta",
-        ]
-
-        with open(CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
+    if all_records:
+        existing_csv = os.path.exists(CSV_PATH)
+        with open(CSV_PATH, "a" if existing_csv else "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.DictWriter(f, fieldnames=FIELDNAMES, extrasaction="ignore")
+            if not existing_csv:
+                writer.writeheader()
             writer.writerows(all_records)
+        logger.info(f"CSV actualizado con {len(all_records)} registros nuevos")
+    else:
+        logger.info("Sin registros nuevos para agregar al CSV")
 
-        dias_con_datos = len(set(r["fecha"] for r in all_records))
-        logger.info("=" * 50)
+    return stats
+
+
+def main() -> int:
+    logger = setup_logger()
+    logger.info("=" * 60)
+    logger.info("Extraccion masiva de pacientes")
+    logger.info("=" * 60)
+
+    from src.browser_automation import ensure_session_alive, run_login, safe_quit
+    from src.credentials import prompt_user_id
+
+    user_id = prompt_user_id()
+
+    credentials = load_credentials(user_id)
+    driver: WebDriver | None = None
+    try:
+        driver = run_login(credentials, logger, headless=False)
+        if not ensure_session_alive(driver, logger):
+            logger.error("Sesion invalida tras login. Abortando.")
+            return 1
+        stats = run_extraction(driver, logger, resume=True)
+        logger.info("=" * 60)
         logger.info("EXTRACCION COMPLETADA")
-        logger.info(f"  Dias procesados:     {total_days}")
-        logger.info(f"  Dias con pacientes:  {dias_con_datos}")
-        logger.info(f"  Total registros:     {len(all_records)}")
-        logger.info(f"  Dias sin datos:      {total_empty}")
-        logger.info(f"  Errores:             {total_errors}")
+        logger.info(f"  Dias procesados:    {stats['dias']}")
+        logger.info(f"  Dias con datos:     {stats['con_datos']}")
+        logger.info(f"  Dias vacios:        {stats['vacias']}")
+        logger.info(f"  Errores:            {stats['errores']}")
+        logger.info(f"  Registros nuevos:   {stats['registros']}")
         logger.info(f"  CSV: {CSV_PATH}")
-        logger.info("=" * 50)
-
+        logger.info("=" * 60)
+        return 0
     except KeyboardInterrupt:
-        logger.info("Extraccion interrumpida por el usuario.")
+        logger.info("Extraccion interrumpida por el usuario. Checkpoint guardado.")
+        return 130
     except Exception as e:
         logger.error(f"Error critico: {e}")
-        sys.exit(1)
+        return 1
     finally:
-        if driver:
-            driver.quit()
-            logger.info("Navegador cerrado")
+        safe_quit(driver, logger)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
