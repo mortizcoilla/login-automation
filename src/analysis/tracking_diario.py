@@ -18,6 +18,7 @@ Privacidad: solo se persisten cita_id (numérico) y tipo_atencion
 """
 from __future__ import annotations
 
+import io
 import logging
 import sqlite3
 import sys
@@ -149,6 +150,44 @@ def _ensure_session_alive(driver, credentials, logger):
     return login_rayen(credentials, logger, headless=False)
 
 
+class _TeeStdout:
+    """Wrapper de stdout que duplica cada write a un buffer en memoria.
+
+    Permite seguir viendo el output en consola (en vivo) y, al final,
+    guardar el contenido completo a un archivo.
+    """
+
+    def __init__(self, original):
+        self._original = original
+        self._buffer = io.StringIO()
+
+    def write(self, s: str) -> int:
+        self._original.write(s)
+        return self._buffer.write(s)
+
+    def flush(self) -> None:
+        self._original.flush()
+
+    def get_output(self) -> str:
+        return self._buffer.getvalue()
+
+
+def _guardar_output(capturado: str, sufijo: str) -> Path | None:
+    """Guarda el output capturado a data/analysis/<sufijo>.txt."""
+    if not capturado.strip():
+        return None
+    try:
+        OUT_DIR = BASE_DIR / "data" / "analysis"
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        path = OUT_DIR / f"tracking_{sufijo}.txt"
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(capturado)
+        return path
+    except OSError as e:
+        print(f"WARN: no se pudo guardar output: {e}", file=sys.stderr)
+        return None
+
+
 def _resolver_usuario() -> str | None:
     """El user_id es el primer argv que NO es un flag NI el valor de un flag."""
     KNOWN_FLAGS = {"--desde", "--hasta", "--historico"}
@@ -212,8 +251,8 @@ def _parse_args() -> tuple[date | None, date | None, bool]:
     return desde, hasta, historico
 
 
-def main() -> int:
-    logger = setup_logger()
+def _run(logger: logging.Logger) -> int:
+    """Lógica principal del tracking. Retorna exit code."""
     print("=" * 60)
     print("TRACKING DIARIO DE FICHAS 'INICIADO'")
     print("=" * 60)
@@ -374,6 +413,26 @@ def main() -> int:
             pass
         _safe_quit(driver, logger)
         conn.close()
+
+
+def main() -> int:
+    """Wrapper que captura stdout para guardar el output a archivo."""
+    logger = setup_logger()
+    tee = _TeeStdout(sys.stdout)
+    sys.stdout = tee
+    rc = 0
+    sufijo = datetime.now().strftime("%Y%m%d_%H%M%S")
+    try:
+        rc = _run(logger)
+    finally:
+        sys.stdout = tee._original
+        out_path = _guardar_output(tee.get_output(), f"run_{sufijo}")
+        if out_path is not None:
+            print(
+                f"\n[output completo guardado en: "
+                f"{out_path.relative_to(BASE_DIR)}]"
+            )
+    return rc
 
 
 if __name__ == "__main__":
