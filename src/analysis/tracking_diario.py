@@ -48,10 +48,17 @@ def _init_db() -> sqlite3.Connection:
             cita_id INTEGER PRIMARY KEY,
             tipo_atencion TEXT,
             fecha_primera_vista TEXT NOT NULL,
-            fecha_ultima_vista TEXT NOT NULL
+            fecha_ultima_vista TEXT NOT NULL,
+            cerrada_el TEXT
         )
         """
     )
+    # Migración liviana: si la tabla ya existía sin 'cerrada_el', agregarla.
+    cur = conn.execute("PRAGMA table_info(fichas)")
+    cols = {row[1] for row in cur.fetchall()}
+    if "cerrada_el" not in cols:
+        conn.execute("ALTER TABLE fichas ADD COLUMN cerrada_el TEXT")
+        conn.commit()
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runs (
@@ -305,7 +312,7 @@ def _run(logger: logging.Logger) -> int:
     total_nuevas = 0
     total_actualizadas = 0
     tipos_vistos_hoy: Counter = Counter()
-    citas_vistas_hoy: set[int] = set()
+    citas_vistas_en_este_run: set[int] = set()
 
     try:
         driver = login_rayen(credentials, logger, headless=False)
@@ -348,9 +355,9 @@ def _run(logger: logging.Logger) -> int:
                 else:
                     n_actualizadas_dia += 1
 
+                citas_vistas_en_este_run.add(proxy_id)
                 if dia == fin:
                     tipos_vistos_hoy[p.tipo_atencion] += 1
-                    citas_vistas_hoy.add(proxy_id)
 
             total_nuevas += n_nuevas_dia
             total_actualizadas += n_actualizadas_dia
@@ -363,6 +370,32 @@ def _run(logger: logging.Logger) -> int:
                     f"{len(pacientes)} Iniciado "
                     f"(nuevas:{n_nuevas_dia} actualizadas:{n_actualizadas_dia})"
                 )
+
+        # === Cierre de fichas no vistas en este run ===
+        # Una ficha que estaba en la DB pero NO apareció en este recorrido
+        # se considera cerrada. Marcamos cerrada_el = hoy.
+        # Esto permite que la DB refleje el estado real: con el tiempo,
+        # las fichas que Yadira cierra desaparecen del listado "Iniciado"
+        # y se marcan como cerradas acá.
+        hoy_str = fin.strftime(DATE_FORMAT)
+        cur = conn.execute(
+            "SELECT cita_id FROM fichas WHERE cerrada_el IS NULL"
+        )
+        fichas_en_db = {row[0] for row in cur.fetchall()}
+        fichas_a_cerrar = fichas_en_db - citas_vistas_en_este_run
+        if fichas_a_cerrar:
+            placeholders = ",".join("?" * len(fichas_a_cerrar))
+            conn.execute(
+                f"""UPDATE fichas SET cerrada_el = ?
+                    WHERE cita_id IN ({placeholders})
+                    AND cerrada_el IS NULL""",
+                [hoy_str, *fichas_a_cerrar],
+            )
+            conn.commit()
+            print(
+                f"\n[CIERRES] {len(fichas_a_cerrar)} fichas marcadas "
+                f"como cerradas el {hoy_str} (no aparecieron en este run)"
+            )
 
         # Registrar el run
         conn.execute(
@@ -380,8 +413,22 @@ def _run(logger: logging.Logger) -> int:
         )
         conn.commit()
 
-        # Reporte final
-        total_fichas_db = conn.execute("SELECT COUNT(*) FROM fichas").fetchone()[0]
+        # Reporte final — queries SQL al estado real de la DB
+        total_fichas_db = conn.execute(
+            "SELECT COUNT(*) FROM fichas"
+        ).fetchone()[0]
+        total_abiertas = conn.execute(
+            "SELECT COUNT(*) FROM fichas WHERE cerrada_el IS NULL"
+        ).fetchone()[0]
+        total_cerradas = conn.execute(
+            "SELECT COUNT(*) FROM fichas WHERE cerrada_el IS NOT NULL"
+        ).fetchone()[0]
+        tipos_abiertas_rows = conn.execute(
+            """SELECT tipo_atencion, COUNT(*) AS cant
+               FROM fichas WHERE cerrada_el IS NULL
+               GROUP BY tipo_atencion
+               ORDER BY cant DESC"""
+        ).fetchall()
 
         print()
         print("=" * 60)
@@ -393,13 +440,15 @@ def _run(logger: logging.Logger) -> int:
         print(f"Fichas nuevas:       {total_nuevas}")
         print(f"Fichas actualizadas: {total_actualizadas}")
         print(f"Total fichas en DB:  {total_fichas_db}")
+        print(f"  -> abiertas:       {total_abiertas}")
+        print(f"  -> cerradas:       {total_cerradas}")
         print()
-        print(f"=== FICHAS ABIERTAS HOY ({fin.strftime(DATE_FORMAT)}) ===")
-        print(f"Total: {len(citas_vistas_hoy)}")
-        if tipos_vistos_hoy:
+        print(f"=== FICHAS ABIERTAS AL CIERRE DE ESTE RUN ===")
+        print(f"Total: {total_abiertas}")
+        if tipos_abiertas_rows:
             print("Distribución por tipo:")
-            for tipo, cant in tipos_vistos_hoy.most_common():
-                pct = 100 * cant / len(citas_vistas_hoy) if citas_vistas_hoy else 0
+            for tipo, cant in tipos_abiertas_rows:
+                pct = 100 * cant / total_abiertas if total_abiertas else 0
                 print(f"  {tipo:<40s} {cant:3d}  ({pct:5.1f}%)")
         print("=" * 60)
         return 0
