@@ -10,7 +10,7 @@
     "modal": {"by": "css", "value": ".rescheck-modal"}
   },
   "menu": {
-    "bars_icon": {"by": "css", "value": "i.fal.fa-bars.navbar-left-icon"},
+    "bars_icon": {"by": "css", "value": "span.pl-3.navbar-app-title"},
     "box_item": {"by": "css", "value": "li.navbar-dropdown.d-flex.justify-content-between"},
     "pacientes_citados": {"by": "css", "value": "span.text-wrap"}
   },

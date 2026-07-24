@@ -30,6 +30,7 @@ login_automation.log
 data/raw_responses/
 data/pacientes_*.csv
 data/queue.db
+data/analysis/
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
@@ -39,6 +40,8 @@ plantillas/*.bak
 # Debug artifacts de browser_automation (screenshots + HTML de errores)
 error_*.html
 error_*.png
+step_*.png
+debug_state_*.html
 
 .idea/
 .vscode/

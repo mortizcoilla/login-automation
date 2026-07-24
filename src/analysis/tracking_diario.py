@@ -1,0 +1,356 @@
+"""Tracking diario de fichas 'Iniciado' — el verdadero backlog de Yadira.
+
+Recorre día por día desde 01-01-2026 (o desde la fecha mínima
+registrada en la DB si ya existe) hasta HOY, captura las fichas en
+estado 'Iniciado' en cada día, y mantiene una tabla SQLite acumulativa:
+
+    - ficha vista por primera vez → INSERT con primera_vista = día
+    - ficha ya existente → UPDATE ultima_vista = día
+    - (futuro) ficha que desaparece N días → marcar como cerrada
+
+Output:
+    - data/analysis/tracking.db (tabla fichas + runs)
+    - Reporte en consola con: total abiertas hoy, distribución por tipo,
+      fichas nuevas vs. actualizadas, top fichas más antiguas abiertas.
+
+Privacidad: solo se persisten cita_id (numérico) y tipo_atencion
+(texto). NO se guardan RUT, nombre ni observación.
+"""
+from __future__ import annotations
+
+import logging
+import sqlite3
+import sys
+from collections import Counter
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+from src.constants import DATE_FORMAT
+from src.credentials import list_known_users, load_credentials
+from src.logger_config import setup_logger
+from src.pancho_skills import listar_iniciados, login_rayen
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DB_PATH = BASE_DIR / "data" / "analysis" / "tracking.db"
+
+# Fecha de inicio absoluta del recorrido
+FECHA_INICIO_ABSOLUTA = date(2026, 1, 1)
+
+
+def _init_db() -> sqlite3.Connection:
+    """Crea la DB y las tablas si no existen."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS fichas (
+            cita_id INTEGER PRIMARY KEY,
+            tipo_atencion TEXT,
+            fecha_primera_vista TEXT NOT NULL,
+            fecha_ultima_vista TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha_run TEXT NOT NULL,
+            fecha_inicio_recorrido TEXT NOT NULL,
+            fecha_fin_recorrido TEXT NOT NULL,
+            dias_recorridos INTEGER,
+            fichas_nuevas INTEGER,
+            fichas_actualizadas INTEGER
+        )
+        """
+    )
+    conn.commit()
+    return conn
+
+
+def _dias_habiles(inicio: date, fin: date) -> list[date]:
+    """Devuelve la lista de días hábiles (lun-vie) entre inicio y fin inclusive."""
+    dias: list[date] = []
+    current = inicio
+    while current <= fin:
+        if current.weekday() < 5:  # 0=lun, 4=vie
+            dias.append(current)
+        current += timedelta(days=1)
+    return dias
+
+
+def _fecha_inicio_recorrido(conn: sqlite3.Connection) -> date:
+    """Determina desde qué fecha hay que recorrer.
+
+    - Primera vez: FECHA_INICIO_ABSOLUTA (01-01-2026)
+    - Siguientes: la fecha más antigua entre las `fecha_primera_vista`
+      registradas. Esto cubre el caso de una ficha que se cerró y
+      volvió a abrirse.
+
+    ⚠ Como las fechas están guardadas en formato dd-mm-yyyy (string),
+    no se puede usar MIN() directamente (orden lexicográfico no es
+    cronológico). Por eso las traigo todas y comparo en Python.
+    """
+    cur = conn.execute("SELECT fecha_primera_vista FROM fichas")
+    fechas_str = [r[0] for r in cur.fetchall() if r[0]]
+    if not fechas_str:
+        return FECHA_INICIO_ABSOLUTA
+    fechas = []
+    for f in fechas_str:
+        try:
+            fechas.append(datetime.strptime(f, DATE_FORMAT).date())
+        except ValueError:
+            continue
+    if not fechas:
+        return FECHA_INICIO_ABSOLUTA
+    return max(FECHA_INICIO_ABSOLUTA, min(fechas))
+
+
+def _upsert_ficha(
+    conn: sqlite3.Connection, cita_id: int, tipo: str, fecha_vista: str
+) -> str:
+    """Inserta o actualiza una ficha. Retorna 'nueva' o 'actualizada'."""
+    cur = conn.execute(
+        "SELECT 1 FROM fichas WHERE cita_id = ?", (cita_id,)
+    )
+    if cur.fetchone() is None:
+        conn.execute(
+            """INSERT INTO fichas (cita_id, tipo_atencion,
+               fecha_primera_vista, fecha_ultima_vista)
+               VALUES (?, ?, ?, ?)""",
+            (cita_id, tipo, fecha_vista, fecha_vista),
+        )
+        return "nueva"
+    conn.execute(
+        """UPDATE fichas
+           SET fecha_ultima_vista = ?,
+               tipo_atencion = COALESCE(?, tipo_atencion)
+           WHERE cita_id = ?""",
+        (fecha_vista, tipo, cita_id),
+    )
+    return "actualizada"
+
+
+def _safe_quit(driver, logger) -> None:
+    try:
+        from src.browser_automation import safe_quit
+        safe_quit(driver, logger)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"No se pudo cerrar el browser: {e}")
+
+
+def _ensure_session_alive(driver, credentials, logger):
+    """Si la sesión expiró, re-loggea. Retorna el driver (puede ser uno nuevo)."""
+    from src.browser_automation import _es_url_login
+    if not _es_url_login(driver.current_url):
+        return driver
+    logger.warning("Sesión expiró (URL de login detectada). Re-logueando...")
+    _safe_quit(driver, logger)
+    return login_rayen(credentials, logger, headless=False)
+
+
+def _resolver_usuario() -> str | None:
+    """El user_id es el primer argv que NO es un flag NI el valor de un flag."""
+    KNOWN_FLAGS = {"--desde", "--hasta"}
+    cli_user = None
+    skip_next = False
+    for arg in sys.argv[1:]:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg in KNOWN_FLAGS:
+            skip_next = True  # el siguiente argumento es el valor del flag
+            continue
+        if arg.startswith("--"):
+            # flag desconocido — ignorar
+            continue
+        cli_user = arg
+        break
+    users = list_known_users()
+    if not users:
+        print("ERROR: no hay usuarios configurados", file=sys.stderr)
+        return None
+    if cli_user:
+        if cli_user not in users:
+            print(f"ERROR: '{cli_user}' no está configurado", file=sys.stderr)
+            return None
+        return cli_user
+    if len(users) > 1:
+        print(
+            f"Hay {len(users)} usuarios: {users}. Usando '{users[0]}'.",
+            file=sys.stderr,
+        )
+    return users[0]
+
+
+def _parse_args() -> tuple[date | None, date | None]:
+    """Lee --desde y --hasta de CLI. Si no se pasan, retorna (None, None)."""
+    desde: date | None = None
+    hasta: date | None = None
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--desde" and i + 1 < len(args):
+            desde = datetime.strptime(args[i + 1], DATE_FORMAT).date()
+            i += 2
+        elif args[i] == "--hasta" and i + 1 < len(args):
+            hasta = datetime.strptime(args[i + 1], DATE_FORMAT).date()
+            i += 2
+        else:
+            i += 1
+    return desde, hasta
+
+
+def main() -> int:
+    logger = setup_logger()
+    print("=" * 60)
+    print("TRACKING DIARIO DE FICHAS 'INICIADO'")
+    print("=" * 60)
+
+    user_id = _resolver_usuario()
+    if user_id is None:
+        return 1
+
+    conn = _init_db()
+    desde_arg, hasta_arg = _parse_args()
+    inicio = desde_arg or _fecha_inicio_recorrido(conn)
+    fin = hasta_arg or date.today()
+
+    if inicio > fin:
+        print(f"ERROR: fecha de inicio {inicio} es posterior a fin {fin}", file=sys.stderr)
+        return 1
+
+    dias = _dias_habiles(inicio, fin)
+    print(
+        f"Recorrido planificado: {inicio.strftime(DATE_FORMAT)} → "
+        f"{fin.strftime(DATE_FORMAT)} ({len(dias)} días hábiles)"
+    )
+    print(f"DB: {DB_PATH.relative_to(BASE_DIR)}")
+    print()
+
+    if not dias:
+        print("No hay días para recorrer (¿fecha de inicio en el futuro?).")
+        return 0
+
+    try:
+        credentials = load_credentials(user_id)
+    except (KeyError, ValueError) as e:
+        print(f"ERROR cargando credenciales: {e}", file=sys.stderr)
+        return 1
+
+    driver = None
+    total_nuevas = 0
+    total_actualizadas = 0
+    tipos_vistos_hoy: Counter = Counter()
+    citas_vistas_hoy: set[int] = set()
+
+    try:
+        driver = login_rayen(credentials, logger, headless=False)
+        print("[OK] Login realizado. Iniciando recorrido día por día...\n")
+
+        for idx, dia in enumerate(dias, 1):
+            fecha_str = dia.strftime(DATE_FORMAT)
+
+            # Re-login defensivo: si la sesión murió entre el día anterior
+            # y este, re-logueamos antes de seguir.
+            try:
+                driver = _ensure_session_alive(driver, credentials, logger)
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"{fecha_str}: re-login falló -> {e}")
+                continue
+
+            try:
+                pacientes = listar_iniciados(driver, logger, fecha=fecha_str)
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"{fecha_str}: error -> {e}")
+                continue
+
+            n_nuevas_dia = 0
+            n_actualizadas_dia = 0
+            for p in pacientes:
+                # ⚠ El PacienteIniciado actual NO expone cita_id (sería
+                # el ideal). Usamos un proxy sin PII: combinación de
+                # hora + tipo + adjunto + razon. Funciona para dedup
+                # mientras Yadira no reagende dentro del mismo día.
+                # TODO: agregar cita_id real a PacienteIniciado.
+                proxy_id = (
+                    hash((p.hora, p.tipo_atencion, p.adjunto, p.razon))
+                    & 0x7FFFFFFF
+                )
+                resultado = _upsert_ficha(
+                    conn, proxy_id, p.tipo_atencion, fecha_str
+                )
+                if resultado == "nueva":
+                    n_nuevas_dia += 1
+                else:
+                    n_actualizadas_dia += 1
+
+                if dia == fin:
+                    tipos_vistos_hoy[p.tipo_atencion] += 1
+                    citas_vistas_hoy.add(proxy_id)
+
+            total_nuevas += n_nuevas_dia
+            total_actualizadas += n_actualizadas_dia
+            conn.commit()
+
+            # Mostrar progreso cada 5 días o al final
+            if idx % 5 == 0 or idx == len(dias):
+                print(
+                    f"  [{idx}/{len(dias)}] {fecha_str}: "
+                    f"{len(pacientes)} Iniciado "
+                    f"(nuevas:{n_nuevas_dia} actualizadas:{n_actualizadas_dia})"
+                )
+
+        # Registrar el run
+        conn.execute(
+            """INSERT INTO runs (fecha_run, fecha_inicio_recorrido,
+               fecha_fin_recorrido, dias_recorridos, fichas_nuevas,
+               fichas_actualizadas) VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                datetime.now().strftime(DATE_FORMAT),
+                inicio.strftime(DATE_FORMAT),
+                fin.strftime(DATE_FORMAT),
+                len(dias),
+                total_nuevas,
+                total_actualizadas,
+            ),
+        )
+        conn.commit()
+
+        # Reporte final
+        total_fichas_db = conn.execute("SELECT COUNT(*) FROM fichas").fetchone()[0]
+
+        print()
+        print("=" * 60)
+        print("REPORTE FINAL")
+        print("=" * 60)
+        print(f"Recorrido:           {inicio.strftime(DATE_FORMAT)} → "
+              f"{fin.strftime(DATE_FORMAT)}")
+        print(f"Días hábiles:        {len(dias)}")
+        print(f"Fichas nuevas:       {total_nuevas}")
+        print(f"Fichas actualizadas: {total_actualizadas}")
+        print(f"Total fichas en DB:  {total_fichas_db}")
+        print()
+        print(f"=== FICHAS ABIERTAS HOY ({fin.strftime(DATE_FORMAT)}) ===")
+        print(f"Total: {len(citas_vistas_hoy)}")
+        if tipos_vistos_hoy:
+            print("Distribución por tipo:")
+            for tipo, cant in tipos_vistos_hoy.most_common():
+                pct = 100 * cant / len(citas_vistas_hoy) if citas_vistas_hoy else 0
+                print(f"  {tipo:<40s} {cant:3d}  ({pct:5.1f}%)")
+        print("=" * 60)
+        return 0
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Error fatal: {e}")
+        return 1
+    finally:
+        try:
+            input("\nPresione Enter para cerrar el browser...")
+        except EOFError:
+            pass
+        _safe_quit(driver, logger)
+        conn.close()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -181,13 +181,15 @@ def run_login(
         menu_icon = wait.until(EC.presence_of_element_located((by, val)))
         _safe_js_click(driver, menu_icon)
         logger.info("Menu lateral abierto")
-        _capture_error(driver, logger, "after_bars_click")
+        _capture_after_click(driver, logger, "1_menu")
+        _wait_loading_modal_gone(driver, logger, timeout=20)
 
         by, val = _select("menu.box_item")
         box_menu = wait.until(EC.element_to_be_clickable((by, val)))
         _safe_js_click(driver, box_menu)
         logger.info("Box seleccionado")
-        _capture_error(driver, logger, "after_box_click")
+        _capture_after_click(driver, logger, "2_box")
+        _wait_loading_modal_gone(driver, logger, timeout=30)
 
         by, val = _select("menu.pacientes_citados")
         try:
@@ -200,8 +202,17 @@ def run_login(
                 f"Probable cambio de UI. Revise error_pacientes_citados_not_found_*.png"
             ) from e
         _safe_js_click(driver, pacientes)
-        logger.info("Pacientes citados cargado")
+        logger.info("Pacientes citados clickeado")
+        _capture_after_click(driver, logger, "3_pacientes_citados")
 
+        # Esperar a que termine la carga de la página de Pacientes citados.
+        # Sin esto, las operaciones siguientes (select_date, etc.) fallan
+        # porque el modal "Cargando" tapa el DOM.
+        _wait_loading_modal_gone(driver, logger, timeout=30)
+
+        logger.info(
+            f"run_login OK — URL final: {driver.current_url}"
+        )
         return driver
 
     except TimeoutException as e:
@@ -218,6 +229,24 @@ def run_login(
         raise
 
 
+def _capture_after_click(
+    driver: WebDriver, logger: logging.Logger, tag: str
+) -> None:
+    """Captura screenshot + HTML después de un click, como diagnóstico.
+
+    No es un error: es un snapshot del estado de la UI tras un click,
+    útil para entender en qué quedó la página después de la navegación.
+    """
+    if not driver:
+        return
+    try:
+        path = f"step_{tag}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        driver.save_screenshot(path)
+        logger.info(f"Screenshot: {path}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"No se pudo capturar screenshot: {e}")
+
+
 def _capture_error(driver: WebDriver | None, logger: logging.Logger, tag: str) -> None:
     if not driver:
         return
@@ -231,6 +260,45 @@ def _capture_error(driver: WebDriver | None, logger: logging.Logger, tag: str) -
             f.write(driver.page_source[:200000])
     except Exception as e:
         logger.warning(f"No se pudo capturar screenshot: {e}")
+
+
+# Selector XPath del modal de carga de Rayen. Es un overlay que dice
+# "Cargando - Espere un momento por favor" con un spinner. Aparece cada
+# vez que la página está trayendo datos del servidor y, si no lo
+# esperamos, las operaciones siguientes fallan con TimeoutException
+# porque el DOM no está listo.
+_LOADING_MODAL_XPATH = "//*[contains(text(), 'Espere un momento')]"
+
+
+def _wait_loading_modal_gone(
+    driver: WebDriver, logger: logging.Logger, timeout: int = 30
+) -> None:
+    """Espera a que el modal 'Cargando' de Rayen desaparezca.
+
+    Estrategia en dos pasos:
+    1. Verificar si el modal está visible (hasta 5s).
+       Si no se encuentra, la página probablemente ya cargó — salimos.
+    2. Si está visible, esperar hasta `timeout` a que desaparezca.
+
+    Ante cualquier error, logueamos y seguimos. Es un wait defensivo,
+    no debe bloquear el flujo si falla.
+    """
+    try:
+        wait_short = _make_wait(driver, 5)
+        try:
+            wait_short.until(
+                EC.presence_of_element_located((By.XPATH, _LOADING_MODAL_XPATH))
+            )
+        except TimeoutException:
+            logger.info("No se detectó modal 'Cargando' — página probablemente ya cargada")
+            return
+        logger.info("Modal 'Cargando' detectado, esperando a que se vaya...")
+        _make_wait(driver, timeout).until_not(
+            EC.presence_of_element_located((By.XPATH, _LOADING_MODAL_XPATH))
+        )
+        logger.info("Modal 'Cargando' desapareció")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Wait defensivo de modal 'Cargando' falló: {e}. Continuando...")
 
 
 def ensure_session_alive(driver: WebDriver, logger: logging.Logger) -> bool:
@@ -255,9 +323,14 @@ def select_date(driver: WebDriver, logger: logging.Logger, fecha_str: str | None
     _ = by
     css = val
 
+    # Antes de buscar el input, esperar a que el modal "Cargando" de
+    # Rayen desaparezca. Sin esto, el input no existe en el DOM durante
+    # la carga y el wait falla aunque la página SÍ esté cargando.
+    _wait_loading_modal_gone(driver, logger, timeout=30)
+
     logger.info(f"Esperando input de fecha ({css})...")
     try:
-        _make_wait(driver, NAVIGATION_TIMEOUT).until(
+        _make_wait(driver, 60).until(  # antes era NAVIGATION_TIMEOUT (20s)
             EC.presence_of_element_located((by, val))
         )
     except TimeoutException as e:
