@@ -151,7 +151,7 @@ def _ensure_session_alive(driver, credentials, logger):
 
 def _resolver_usuario() -> str | None:
     """El user_id es el primer argv que NO es un flag NI el valor de un flag."""
-    KNOWN_FLAGS = {"--desde", "--hasta"}
+    KNOWN_FLAGS = {"--desde", "--hasta", "--historico"}
     cli_user = None
     skip_next = False
     for arg in sys.argv[1:]:
@@ -183,10 +183,18 @@ def _resolver_usuario() -> str | None:
     return users[0]
 
 
-def _parse_args() -> tuple[date | None, date | None]:
-    """Lee --desde y --hasta de CLI. Si no se pasan, retorna (None, None)."""
+def _parse_args() -> tuple[date | None, date | None, bool]:
+    """Lee --desde, --hasta y --historico de CLI.
+
+    Returns:
+        (desde, hasta, historico).
+        - Si --historico está presente, `desde` queda en None y el
+          caller debe usar FECHA_INICIO_ABSOLUTA.
+        - Si no, --desde tiene prioridad sobre auto-detección.
+    """
     desde: date | None = None
     hasta: date | None = None
+    historico = False
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -196,9 +204,12 @@ def _parse_args() -> tuple[date | None, date | None]:
         elif args[i] == "--hasta" and i + 1 < len(args):
             hasta = datetime.strptime(args[i + 1], DATE_FORMAT).date()
             i += 2
+        elif args[i] == "--historico":
+            historico = True
+            i += 1
         else:
             i += 1
-    return desde, hasta
+    return desde, hasta, historico
 
 
 def main() -> int:
@@ -212,8 +223,21 @@ def main() -> int:
         return 1
 
     conn = _init_db()
-    desde_arg, hasta_arg = _parse_args()
-    inicio = desde_arg or _fecha_inicio_recorrido(conn)
+    desde_arg, hasta_arg, historico = _parse_args()
+    if historico:
+        # --historico: fuerza el recorrido desde FECHA_INICIO_ABSOLUTA
+        # (01-01-2026), ignorando la auto-detección desde la DB.
+        # Útil para la primera corrida histórica o para re-poblar
+        # el año completo.
+        inicio = FECHA_INICIO_ABSOLUTA
+        print(
+            f"[--historico] Forzando recorrido desde "
+            f"{FECHA_INICIO_ABSOLUTA.strftime(DATE_FORMAT)} (ignorando DB)"
+        )
+    elif desde_arg:
+        inicio = desde_arg
+    else:
+        inicio = _fecha_inicio_recorrido(conn)
     fin = hasta_arg or date.today()
 
     if inicio > fin:
