@@ -34,8 +34,7 @@ class TestResolverPlantilla:
             ("Control integral ecicep-g3", "CONTROL INTEGRAL SIN FICHA ANTERIOR"),
             ("Control integral multimorbilidad g1", "CONTROL INTEGRAL SIN FICHA ANTERIOR"),
             ("Control crónico", "CONTROL INTEGRAL SIN FICHA ANTERIOR"),
-            # Control de nino sano
-            ("Control salud", "CONTROL DE NIÑO SANO"),
+            # Control de nino sano (con edad): ver tests especificos abajo
         ],
     )
     def test_tipos_con_plantilla(self, tipo, esperado):
@@ -76,6 +75,29 @@ class TestResolverPlantilla:
         # Si Rayen manda "ME, Control integral ecicep-g3", debe resolver igual
         # porque sanitizar_tipo() quita el prefijo "ME,"
         assert resolver_plantilla("ME, Control integral ecicep-g3") == "CONTROL INTEGRAL SIN FICHA ANTERIOR"
+
+    # Tests para Control de Nino Sano (depende de edad)
+    def test_control_nino_sano_sin_edad_devuelve_none(self):
+        # Sin edad, no podemos elegir 1 mes vs 3 meses, devolvemos None
+        assert resolver_plantilla("Control salud") is None
+        assert resolver_plantilla("control salud", edad_meses=None) is None
+
+    def test_control_nino_sano_menor_3_meses(self):
+        # Bebé de 0, 1, 2 meses -> 1 mes
+        assert resolver_plantilla("Control salud", edad_meses=0) == "CONTROL NIÑO SANO 1 MES"
+        assert resolver_plantilla("Control salud", edad_meses=1) == "CONTROL NIÑO SANO 1 MES"
+        assert resolver_plantilla("Control salud", edad_meses=2) == "CONTROL NIÑO SANO 1 MES"
+
+    def test_control_nino_sano_3_o_mas_meses(self):
+        # Bebé de 3+ meses -> 3 meses
+        assert resolver_plantilla("Control salud", edad_meses=3) == "CONTROL NIÑO SANO 3 MESES"
+        assert resolver_plantilla("Control salud", edad_meses=6) == "CONTROL NIÑO SANO 3 MESES"
+        assert resolver_plantilla("Control salud", edad_meses=12) == "CONTROL NIÑO SANO 3 MESES"
+        assert resolver_plantilla("Control salud", edad_meses=24) == "CONTROL NIÑO SANO 3 MESES"
+
+    def test_control_nino_sano_case_insensitive(self):
+        assert resolver_plantilla("CONTROL SALUD", edad_meses=2) == "CONTROL NIÑO SANO 1 MES"
+        assert resolver_plantilla("Control Salud", edad_meses=4) == "CONTROL NIÑO SANO 3 MESES"
 
     def test_none_input(self):
         assert resolver_plantilla(None) is None  # type: ignore[arg-type]

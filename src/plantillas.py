@@ -36,17 +36,25 @@ def listar_tipos_atencion() -> list[str]:
     )
 
 
-def cargar_plantilla(tipo_atencion: str) -> str | None:
+def cargar_plantilla(
+    tipo_atencion: str, edad_meses: int | None = None
+) -> str | None:
     """Carga la plantilla canonica para el tipo de atencion dado.
 
     Usa `reglas_plantillas.resolver_plantilla` para decidir que archivo
     de plantilla cargar, segun la regla de uso mantenida por Yadira
     en PLANTILLAS.xlsx. Si el tipo no tiene plantilla asignada o la
     regla dice 'NO APLICA', devuelve None.
+
+    Args:
+        tipo_atencion: tipo que viene de Rayen.
+        edad_meses: edad del paciente en meses. Necesario para resolver
+            "Control de nino sano" (1 mes vs 3 meses). Si no se pasa
+            y el tipo es "control salud", devuelve None.
     """
     from src.reglas_plantillas import resolver_plantilla
 
-    nombre = resolver_plantilla(tipo_atencion)
+    nombre = resolver_plantilla(tipo_atencion, edad_meses=edad_meses)
     if nombre is None:
         return None
     ruta = os.path.join(PLANTILLAS_DIR, f"{nombre}.txt")

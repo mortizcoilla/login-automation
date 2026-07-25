@@ -46,7 +46,7 @@ _REGLA: dict[str, str] = {
     "control integral multimorbilidad g1": "CONTROL INTEGRAL SIN FICHA ANTERIOR",
     "control integral ecicep-g1": "CONTROL INTEGRAL SIN FICHA ANTERIOR",
     "control crónico": "CONTROL INTEGRAL SIN FICHA ANTERIOR",
-    # Control de nino sano
+    # Control de nino sano (placeholder, se calcula con edad)
     "control salud": "CONTROL DE NIÑO SANO",
     # NO APLICA
     "": "NO APLICA",
@@ -57,13 +57,39 @@ _REGLA: dict[str, str] = {
     "control": "NO APLICA",
 }
 
+# Limite en meses para elegir entre plantilla de 1 mes vs 3 meses
+# en Control de Nino Sano. Si edad_meses < LIMITE_MESES_NINO_SANO,
+# usar 1 mes; si >=, usar 3 meses.
+LIMITE_MESES_NINO_SANO = 3
 
-def resolver_plantilla(tipo_atencion: str) -> str | None:
+
+def _resolver_control_nino_sano(edad_meses: int | None) -> str | None:
+    """Elige entre CONTROL NIÑO SANO 1 MES y 3 MESES según la edad.
+
+    Returns None si no se puede determinar (falta edad).
+    """
+    if edad_meses is None:
+        return None
+    if edad_meses < LIMITE_MESES_NINO_SANO:
+        return "CONTROL NIÑO SANO 1 MES"
+    return "CONTROL NIÑO SANO 3 MESES"
+
+
+def resolver_plantilla(
+    tipo_atencion: str, edad_meses: int | None = None
+) -> str | None:
     """Dado un tipo de atencion de Rayen, devuelve el nombre canonico
     de la plantilla a usar, o None si no aplica.
 
     La busqueda es case-insensitive y aplica sanitizar_tipo (quita
     prefijos de instrumento tipo 'ME,') antes de matchear.
+
+    Args:
+        tipo_atencion: tipo que viene de Rayen (ej. "Morbilidad telefonica")
+        edad_meses: edad del paciente en meses. Necesario SOLO para
+            "Control de nino sano" (donde hay 2 plantillas segun edad).
+            Si no se pasa, devuelve el placeholder "CONTROL DE NIÑO SANO"
+            que NO matchea con ningun archivo (queda como None al cargar).
 
     Returns:
         - None si el tipo no esta en la regla
@@ -78,6 +104,9 @@ def resolver_plantilla(tipo_atencion: str) -> str | None:
     canonica = _REGLA.get(tipo)
     if canonica is None or canonica == "NO APLICA":
         return None
+    # Caso especial: Control de nino sano requiere edad
+    if canonica == "CONTROL DE NIÑO SANO":
+        return _resolver_control_nino_sano(edad_meses)
     return canonica
 
 
