@@ -368,11 +368,22 @@ def sort_by_estado(driver: WebDriver, logger: logging.Logger) -> None:
     estado_header = wait.until(EC.presence_of_element_located((by, val)))
 
     _safe_js_click(driver, estado_header)
-    wait.until(
-        EC.presence_of_all_elements_located(
-            (By.XPATH, _SELECTORS["table"]["iniciado_cell"]["value"])
+    # Después del click, la tabla se reordena. Esperamos a que el primer
+    # cambio de estado aparezca. Si el día no tiene fichas o no tiene
+    # 'Iniciado', el wait falla con TimeoutException — lo capturamos
+    # y seguimos (la tabla ya está ordenada, solo no hay datos para
+    # esperar).
+    try:
+        wait.until(
+            EC.presence_of_all_elements_located(
+                (By.XPATH, _SELECTORS["table"]["iniciado_cell"]["value"])
+            )
         )
-    )
+    except TimeoutException:
+        logger.info(
+            "No se encontraron celdas 'Iniciado' tras el sort "
+            "(día sin 'Iniciado' o sin fichas). Continuando."
+        )
     _safe_js_click(driver, estado_header)
 
     logger.info("Tabla ordenada por Estado (descendente)")
