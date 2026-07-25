@@ -395,6 +395,24 @@ def get_pacientes_iniciados(driver: WebDriver, logger: logging.Logger) -> list[W
     return rows
 
 
+def get_pacientes_del_dia(driver: WebDriver, logger: logging.Logger) -> list[WebElement]:
+    """Devuelve TODAS las filas de la tabla de Pacientes citados, sin filtrar
+    por estado. Complemento de get_pacientes_iniciados (que solo trae
+    las 'Iniciado').
+
+    Usa el selector 'div.rt-tr-group' (clase de react-table) para
+    agarrar cada fila de la tabla.
+    """
+    wait = _make_wait(driver, 15)
+    rows = wait.until(
+        EC.presence_of_all_elements_located(
+            (By.CSS_SELECTOR, "div.rt-tr-group")
+        )
+    )
+    logger.info(f"Pacientes del día (todos los estados): {len(rows)}")
+    return rows
+
+
 def extraer_datos_fila(row: WebElement) -> dict[str, str]:
     by, val = _select("table.cell")
     celdas = row.find_elements(by, val)
