@@ -75,21 +75,22 @@ sender_id de Telegram (pendiente de capturar el real).
 
 ## Reglas duras (NO NEGOCIABLES)
 
-1. **Validación humana**: la médica aprueba cada ficha antes del
-   envío. Doble gesto: ✅ (aprobación) + 📤 (envío). Sin esto, NO
-   se envía. Anclado en código (queue_store state machine +
-   pancho_skills.enviar) Y en system prompt de Pilita.
-2. **Sin LLM externos**: NO Gemini API ni otros cloud. Razonamiento
-   local con el system prompt GEM como prompt del agente Teodoro.
-3. **Privacidad** (matizada el 24-07):
-   - **NUNCA van a LLMs cloud**: RUT, nombre, observación NO van
-     a Gemini, OpenAI, etc. Solo contenido clínico seudonimizado
-     para razonamiento local.
-   - **SÍ pueden ir a Telegram/email/print** si Yadira lo pide
-     explícitamente. Es decisión de ella, no de la herramienta.
-     Header visible: "⚠️ Confidencial — datos clínicos".
-   - **NUNCA** a otros servicios cloud de terceros.
+1. **Validación humana** (la ÚNICA regla dura, revisada 24-07):
+   la médica aprueba cada ficha antes del envío. Doble gesto:
+   ✅ (aprobación) + 📤 (envío). Sin esto, NO se envía. Anclado
+   en código (queue_store state machine + pancho_skills.enviar)
+   Y en system prompt de Pilita.
+2. ~~Sin LLM externos~~ **LEVANTADA el 24-07**: los datos SÍ
+   pueden ir a LLMs cloud (Gemini, OpenAI, etc.) si el flujo
+   lo requiere. La única restricción operativa es la aprobación
+   humana de Yadira.
+3. ~~Privacidad estricta~~ **LEVANTADA el 24-07**: Yadira decide
+   adónde van los datos. Si quiere informes por Telegram/email/
+   print, se hace. Header "⚠️ Confidencial — datos clínicos"
+   cuando se envíe a un canal externo.
 4. **RUT nunca en la DB**: solo se guarda `sha256(rut)[:16]`.
+   (Esta sí se mantiene — es buena práctica de almacenamiento
+   local, no tiene que ver con LLMs.)
 5. **Datos sensibles fuera de chat**: nunca pegar contenido de
    `config/users.json`, `config/api_config.json`, `data/raw_responses/`,
    `data/pacientes_2026.csv` o `data/analysis/tracking.db` en el chat.
