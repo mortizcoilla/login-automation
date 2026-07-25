@@ -10,8 +10,11 @@ from src import plantillas
 
 @pytest.fixture
 def tmp_plantillas(tmp_path, monkeypatch):
-    (tmp_path / "Morbilidad.txt").write_text("Hola {PACIENTE}", encoding="utf-8")
-    (tmp_path / "Control.txt").write_text("Control para {PACIENTE}", encoding="utf-8")
+    # Archivos con nombres canonicos (uppercase), segun la regla de uso.
+    # La nueva logica de cargar_plantilla usa reglas_plantillas.py para
+    # resolver el nombre del archivo, no el tipo de Rayen directamente.
+    (tmp_path / "MORBILIDAD.txt").write_text("Hola {PACIENTE}", encoding="utf-8")
+    (tmp_path / "RECETA.txt").write_text("Receta para {PACIENTE}", encoding="utf-8")
     (tmp_path / "vacio.txt").write_text("", encoding="utf-8")
     (tmp_path / "completadas").mkdir()
     monkeypatch.setattr(plantillas, "PLANTILLAS_DIR", str(tmp_path))
@@ -21,13 +24,14 @@ def tmp_plantillas(tmp_path, monkeypatch):
 
 def test_listar_tipos(tmp_plantillas) -> None:
     tipos = plantillas.listar_tipos_atencion()
-    assert "Morbilidad" in tipos
-    assert "Control" in tipos
+    assert "MORBILIDAD" in tipos
+    assert "RECETA" in tipos
     assert "vacio" in tipos
     assert all(isinstance(t, str) for t in tipos)
 
 
 def test_cargar_plantilla_existente(tmp_plantillas) -> None:
+    # "Morbilidad" (tipo de Rayen) -> "MORBILIDAD" (plantilla canonica)
     assert plantillas.cargar_plantilla("Morbilidad") == "Hola {PACIENTE}"
 
 
@@ -36,11 +40,13 @@ def test_cargar_plantilla_inexistente(tmp_plantillas) -> None:
 
 
 def test_cargar_plantilla_sanitiza_prefijo(tmp_plantillas) -> None:
-    assert plantillas.cargar_plantilla("ME, Control") == "Control para {PACIENTE}"
+    # "ME, Recetas" -> sanitiza a "Recetas" -> RECETA
+    assert plantillas.cargar_plantilla("ME, Recetas") == "Receta para {PACIENTE}"
 
 
 def test_cargar_plantilla_con_nombre_sanitizado(tmp_plantillas) -> None:
-    assert plantillas.cargar_plantilla("Control") == "Control para {PACIENTE}"
+    # "Recetas" -> RECETA
+    assert plantillas.cargar_plantilla("Recetas") == "Receta para {PACIENTE}"
 
 
 def test_rellenar_plantilla(tmp_plantillas) -> None:

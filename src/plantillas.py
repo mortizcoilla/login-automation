@@ -37,8 +37,19 @@ def listar_tipos_atencion() -> list[str]:
 
 
 def cargar_plantilla(tipo_atencion: str) -> str | None:
-    tipo = sanitizar_tipo(tipo_atencion)
-    ruta = os.path.join(PLANTILLAS_DIR, f"{tipo}.txt")
+    """Carga la plantilla canonica para el tipo de atencion dado.
+
+    Usa `reglas_plantillas.resolver_plantilla` para decidir que archivo
+    de plantilla cargar, segun la regla de uso mantenida por Yadira
+    en PLANTILLAS.xlsx. Si el tipo no tiene plantilla asignada o la
+    regla dice 'NO APLICA', devuelve None.
+    """
+    from src.reglas_plantillas import resolver_plantilla
+
+    nombre = resolver_plantilla(tipo_atencion)
+    if nombre is None:
+        return None
+    ruta = os.path.join(PLANTILLAS_DIR, f"{nombre}.txt")
     if not os.path.exists(ruta):
         return None
     with open(ruta, encoding="utf-8") as f:
