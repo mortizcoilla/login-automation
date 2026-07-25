@@ -44,7 +44,9 @@ Ubicación: `C:\Users\morti\.minimax\agents\<nombre>\`.
 - 🐱 **Teodoro** — médico de familia APS, motor de razonamiento
 - 🐱 **Pancho** — enfermero de proceso (login, fetch, enviar a Rayen)
 - 🐱 **Pelusa** — salud mental (SIC COSAM, riesgo suicida)
-- 🐱 **Gustavo** — arsenal farmacológico APS
+- 🐱 **Gustavo** — **analista de datos** (informes, comparaciones 2025 vs 2026,
+  estacionalidad). System prompt en `C:\Users\morti\.minimax\agents\gustavo\agent.md`.
+  Maneja los scripts de `src/analysis/`.
 - 🐱 **Anita** — reportes y métricas (cron 19:00)
 
 **Casa del novio (5, pendientes de crear):**
@@ -276,25 +278,23 @@ Para la próxima sesión, no re-compartir estos datos en chat.
 
 ---
 
-**Última actualización**: 2026-07-24 20:34 GMT-4
-**Commits hasta ahora**: 6 (first + 23-07 AM + 23-07 PM + 24-07 historico + 24-07 output + 24-07 cierres)
-**Último commit**: `f0440d1` — marcar fichas cerradas + reporte desde SQL
+**Última actualización**: 2026-07-24 23:36 GMT-4
+**Commits hasta ahora**: 8 (incluye los nuevos scripts de análisis)
+**Último commit**: `85ba8e1` — actualizar_mes_actual + rescatar_anio_2025
 
-**Run histórico ejecutado (24-07-2026)**:
-- Recorrido: 01-01-2026 → 24-07-2026 (147 días hábiles)
-- **Fichas abiertas al cierre: 13**
-- Fichas cerradas detectadas: 23
-- Total fichas distintas vistas: 36
-- Distribución de las 13 abiertas:
-  - Control Integral ECICEP-G3: 4 (30.8%)
-  - Control Integral ECICEP-G2: 3 (23.1%)
-  - Morbilidad Telefónica: 2 (15.4%)
-  - Morbilidad Presencial: 2 (15.4%)
-  - Control Crónico Descompensado: 2 (15.4%)
-- ⚠ Nota: el `proxy_id` actual (hash de hora+tipo+adjunto+razón) no es
-  estable ante reagendas. Los 13 abiertas son confiables; los 23 cerradas
-  pueden incluir falsos positivos. **TODO prioritario**: agregar
-  `cita_id` real al dataclass `PacienteIniciado`.
+**Agente Gustavo creado (24-07-2026 noche)**:
+- Ubicación: `C:\Users\morti\.minimax\agents\gustavo\`
+- System prompt: `agent.md` (6 KB) — enfocado en analítica
+- Maneja los scripts de `src/analysis/`
+- Comandos: `informe`, `informe-semanal`, `informe-mensual`, `compara`,
+  `lista-hoy`, `cuantas-abiertas`, `tipo-dificil`, `actualizar`
+- Privacy: nombres SOLO en informes a Yadira, NUNCA a cloud
 
-**Próximo paso sugerido**: arreglar el `proxy_id` (agregar `cita_id` real
-a `PacienteIniciado`) para que los próximos runs no acumulen duplicados.
+**DBs de análisis (24-07-2026)**:
+- `data/analysis/fichas_completo.db` — TODAS las fichas con TODOS los campos (2025 + 2026)
+- `data/analysis/tracking.db` — tracking de "Iniciado" con upsert + cierres
+- `data/analysis/tracking_completo.db` — agregados por día de todos los estados
+- Total de registros al cierre: 1774 (solo 2026, año completo)
+
+**Próximo paso sugerido**: correr `rescatar_anio_2025` para tener 2025 en la DB
+y poder hacer las comparaciones interanual. ~20-40 min.
