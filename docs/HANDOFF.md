@@ -276,8 +276,25 @@ Para la próxima sesión, no re-compartir estos datos en chat.
 
 ---
 
-**Última actualización**: 2026-07-23 23:17 GMT-4
-**Commits hasta ahora**: 3 (first commit + 2026-07-23 AM + 2026-07-23 PM)
-**Último commit**: `99144e3` — tracking diario + flow UI fixes
-**Próximo paso sugerido**: correr el año completo
-(`python -m src.analysis.tracking_diario`, ~15-25 min)
+**Última actualización**: 2026-07-24 20:34 GMT-4
+**Commits hasta ahora**: 6 (first + 23-07 AM + 23-07 PM + 24-07 historico + 24-07 output + 24-07 cierres)
+**Último commit**: `f0440d1` — marcar fichas cerradas + reporte desde SQL
+
+**Run histórico ejecutado (24-07-2026)**:
+- Recorrido: 01-01-2026 → 24-07-2026 (147 días hábiles)
+- **Fichas abiertas al cierre: 13**
+- Fichas cerradas detectadas: 23
+- Total fichas distintas vistas: 36
+- Distribución de las 13 abiertas:
+  - Control Integral ECICEP-G3: 4 (30.8%)
+  - Control Integral ECICEP-G2: 3 (23.1%)
+  - Morbilidad Telefónica: 2 (15.4%)
+  - Morbilidad Presencial: 2 (15.4%)
+  - Control Crónico Descompensado: 2 (15.4%)
+- ⚠ Nota: el `proxy_id` actual (hash de hora+tipo+adjunto+razón) no es
+  estable ante reagendas. Los 13 abiertas son confiables; los 23 cerradas
+  pueden incluir falsos positivos. **TODO prioritario**: agregar
+  `cita_id` real al dataclass `PacienteIniciado`.
+
+**Próximo paso sugerido**: arreglar el `proxy_id` (agregar `cita_id` real
+a `PacienteIniciado`) para que los próximos runs no acumulen duplicados.
