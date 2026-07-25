@@ -313,6 +313,10 @@ def _run(logger: logging.Logger) -> int:
     total_actualizadas = 0
     tipos_vistos_hoy: Counter = Counter()
     citas_vistas_en_este_run: set[int] = set()
+    # Para el reporte final: lista de (hora, tipo, nombre) de las fichas
+    # vistas en el último día del recorrido. NO se guardan en la DB
+    # (privacidad), solo se imprimen en el output del run.
+    pacientes_para_cerrar: list[tuple[str, str, str]] = []
 
     try:
         driver = login_rayen(credentials, logger, headless=False)
@@ -358,6 +362,9 @@ def _run(logger: logging.Logger) -> int:
                 citas_vistas_en_este_run.add(proxy_id)
                 if dia == fin:
                     tipos_vistos_hoy[p.tipo_atencion] += 1
+                    pacientes_para_cerrar.append(
+                        (p.hora, p.tipo_atencion, p.nombre)
+                    )
 
             total_nuevas += n_nuevas_dia
             total_actualizadas += n_actualizadas_dia
@@ -443,13 +450,27 @@ def _run(logger: logging.Logger) -> int:
         print(f"  -> abiertas:       {total_abiertas}")
         print(f"  -> cerradas:       {total_cerradas}")
         print()
-        print(f"=== FICHAS ABIERTAS AL CIERRE DE ESTE RUN ===")
+        print(f"=== FICHAS PARA CERRAR HOY ({fin.strftime(DATE_FORMAT)}) ===")
         print(f"Total: {total_abiertas}")
+        if pacientes_para_cerrar:
+            print("Detalle (sin RUT — solo hora, tipo, nombre):")
+            print(f"  {'Hora':<8} {'Tipo':<35} {'Nombre':<40}")
+            print("  " + "-" * 83)
+            for hora, tipo, nombre in sorted(
+                pacientes_para_cerrar, key=lambda x: x[0]
+            ):
+                print(f"  {hora[:7]:<8} {tipo[:33]:<35} {nombre[:38]:<40}")
         if tipos_abiertas_rows:
+            print()
             print("Distribución por tipo:")
             for tipo, cant in tipos_abiertas_rows:
                 pct = 100 * cant / total_abiertas if total_abiertas else 0
                 print(f"  {tipo:<40s} {cant:3d}  ({pct:5.1f}%)")
+        print()
+        print(
+            "(Nota: los nombres SOLO aparecen en este output, no en la DB. "
+            "Privacidad: Ley 19.628.)"
+        )
         print("=" * 60)
         return 0
     except Exception as e:  # noqa: BLE001
