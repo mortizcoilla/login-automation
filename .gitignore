@@ -47,8 +47,16 @@ manuales/
 **/.trash/
 *.bak_*.cleanup
 *.bak_*
+
+# Cache del browser (descargas en curso)
 **/_chrome_dl/
 **/_adjuntos/_chrome_dl/
+
+# Directorios locales con logs / scripts temporales
+logs/
+scripts_temp/
+chromedriver.log
+geckodriver.log
 
 # Debug artifacts de browser_automation (screenshots + HTML de errores)
 error_*.html
