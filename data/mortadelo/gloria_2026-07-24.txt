@@ -1,0 +1,123 @@
+Paciente de 66 anos de edad, acude con su hija, con ayuda tecnica (baston)
+
+Motivo de consulta: revision de examenes
+
+Movimientos involuntarios en la cabeza, desde hace 6 meses, sin cefalea, pero
+si presenta alteraciones en la vision ocasional (fue evaluado por oftalmologia
+el cual descarta alteraciones en esa area).
+Niega caidas, sincopes, o alteraciones del habla.
+Alteraciones de la marcha de larga data.
+
+Telefono: 958721471 (hija)
+
+APP:
+  - Hipertension esencial
+  - Gonartrosis
+  - Glaucoma
+  - Trastornos del sueno
+  - Obesidad
+  - Otros trastornos de ansiedad
+  - Dislipidemia
+
+ALERGIAS: no
+APQX: colecistectomia, herniorrafia umbilical
+
+Antecedentes de IAM (2023). ECV (-).
+
+MEDICAMENTOS:
+  - Hidroclorotiazida 50 mg, 1 comp cada 24 horas
+  - Paracetamol 500 mg, 2 comp cada 8 horas
+  - Celecoxib 200 mg, SOS
+  - Enalapril Maleato 10 mg, 1 comp cada 12 horas
+  - Sertralina 50 mg, 1 comp cada 24 horas (no la cumple)
+  - Pregabalina 50 mg, OD
+
+TBQ: -
+OH:  -
+Drogas: -
+
+Examen fisico:
+
+TA 144/91 mm/hg   fc 71 x min
+
+Se encuentra en Condiciones clinicas estables,
+Mucosa oral humeda, Faringe sin alteracion
+Cardiopulmonar: RsCsRs SS, MV + Sin agregado
+Abdomen: no doloroso a la palpacion superficial ni profunda.
+extremidades: moviles, sin edemas. Pulsos pedios ++. Sin signos de tpv
+Neurologico: consciente en tiempo, espacio y persona.
+
+================================================================================
+EXAMENES REVISADOS
+================================================================================
+
+(Sin examenes revisados registrados en esta consulta.)
+
+
+================================================================================
+IMPRESION DIAGNOSTICA
+================================================================================
+
+Paciente femenino de 66 anos, con multiples comorbilidades (HTA, IAM 2023,
+gonartrosis, glaucoma, trastornos del sueno, ansiedad, obesidad, dslp),
+G3 Riesgo alto segun registro de Rayen, en polifarmacia (6 farmacos) y
+con antecedente de IAM en 2023.
+
+Consulta por revision de examenes. Refiere movimientos involuntarios en
+la cabeza de 6 meses de evolucion, sin cefalea ni caidas ni sincopes ni
+alteraciones del habla. Alteraciones de la marcha de larga data.
+Alteraciones visuales ocasionales (oftalmologia ya descarto patologia
+en su area).
+
+Hallazgos relevantes del examen actual:
+  - HTA NO controlada (TA 144/91, meta < 130/80 por antecedente de IAM)
+  - Polifarmacia con AINEs (Celecoxib SOS) en paciente con IECA +
+    diurético (riesgo renal)
+  - Sertralina: abandonada segun la paciente (sin causa documentada)
+  - Temblor cefalico de inicio subagudo (6 meses)
+  - Marcha alterada de larga data, actualmente con baston
+
+Hipotesis diagnostica principal:
+  - Temblor cefalico a caracterizar (R25.1): etiologia a determinar,
+    sospecha de parkinsonismo / enfermedad de Parkinson dada la
+    combinacion con alteracion progresiva de la marcha
+  - Trastorno de la marcha (R26.0) de larga data, multifactorial
+    (gonartrosis + posible componente neurologico)
+  - HTA esencial no controlada (I10) en paciente con antecedente
+    de IAM, requiriendo ajuste de terapia
+  - Antecedente de IAM antiguo (I25.2)
+  - Ansiedad en tratamiento irregular (no cumple sertralina)
+  - Glaucoma en control con oftalmologia
+
+Estudios pendientes en APS:
+  - Caracterizacion del temblor (reposo vs intencion, frecuencia,
+    lateralidad, progresion), buscar rigidez y bradicinesia
+  - Control de HTA: ajuste de terapia (meta < 130/80 por IAM previo),
+    considerar intensificar dosis o agregar ARA II
+  - Creatinina, BUN, RAC (riesgo renal por combinacion IECA + AINE +
+    diurético)
+  - Glicemia en ayuno, HbA1c (screening DM2, no consignada en APP)
+  - Perfil lipidico actual (control de dislipidemia)
+  - Evaluar causa de abandono de sertralina: efectos adversos, costo,
+    olvido, decision de la paciente, recaida ansiosa
+  - Control oftalmologico de glaucoma (verificar adherencia y PIO)
+  - Re-evaluar uso crónico de AINEs (Celecoxib) en paciente con
+    riesgo renal y cardiovascular
+
+================================================================================
+PENDIENTES
+================================================================================
+
+  [ ]  Caracterizacion detallada del temblor y examen neurologico
+  [ ]  Ajuste de terapia antihipertensiva (HTA no controlada)
+  [ ]  Creatinina, BUN, RAC (evaluacion de riesgo renal)
+  [ ]  Screening de DM2 (glicemia, HbA1c)
+  [ ]  Explorar motivo de abandono de sertralina
+  [ ]  Re-evaluar necesidad de AINEs cronicos
+  [ ]  Confirmar control oftalmologico de glaucoma
+  [ ]  Datos demograficos completos en cabecera de Rayen (direccion,
+       RUN, fecha de nacimiento)
+
+================================================================================
+
+Confidencial - datos clinicos. Ley 20.584.

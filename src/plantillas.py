@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from src.constants import (
@@ -93,3 +93,49 @@ def guardar_plantilla(texto: str, nombre_paciente: str) -> str:
 
 def placeholders_disponibles() -> list[str]:
     return list(PLACEHOLDERS)
+
+
+def calcular_edad_meses(
+    fecha_nacimiento: date,
+    fecha_referencia: date | None = None,
+) -> int:
+    """Calcula la edad del paciente en meses cumplidos.
+
+    Args:
+        fecha_nacimiento: fecha de nacimiento del paciente.
+        fecha_referencia: fecha respecto a la cual se calcula la edad.
+            Por defecto, hoy (date.today()). Se puede pasar otra fecha
+            para tests o calculos en una fecha distinta (ej. fecha de
+            la atencion, no hoy).
+
+    Returns:
+        Edad en meses cumplidos (entero). Negativo si
+        `fecha_nacimiento` es posterior a `fecha_referencia`
+        (caso patologico, no esperado en produccion).
+
+    Raises:
+        ValueError: si `fecha_nacimiento` es posterior a la fecha de
+            referencia (un bebe no puede nacer en el futuro).
+
+    Nota:
+        La fuente de la `fecha_nacimiento` la define el caller (Mora
+        API, Rayen, DB local, etc.). Esta funcion es la logica de
+        calculo; no sabe de donde sale el dato.
+    """
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+
+    if fecha_nacimiento > fecha_referencia:
+        raise ValueError(
+            f"fecha_nacimiento ({fecha_nacimiento}) es posterior a "
+            f"fecha_referencia ({fecha_referencia})"
+        )
+
+    # Calculo en meses cumplidos: anios * 12 + meses, ajustado si
+    # el dia del mes aun no se cumple en el mes de referencia.
+    anios = fecha_referencia.year - fecha_nacimiento.year
+    meses = fecha_referencia.month - fecha_nacimiento.month
+    total = anios * 12 + meses
+    if fecha_referencia.day < fecha_nacimiento.day:
+        total -= 1
+    return total

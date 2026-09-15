@@ -1,0 +1,97 @@
+# PLAN DE CUIDADOS INTEGRAL CONSENSUADO (PCIC) — BASE YADIRA
+# ----------------------------------------------------------------------------
+# Aprobado por la Dra. Yadira Hernandez Cabrera (CESFAM Raul Cuevas,
+# San Bernardo). Se aplica a todos los pacientes ECICEP, con customizacion
+# del OBJETIVO segun las condiciones del paciente.
+#
+# Ubicacion en la plantilla: este bloque va en la seccion
+# "PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS" (INGRESO ECICEP) o
+# "Plan individual de cuidados consensuados" (CONTROL INTEGRAL).
+#
+# Modo de uso (3 casos, en orden de prioridad):
+#
+# 1) Yadira escribio el PCIC explicito en la nota (ej. como linea
+#    "** PCIC:" o un bloque reconocible).
+#    -> USAR ESE. Es ley (Regla 10 ECICEP). El template solo es fallback.
+#
+# 2) Yadira no escribio PCIC, pero tenemos datos del paciente.
+#    -> USAR ESTE TEMPLATE, customizando el OBJETIVO segun las
+#       "Reglas de customizacion" de abajo.
+#
+# 3) Paciente sin datos suficientes para customizar.
+#    -> USAR ESTE TEMPLATE con el OBJETIVO en su forma minima
+#       ("disminuir a lo menos el 5% del peso corporal / control de
+#       cifras de tsh y trigliceridos") y avisar en `** Doctora:`.
+# ----------------------------------------------------------------------------
+
+1) Objetivo: <CUSTOMIZAR segun paciente — ver "Reglas de customizacion">
+
+2) Opciones: control medico+nutric / tratam farmacologico /
+   alimentacion saludable / activ de autocuidado
+
+3) Acuerdos (actividades): se acuerda acudir a controles indicados
+   (solicitara cambio de nutricionista para mejorar adherencia) /
+   se acuerda cumplir pauta de alimentacion entregada y tratamiento
+   farmacologico con ajuste (manejara pastillero semanal con receta
+   impresa a la vista) / organizara la agenda diaria para tomar a lo
+   menos 30 min para autocuidado (ej.: leer, caminatas en contacto con
+   la naturaleza, ejerc de estiramiento, tiempo de ocio)
+
+4) Responsable: equipo multidisciplinario + paciente
+
+5) Plazo: 6 meses
+
+
+# ----------------------------------------------------------------------------
+# Reglas de customizacion del OBJETIVO
+# ----------------------------------------------------------------------------
+# Estas reglas las definio Yadira (audios 2026-08-25). Combinarlas con
+# "/" cuando apliquen. Si una NO aplica para el paciente, NO incluirla.
+#
+# Peso / IMC:
+# - IMC < 18.5          -> "Ganancia de peso corporal"
+# - IMC 18.5-24.9       -> (no agregar objetivo de peso)
+# - IMC 25-29.9         -> "Disminuir a lo menos el 5% del peso corporal"
+# - IMC >= 30           -> "Disminuir a lo menos el 5% del peso corporal"
+# - Perimetro abdominal
+#   elevado (>88 cm M,
+#   >102 cm H)         -> agregar "disminuir perimetro abdominal"
+#
+# Presion arterial:
+# - HTA dx / PA >= 140/90
+#   en este control    -> agregar "control de cifras de presion arterial"
+#
+# Glicemia / DM2:
+# - DM2 dx / glicemia
+#   >= 100 ayunas o
+#   >= 140 casual      -> agregar "control de glicemia / HbA1c"
+#
+# Tiroides:
+# - Hipotiroidismo dx /
+#   TSH elevada        -> agregar "control de cifras de TSH"
+#
+# Perfil lipidico:
+# - Dislipidemia dx /
+#   colesterol total
+#   >= 200 o LDL
+#   >= 100             -> agregar "control de cifras de colesterol"
+# - Trigliceridos
+#   >= 150             -> agregar "control de cifras de trigliceridos"
+#
+# Renal:
+# - ERC dx / VFG
+#   < 60               -> agregar "control de funcion renal"
+#
+# Multiple condiciones:
+# - Combinar con "/" los objetivos que apliquen.
+# - Ejemplo HTA + DM2 + sobrepeso:
+#   "Disminuir a lo menos el 5% del peso corporal / control de cifras
+#    de presion arterial / control de glicemia / HbA1c"
+#
+# Pacientes sin condiciones claras:
+# - Si el paciente NO tiene ninguna de las anteriores, usar el OBJETIVO
+#   generico:
+#   "Disminuir a lo menos el 5% del peso corporal / control de cifras
+#    de tsh y trigliceridos"
+#   (es la version original que Yadira entrego como referencia)
+# ----------------------------------------------------------------------------

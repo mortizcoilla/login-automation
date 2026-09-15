@@ -1,0 +1,691 @@
+# TAREA
+
+Rellena la plantilla de abajo con los datos de la nota clinica de Yadira.
+La ficha SIEMPRE debe quedar COMPLETA. No dejes placeholders vacios.
+Usa la rubrica de inferencia de tu system prompt (categorias A/B/C/D).
+Marca cada inferencia con `~` y reportala en `=== ADVERTENCIAS DE INFERENCIA ===`.
+Para campos clinicos sensibles (categoria B/C), escribe `A VALIDAR CON PACIENTE`
+o `A VALIDAR POR YADIRA` segun corresponda.
+Al final, agrega el bloque `** Doctora:` con la estructura de tu system prompt.
+
+## INSTRUCCION DE TRIGGER
+
+Yadira escribio en la nota: `** mortadelo redacta una interconsulta a cardiología por HTA no controlada a pesar de tratamiento, con HbA1c 8.2%, perfil lipídico alterado y perímetro abdominal 105 cm. Indica el dx motivo, los antecedentes relevantes y qué estudios adjuntar.`
+
+Ademas de la ficha rellenada, responde a esta instruccion en la seccion
+`=== INSTRUCCIONES DE TRIGGER ===` del bloque `** Doctora:`.
+
+## DATOS DEMOGRAFICOS DEL PACIENTE (usar para la cabecera)
+
+```
+medico_cabecera: Sin médico asignado
+run: 11.111.111-1
+fecha_nacimiento: 01-04-1980 00:00
+edad: 46 años 4 meses 24 días
+sexo: Hombre
+direccion: Calle Ficticia 1234, Comuna Imaginaria - XIII Región Metropolitana - Chile
+sector: Sector Verde
+prevision: Fonasa B
+telefono: Teléfono móvil | +56 (9) 11111111
+estado_civil: Soltero(a)
+numero_ficha: Rayen: 11111111
+nombre_paciente: Perico De Los Palototes
+fecha_atencion: 25-08-2026
+tipo_atencion: Control integral ecicep-g2
+```
+
+## PCIC BASE (template de Yadira, customizar Objetivo segun paciente)
+
+Este es el template que Yadira aprobo. La seccion 1 (Objetivo)
+se CUSTOMIZA segun las condiciones del paciente (ver reglas de
+customizacion al final del template). Las secciones 2-5 quedan
+iguales en la mayoria de los casos.
+
+Si la nota de Yadira trae un PCIC explicito (ej. bloque `** PCIC:`),
+USA ESE en vez del template. El template es fallback.
+
+```
+# PLAN DE CUIDADOS INTEGRAL CONSENSUADO (PCIC) — BASE YADIRA
+# ----------------------------------------------------------------------------
+# Aprobado por la Dra. Yadira Hernandez Cabrera (CESFAM Raul Cuevas,
+# San Bernardo). Se aplica a todos los pacientes ECICEP, con customizacion
+# del OBJETIVO segun las condiciones del paciente.
+#
+# Ubicacion en la plantilla: este bloque va en la seccion
+# "PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS" (INGRESO ECICEP) o
+# "Plan individual de cuidados consensuados" (CONTROL INTEGRAL).
+#
+# Modo de uso (3 casos, en orden de prioridad):
+#
+# 1) Yadira escribio el PCIC explicito en la nota (ej. como linea
+#    "** PCIC:" o un bloque reconocible).
+#    -> USAR ESE. Es ley (Regla 10 ECICEP). El template solo es fallback.
+#
+# 2) Yadira no escribio PCIC, pero tenemos datos del paciente.
+#    -> USAR ESTE TEMPLATE, customizando el OBJETIVO segun las
+#       "Reglas de customizacion" de abajo.
+#
+# 3) Paciente sin datos suficientes para customizar.
+#    -> USAR ESTE TEMPLATE con el OBJETIVO en su forma minima
+#       ("disminuir a lo menos el 5% del peso corporal / control de
+#       cifras de tsh y trigliceridos") y avisar en `** Doctora:`.
+# ----------------------------------------------------------------------------
+
+1) Objetivo: <CUSTOMIZAR segun paciente — ver "Reglas de customizacion">
+
+2) Opciones: control medico+nutric / tratam farmacologico /
+   alimentacion saludable / activ de autocuidado
+
+3) Acuerdos (actividades): se acuerda acudir a controles indicados
+   (solicitara cambio de nutricionista para mejorar adherencia) /
+   se acuerda cumplir pauta de alimentacion entregada y tratamiento
+   farmacologico con ajuste (manejara pastillero semanal con receta
+   impresa a la vista) / organizara la agenda diaria para tomar a lo
+   menos 30 min para autocuidado (ej.: leer, caminatas en contacto con
+   la naturaleza, ejerc de estiramiento, tiempo de ocio)
+
+4) Responsable: equipo multidisciplinario + paciente
+
+5) Plazo: 6 meses
+
+
+# ----------------------------------------------------------------------------
+# Reglas de customizacion del OBJETIVO
+# ----------------------------------------------------------------------------
+# Estas reglas las definio Yadira (audios 2026-08-25). Combinarlas con
+# "/" cuando apliquen. Si una NO aplica para el paciente, NO incluirla.
+#
+# Peso / IMC:
+# - IMC < 18.5          -> "Ganancia de peso corporal"
+# - IMC 18.5-24.9       -> (no agregar objetivo de peso)
+# - IMC 25-29.9         -> "Disminuir a lo menos el 5% del peso corporal"
+# - IMC >= 30           -> "Disminuir a lo menos el 5% del peso corporal"
+# - Perimetro abdominal
+#   elevado (>88 cm M,
+#   >102 cm H)         -> agregar "disminuir perimetro abdominal"
+#
+# Presion arterial:
+# - HTA dx / PA >= 140/90
+#   en este control    -> agregar "control de cifras de presion arterial"
+#
+# Glicemia / DM2:
+# - DM2 dx / glicemia
+#   >= 100 ayunas o
+#   >= 140 casual      -> agregar "control de glicemia / HbA1c"
+#
+# Tiroides:
+# - Hipotiroidismo dx /
+#   TSH elevada        -> agregar "control de cifras de TSH"
+#
+# Perfil lipidico:
+# - Dislipidemia dx /
+#   colesterol total
+#   >= 200 o LDL
+#   >= 100             -> agregar "control de cifras de colesterol"
+# - Trigliceridos
+#   >= 150             -> agregar "control de cifras de trigliceridos"
+#
+# Renal:
+# - ERC dx / VFG
+#   < 60               -> agregar "control de funcion renal"
+#
+# Multiple condiciones:
+# - Combinar con "/" los objetivos que apliquen.
+# - Ejemplo HTA + DM2 + sobrepeso:
+#   "Disminuir a lo menos el 5% del peso corporal / control de cifras
+#    de presion arterial / control de glicemia / HbA1c"
+#
+# Pacientes sin condiciones claras:
+# - Si el paciente NO tiene ninguna de las anteriores, usar el OBJETIVO
+#   generico:
+#   "Disminuir a lo menos el 5% del peso corporal / control de cifras
+#    de tsh y trigliceridos"
+#   (es la version original que Yadira entrego como referencia)
+# ----------------------------------------------------------------------------
+```
+
+## REGLAS DEL BUNDLE (reglas.md — transversal: red flags, cobertura, principios)
+
+```
+# Reglas del bundle ecicep
+
+## Regla 0 — Mortadelo JAMAS decide (REGLA SUPREMA)
+
+**Mortadelo NUNCA decide NADA. Ni diagnostico, ni farmaco, ni
+derivacion, ni cierre de ficha. Yadira (la doctora) decide TODO.**
+
+Mortadelo solo hace esto, en este orden:
+
+1. Lee la nota clinica que Yadira escribio en Rayen.
+2. Rellena los placeholders de la plantilla con los datos de la nota.
+3. Si falta un dato para rellenar un placeholder -> solo sugiere.
+   NO inventa.
+4. Agrega al FINAL un bloque `** Doctora:` con:
+   - **Diagnostico diferencial** (lista, NO unico)
+   - Sugerencias para la nota
+   - Sugerencias para el diagnostico
+   - Red flags / alertas
+   - Recomendaciones
+   - **SIEMPRE con fuente**: cada sugerencia DEBE indicar de donde se
+     saco (manual, seccion, pagina). Formato:
+     `sugerencia → manual, seccion/pagina`
+5. Borra la marca `** mortadelo` (es trigger, no contenido).
+
+**Test de fuego:** si Mortadelo produce "diagnostico: HTA", eso es
+una decision. **Mal.** Lo correcto seria "diagnostico diferencial:
+1. HTA esencial, 2. HTA secundaria, 3. ..." Yadira mira la lista y decide.
+
+## Regla 1 — Pertenencia al bundle
+
+**Si `resolver_plantilla(tipo_atencion)` no es `"INGRESO ECICEP"` ni
+`"CONTROL INTEGRAL SIN FICHA ANTERIOR"`, NO usar este bundle.**
+
+Disparador: `es_ecicep(tipo_atencion) == True`.
+
+Sub-flujos:
+- `es_ecicep_ingreso(tipo) == True` → assessment inicial
+- `es_ecicep_control(tipo) == True` → seguimiento
+
+## Regla 2 — Plantilla segun sub-flujo
+
+- **Ingreso** → plantilla `INGRESO ECICEP`
+- **Control** → plantilla `CONTROL INTEGRAL SIN FICHA ANTERIOR`
+
+Disparador: `plantilla_para(tipo_atencion)` devuelve la canonica
+correspondiente.
+
+## Regla 3 — Conocimiento cerrado
+
+**Solo usar el contenido de los manuales validados para este bundle.**
+
+Manuales que aplican al bundle ecicep:
+
+- `ecicep-marco.md` — Marco ECICEP 2020/2021
+- `minsal-plan-consensuado.md` — PCIC ECICEP 2021 Cap III
+- `minsal-activos-comunitarios.md` — Modelo de Activos ECICEP Anexo 2
+- `minsal-mais.md` — MAIS 2024
+- `minsal-determinantes-sociales.md` — DSS OT 2025
+- `minsal-sife.md` — SIFE (Stewart 1995)
+- `ley-20584.md` — Ley 20.584 Derechos del Paciente
+- `red-flags-aps.md` — CIE-10 APS
+
+**NO usar** como base de advice:
+
+- `minsal-hta-2010.md`, `minsal-dm2-2017.md`, `minsal-epoc-2013.md`,
+  `minsal-pscv-2017.md`, `minsal-ira-era-aps.md` (pertenecen a
+  skill_morbilidad; ECICEP es integrador, no especifico)
+- `minsal-depresion-2013.md` (pertenece a skill_salud_mental; aunque
+  SM sea parte del ECICEP, el formato es distinto)
+- `gold-epoc-2026.md`, `esc-esh-hta-2018.md` (pertenecen a
+  skill_morbilidad; referencias internacionales)
+- `minsal-hta-infancia-2023.md` (pertenece a skill_niño_sano)
+- Cualquier conocimiento del LLM que no venga de los manuales validados
+
+## Regla 4 — Red flags universales (excepcion a Regla 3)
+
+Aunque no haya manual validado para un sub-tema, Mortadelo DEBE
+incluir en `** Doctora:` los red flags universales cuando apliquen
+al caso:
+
+- **Sepsis / shock septico:** qSOFA >= 2, hipotension, alteracion
+  mental, taquipnea. Cualquiera activa derivacion a urgencia.
+- **SCA / IAM:** dolor toracico tipico, irradiacion, disnea, diaforesis.
+  Activa ECG inmediato + derivacion a urgencia.
+- **ACV:** deficit neurologico focal, FAST positivo, hora de inicio.
+  Activa derivacion a urgencia (ventana terapeutica).
+- **Tromboembolismo pulmonar:** disnea subita, dolor pleuritico,
+  hemoptisis, TVP. Wells + D-dimero, derivacion.
+- **Reaccion alergica severa / anafilaxia:** urticaria + compromiso
+  respiratorio o hemodinamico. Adrenalina IM, derivacion a urgencia.
+- **Crisis hipertensiva:** PA > 180/110 con daño de organo blanco.
+  Derivacion a urgencia.
+- **Hipoglucemia severa:** glicemia < 50 con sintomas. Glucagon IM
+  o dextrosa IV.
+- **Riesgo suicida:** ideation, plan, intento previo, medios
+  disponibles. Cualquiera activa derivacion urgente.
+- **Psicosis aguda:** alucinaciones, ideas delirantes, desorganizacion
+  del pensamiento. Derivacion a urgencia.
+- **Maltrato / abuso:** indicadores fisicos o relato. Denuncia
+  obligatoria (Ley 20.584 + protocolos locales).
+
+## Regla 5 — Flujo ECICEP comun
+
+**Ambos sub-flujos (ingreso y control) siguen el flujo ECICEP definido
+en `ecicep-marco.md`:**
+
+1. **Estratificacion de riesgo:** asignar grupo (g1 / g2 / g3) segun
+   multimorbilidad, carga de enfermedad, determinantes sociales.
+2. **Anamnesis biomedica + bio-psicosocial:** completa en ingreso,
+   dirigida en control.
+3. **Examen fisico + examenes de laboratorio** basales y segun grupo.
+4. **Lista de problemas principales** (consensuados y no consensuados).
+5. **Plan individual de cuidados consensuados (PCIC):** objetivos,
+   opciones, acuerdos, responsable, plazo.
+6. **Derivaciones** a gestion de casos, medicina preventiva, activos
+   comunitarios, especialidades segun hallazgos.
+7. **Fecha de proximo control** segun grupo:
+   - g1: control anual
+   - g2: control cada 6 meses
+   - g3: control cada 3 meses (o antes segun hallazgos)
+
+## Regla 6 — Diferencia entre sub-flujos
+
+### Ingreso
+- Anamnesis completa (biomedica + bio-psicosocial + DSS)
+- Examen fisico completo
+- Estratificacion inicial
+- Lista de problemas INICIAL
+- PCIC completo (objetivos, opciones, acuerdos, responsable, plazo)
+- Estudios basales (perfil lipidico, glicemia, HbA1c, etc.)
+- Consentimiento informado para el ingreso a ECICEP
+
+### Control
+- NO repetir anamnesis completa (referenciar la del ingreso)
+- Examen fisico DIRIGIDO (foco en hallazgos previos + nuevos)
+- Re-evaluacion de estratificacion (puede cambiar de grupo)
+- Lista de problemas ACTUALIZADA (resueltos / persistentes / nuevos)
+- PCIC REVISADO (cumplimiento, ajustes, nuevos acuerdos)
+- Estudios segun hallazgos
+- Evaluar adherencia al plan previo
+
+## Regla 7 — Reporte de cobertura limitada
+
+Si el caso esta fuera de la cobertura de los manuales listados
+(por ejemplo, componente psiquiatrico no-depresivo, nutricion,
+kinesiologia), Mortadelo:
+
+1. Rellena la plantilla con los datos disponibles (no se bloquea)
+2. En `** Doctora:` incluye un bloque explicito:
+
+   ```
+   ** Doctora:
+   [...]
+   Cobertura del bundle: parcial.
+   - Manuales validados usados: [lista]
+   - Caso actual: [salud mental no-depresiva / nutricion / kinesiologia]
+   - Fuera de cobertura: si / no
+   - Recomendacion: validar manualmente / derivar
+   [...]
+   ```
+
+3. NO bloquea la entrega de la ficha. Yadira decide.
+
+## Regla 8 — Higiene de la ficha
+
+- `** mortadelo` y la instruccion interna: SE BORRA de la ficha rellenada
+  **Matching del trigger `** mortadelo` (case-insensitive, tolera espacios):** la doctora puede escribirlo como `** mortadelo`, `**Mortadelo`, `** MORTADELO`, `** Mortadelo:`, etc. Implementado en `src.mortadelo.trigger.TRIGGER_RE`. Ver `src/mortadelo/trigger.py` y `tests/test_mortadelo_trigger.py`.
+- `** Doctora:` con el advice: SE QUEDA en la ficha
+- Si la nota de Yadira contiene `** realizar interconsulta` (en
+  cualquier parte), Mortadelo incluye el bloque SIC (Sistema de
+  Interconsulta). La marca NO debe quedar en la ficha rellenada.
+
+## Regla 9 — Privacidad
+
+- NO loguear nombre del paciente, RUT, ni observacion clinica
+- ID de ficha y `tipo_atencion` se pueden loguear (anonimos)
+- Si se persiste en una DB para revision posterior, aplicar
+  seudonimizacion (hash de RUT + nombre abreviado)
+
+## Regla 10 — Plantillas Y nota Yadira son la LEY (transversal a todos los bundles)
+
+**Mortadelo solo hace 2 cosas. Punto. Ni mas ni menos.**
+
+**Lo que es LEY (inmutable):**
+- Los archivos `plantillas/INGRESO ECICEP.txt` y `plantillas/CONTROL INTEGRAL SIN FICHA ANTERIOR.txt` (formato, estructura, texto)
+- Lo que la doctora (Yadira) escribe en Rayen (nota clinica, observaciones, antecedentes)
+
+**Lo que Mortadelo PUEDE hacer:**
+1. Rellenar placeholders de la plantilla con datos del paciente:
+   `{PACIENTE}`, `{RUT}`, `{FECHA}`, `{HORA}`, `{TIPO_ATENCION}`,
+   `{RAZON}`, `{OBSERVACION}`
+2. Agregar al FINAL de la ficha un bloque `** Doctora:` con sugerencias/advice
+
+**Lo que Mortadelo NO PUEDE hacer (jamas):**
+- Modificar el texto de la plantilla (ni una palabra)
+- Reescribir lo que la doctora escribio en la nota
+- Insertar texto en medio de la plantilla que no sea un placeholder
+- "Completar" o "inventar" lo que la doctora escribio
+- Cambiar el orden de las secciones
+- Simular la voz de la doctora
+- Eliminar o mover lo que la doctora escribio (excepto la marca
+  `** mortadelo`, que es trigger y se borra)
+- Poner advice dentro del cuerpo de la plantilla (siempre va al final, en `** Doctora:`)
+
+**Sobre el bloque `** Doctora:`:**
+- Es CONSEJO, no ley
+- Va al FINAL de la ficha, NO en el medio
+- Yadira lo lee y decide
+- Si todo esta bien: bloque breve "Sin observaciones adicionales. Ficha OK segun bundle X."
+```
+
+## PLANTILLA INMUTABLE (rellena los placeholders, NO cambies el orden)
+
+```
+MOTIVO DE CONSULTA: CONTROL INTEGRAL CON RIESGO XX
+
+IDENTIFICACIÓN DEL ACOMPAÑANTE:
+Nombre:
+Edad:
+Relación con paciente índice:
+Teléfono:
+Otros:
+
+DIAGNÓSTICOS: 
+
+
+
+
+ANAMNESIS BIOMÉDICA:
+Antecedentes quirúrgicos (incluir fecha): 
+Alergias: (Especificar alergias a medicamentos)
+Fármacos de uso diario: ADHERENCIA
+Antecedentes familiares: (preguntar dirigidamente antecedentes de cáncer).
+Hábitos
+Tabaco/Alcohol/ drogas: (Tipo, frecuencia de consumo, años de consumo)
+Alimentación: (régimen en particular, dificultades en deglutir,  RETIRA LECHE) 
+Actividad Física:
+Entretenimiento: (radio/televisión/cocina…. Etc)
+Ciclo sueño-vigilia: 
+Deposiciones/diuresis
+
+ANTECEDENTES BIO PSICOSOCIALES
+Ocupación: 
+Estado civil:
+Escolaridad: 
+Religión o creencias:
+Servicios básicos: Luz, agua, gas, electricidad
+Tipo de vivienda: sólida/material ligero
+Con quién vive:
+Red de apoyo: 
+Participación comunitaria:
+
+TAMIZAJES:
+EMPA / EMPAM VIGENCIA:
+PAP / MAMOGRAFIA VIGENCIA:
+APE VIGENCIA:
+
+SÍNTOMAS ACTUALES
+Al interrogatorio dirigido evaluación por sistema: angina (-) , palpitaciones (-), síncope  (-), disnea (-), ortopnea  (-), DPN  (-), nicturia  (-) , Claudicación intermitente  (-) , edema (-) , proteinuria  (-).
+poliuria (-) , polidipsia (-) , polifagia (-)  baja de peso (-) .
+Cefalea (-) tinitus (-) mareos (-) 
+Astenia (-) Adinamia (-) Caída pelo (-) uñas quebradizas (- ) piel seca (-) intolerancia al frío(-) Alteraciones del sueño (-) 
+Tos crónica (-) disfagia (-) disfonía (-) 
+Gonalgia (-) Coxalgia (-) Rigidez AM (-) caídas (-) 
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses: 
+Fecha:
+Causa:
+
+
+EXÁMENES DE LABORATORIO: REGISTRADO EN FORMULARIO
+OTROS: 
+Registro de para´metros cli´nicos atingentes a lo abordado en el control.
+
+DIAGNÓSTICOS ACTUALES:  (REVISAR LISTADO DE PATOLOGÍAS QUE PONDERAN)
+Nuevos diagnósticos: 
+ACTUALIZACIÓN Estratificación de Riesgo: FECHA 
+
+ACTUALIZACION DE PLAN DE CUIDADOS INTEGRAL PREVIO:
+
+
+Registro de Vivencia / Dolencia: dolencia, entendida esta u´ltima como aquellos sentimientos, ideas, expectativas que alteran su funcio´n, y esta´n relacionadas con la enfermedad o si´ntoma. Cruciales: los sentimientos del paciente acerca del problema, las ideas que tienen acerca del problema; el efecto de estas dolencias en su funcionamiento diario, sus expectativas con respecto al me´dico que los atiende y finalmente, 
+
+
+PERCEPCIÓN DE PROBLEMAS PRINCIPALES DEL PACIENTE: 
+Problemas priorizados consensuados con la persona y/o su familia:
+1.
+2.
+Problemas NO priorizados consensuados con la persona y/o su familia:
+1.
+2.
+
+Problemas observados NO consensuados entre clínicos y paciente: 
+
+
+Etapa del cambio respecto al problema: 
+
+Plan individual de cuidados consensuados
+Objetivo:
+Opciones:
+Acuerdo: 
+Responsable:
+Plazo:
+Seguimiento: Cumple, No Cumple. Por qué?
+
+- Se acuerda con paciente y su familia derivación a Gestión de Casos en su sector: SI O NO PORQUE?
+- Receta farmacológica unificada
+- Generación de interconsultas:
+- Fecha aproximada de próximo control: 
+- Recomendación social de Activos Comunitarios, cuando corresponda.
+- Realizar evaluación de Riesgo Familiar en Ficha
+```
+
+## NOTA CLINICA DE YADIRA
+
+```
+# NOTA CLINICA — extraida de Rayen
+# Paciente: Perico De Los Palototes
+# Fecha atencion: 25-08-2026
+Tipo de atencion: Control integral ecicep-g2
+
+======================================================================
+=== INICIO IDENTIFICACION ===
+======================================================================
+Médico de cabecera: Sin médico asignado
+RUN: 11.111.111-1
+Fecha de nacimiento: 01-04-1980 00:00
+Edad Cronológica: 46 años 4 meses 24 días
+Sexo Biológico: Hombre
+Identidad de género: Masculino
+Dirección: Calle Ficticia 1234, Comuna Imaginaria - XIII Región Metropolitana - Chile
+Sector: Sector Verde
+Est. Inscripción: CESFAM Raúl Cuevas
+Previsión: Fonasa B
+Teléfono: Teléfono móvil | +56 (9) 11111111
+Estado civil: Soltero(a)
+Ocupaciones: Trabajador independiente
+Número de ficha: Rayen: 11111111
+======================================================================
+=== FIN IDENTIFICACION ===
+======================================================================
+
+======================================================================
+=== INICIO HISTORIAL DE ATENCIONES ===
+======================================================================
+12-08-2026 10:30  (1) Hipertensión esencial (primaria)- (Confirmada) (AUGE)
+(2) Diabetes mellitus tipo 2- (Confirmada) (AUGE)
+(3) Sobrepeso- (Confirmada)
+---
+28-07-2026 09:15  Control de salud cardiovascular
+---
+15-07-2026 14:20  Toma de muestra para laboratorio
+---
+01-07-2026 11:00  (1) Hipertensión esencial (primaria)- (Confirmada) (AUGE)
+(2) Diabetes mellitus tipo 2- (Confirmada) (AUGE)
+---
+20-06-2026 16:45  Control Integral ECICEP-G2
+---
+10-06-2026 08:30  (1) Hipertensión esencial (primaria)- (Confirmada) (AUGE)
+(2) Sobrepeso- (Confirmada)
+---
+======================================================================
+=== FIN HISTORIAL DE ATENCIONES ===
+======================================================================
+
+======================================================================
+=== INICIO NOTA CLINICA DE YADIRA ===
+======================================================================
+
+paciente masculino de 46 años acude a control ecicep en dupla
+
+fecha de ingreso ecicep 15/03/2024
+
+IDENTIFICACIÓN DEL ACOMPAÑANTE: acude solo.
+
+DIAGNÓSTICOS DE INGRESO:
+Hipertensión esencial
+Diabetes mellitus tipo 2
+Sobrepeso
+
+ANTECEDENTES MÉDICOS
+Antecedentes quirúrgicos: niega.
+Alergias: niega.
+Inmunizaciones vigentes: COVID (3 dosis), INFLUENZA (+).
+Antecedentes familiares: HTA (+) mamá, DM2 (+) papá, IAM (-) abuelos.
+Hábitos: TBQ (-) /Alcohol: social / drogas (-).
+
+Fármacos de uso diario:
+Enalapril 10 mg Comprimidos: 1 Comprimido cada 24 horas
+Metformina 850 mg Comprimidos: 1 Comprimido cada 12 horas
+Atorvastatina 20 mg Comprimidos: 1 Comprimido cada 24 horas
+
+ADHERENCIA: regular — refiere olvidos frecuentes los fines de semana.
+
+Alimentación: Hipertensión + diabetes. Dieta hiposódica + hipograsa. Refiere consumir bebidas azucaradas 3 veces/semana. Agrega sal al plato servido.
+Agua: 4-5 vasos/día.
+Act. Física: sedentario. Trabaja sentado. Camina solo los sábados.
+Entretenimiento: televisión.
+Ciclo sueño-vigilia: 7-8 hrs/noche. Sin nicturia.
+Deposiciones / Diuresis: normales.
+
+ANTECEDENTES BIO PSICOSOCIALES
+Ocupación: independiente (comercio).
+Estado civil: soltero.
+Escolaridad: enseñanza media completa.
+Religión o creencias: ninguna.
+Servicios básicos: Luz, agua, gas, electricidad: si.
+Tipo de vivienda: sólido.
+Con quién vive: solo.
+Red de apoyo: hermanos (2), viven en otra comuna.
+Participación comunitaria: no.
+
+TAMIZAJES:
+EMPA / EMPAM no vigente (ultimo hace 2 años).
+PAP / MAMOGRAFIA VIGENCIA: no aplica (hombre).
+APE VIGENCIA: no realizado.
+FICHA CLAP: completa.
+
+SÍNTOMAS ACTUALES
+Al interrogatorio dirigido evaluación por sistema:
+Angina (-), palpitaciones (-), síncope (-), disnea (-), ortopnea (-), DPN (-), nicturia (-), Claudicación intermitente (-), edema (-), proteinuria (-).
+poliuria (-), polidipsia (-), polifagia (-), baja de peso (-).
+Cefalea (-) tinitus (-) mareos (-).
+Astenia (+) Adinamia (-) Caída pelo (-) uñas quebradizas (-) piel seca (-) intolerancia al frío (-)
+Alteraciones del sueño (-) Tos crónica (-) disfagia (-) disfonía (-)
+Gonalgia (-) Coxalgia (-) Rigidez AM (-) caídas (-).
+
+Evaluación salud mental actual:
+Evaluación subjetiva (entrevista clínica por dupla): sin ideación suicida. Ánimo basal. Refiere "estoy bien, pero estresado por el trabajo".
+Síntomas ansiosos: mínimos, niego crisis de pánico.
+Ideas delirantes: niego.
+Estado cognitivo: orientado en tiempo, espacio y persona. MMSE no aplicado.
+Síntomas depresivos: PHQ-2 (-).
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses: Niega.
+
+EXAMEN FÍSICO
+Signos vitales: PA 150/95, FC 88, FR 16, T 36.5°C, SatO2 97%.
+Antropometría: Peso 92 kg, Talla 1.75 m, IMC 30.0 (obesidad grado I). Perímetro abdominal 105 cm.
+Revisión por sistemas:
+- Cardiovascular: R1 R2 normales, soplo (-), pulsos periféricos presentes y simétricos.
+- Respiratorio: murmullo pulmonar conservado bilateral, sin ruidos agregados.
+- Abdomen: blando, depresible, indoloro, RHA (+), sin visceromegalia.
+- Extremidades: sin edemas, pulsos pedios presentes.
+
+EXÁMENES DE LABORATORIO: REGISTRADO EN FORMULARIO
+OTROS:
+- HbA1c 8.2% (elevada,目標 <7%).
+- Glicemia ayunas 165 mg/dL.
+- Colesterol total 215 mg/dL, LDL 130 mg/dL, HDL 38 mg/dL, TG 195 mg/dL.
+- Creatinina 0.9 mg/dL, VFG estimado 95 mL/min/1.73m².
+- Microalbuminuria 35 mg/g (elevada).
+
+DIAGNÓSTICOS ACTUALES:
+Hipertensión esencial: NO controlada (PA 150/95).
+Diabetes mellitus tipo 2: NO controlada (HbA1c 8.2%).
+Sobrepeso/Obesidad: IMC 30.0.
+Dislipidemia mixta: TG elevados, LDL sobre objetivo.
+
+Nuevos diagnósticos: este control.
+
+ACTUALIZACIÓN Estratificación de Riesgo: pendiente de carga desde sistema (G2 esperado por multimorbilidad).
+
+PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS
+1) Objetivo: Disminución del 5% del peso corporal / control de cifras de presión arterial / control de glicemia y HbA1c / control de cifras de triglicéridos
+2) Opciones: control médico + nutrición / tratamiento farmacológico / alimentación saludable / actividades de autocuidado
+3) Acuerdos (actividades): se acuerda acudir a controles indicados / se acuerda cumplir pauta de alimentación entregada y tratamiento farmacológico con ajuste (usará pastillero semanal) / organizará agenda diaria para 30 min de autocuidado
+4) Responsable: equipo multidisciplinario + paciente
+5) Plazo: 6 meses
+
+- Se acuerda derivación a Gestión de casos: NO (caso ambulatorio manejable en APS).
+- Se deriva a sus exámenes de medicina preventivos: EMPAM (próximo mes), fondo de ojo (solicitar).
+- Receta farmacológica unificada: Enalapril 10 mg/día + Metformina 850 mg c/12h + Atorvastatina 20 mg/día. Se ajusta Metformina a 1000 mg c/12h (por HbA1c elevada).
+- Generación de interconsultas: Nutrición (reforzar adherencia), Oftalmología (fondo de ojo).
+- Fecha aproximada de próximo control: 3 meses (ECICEP G2).
+- Recomendación social de Activos Comunitarios: club de caminatas del CESFAM (referir).
+
+DATOS PARA MONITOREO A DISTANCIA
+Actualizar n° de teléfono: 11111111
+Dirección: Calle Ficticia 1234
+Uso de Whatsapp: si
+Uso de mail personal y/o de familiar: no
+Mecanismo de comunicación a distancia acordado: WhatsApp para recordatorios de citas y resultados de laboratorio.
+
+** mortadelo redacta una interconsulta a cardiología por HTA no controlada a pesar de tratamiento, con HbA1c 8.2%, perfil lipídico alterado y perímetro abdominal 105 cm. Indica el dx motivo, los antecedentes relevantes y qué estudios adjuntar.
+
+======================================================================
+=== FIN NOTA CLINICA DE YADIRA ===
+======================================================================
+
+======================================================================
+=== INICIO DIAGNOSTICOS ===
+======================================================================
+- Hipertensión esencial (primaria) [Repetida, Principal, Confirmado]: Clasificación: I10Hipertensión esencial (primaria)
+- Diabetes mellitus tipo 2 [Repetida, Confirmado]: Clasificación: E11Diabetes mellitus tipo 2
+- Sobrepeso [Repetida, Confirmado]: Clasificación: E66Sobrepeso
+- Dislipidemia mixta [Nueva, Confirmado]: Clasificación: E78.2Dislipidemia mixta
+======================================================================
+=== FIN DIAGNOSTICOS ===
+======================================================================
+
+======================================================================
+=== INICIO ACTIVIDADES ===
+======================================================================
+- 1 Control de salud cardiovascular
+- 1 Control Integral ECICEP
+======================================================================
+=== FIN ACTIVIDADES ===
+======================================================================
+
+======================================================================
+=== INICIO PROFESIONALES ===
+======================================================================
+- Dra. Yadira Hernandez Cabrera (Medico)
+- Nutricionista (sector verde)
+======================================================================
+=== FIN PROFESIONALES ===
+======================================================================
+
+======================================================================
+=== INICIO PAUTAS ===
+======================================================================
+- Salud Cardiovascular Integral (25 ago. 2026)
+- EMPAM (25 ago. 2026)
+======================================================================
+=== FIN PAUTAS ===
+======================================================================
+```
+
+## OUTPUT ESPERADO (estructura EXACTA — sigue tu system prompt)
+
+Sigue la estructura de tu system prompt de mortadelo:
+- Cabecera demografica (obligatoria ANTES de la plantilla).
+- Plantilla rellenada completa, sin placeholders vacios.
+- Inferencias marcadas con `~` en el cuerpo.
+- Bloque `** Doctora:` con: Resumen / Advertencias de inferencia /
+  Datos que requieren validacion / Diagnostico diferencial /
+  Sugerencias para la nota / Sugerencias para el diagnostico /
+  Red flags a vigilar / Sugerencias para proxima ficha /
+  (opcional) Instrucciones de trigger.
+
+NUNCA escribas despues del bloque `** Doctora:`. Sin despedidas.

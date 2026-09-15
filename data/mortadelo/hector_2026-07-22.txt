@@ -1,0 +1,193 @@
+Paciente de 81 anos de edad, acude solo, sin ayuda tecnica
+
+Motivo de consulta: derivacion y revision de examenes
+
+Telefono: 956750011
+
+APP: HTA, HPB (control por urologo en red salud), dslp (dislipidemia)
+ALERGIAS: penicilina (registrar como alergia critica en Rayen)
+APQX: no consignado
+Sin antecedentes de IAM-ECV
+
+MEDICAMENTOS:
+  - Atorvastatina Calcica 20 mg, 1 comp cada 24 horas
+  - Losartan Potasico 50 mg, 1 comp cada 24 horas
+
+TBQ: ++
+OH:  dia por medio un vaso de vino en la noche
+Drogas: -
+
+Examen fisico:
+
+TA 119/71    FC 73 x min
+
+Se encuentra en Condiciones clinicas estables,
+Mucosa oral humeda, Faringe sin alteracion
+Cardiopulmonar: RsCsRs SS, MV + Sin agregado
+Abdomen: no doloroso a la palpacion superficial ni profunda.
+extremidades: moviles, sin edemas. Pulsos pedios ++. Sin signos de tpv
+Neurologico: consciente en tiempo, espacio y persona.
+
+================================================================================
+EXAMENES REVISADOS
+================================================================================
+
+15-07-2026 - RX PIE AP-LAT IZQUIERDO EN CARGA
+--------------------------------------------------------------------------------
+
+Hallazgos:
+
+Densidad osea normal.
+Cambio degenerativo de articulacion metatarsofalangica del hallux.
+Resto de espacios articulares de amplitud conservada.
+No observo imagenes oseas destructivas ni fracturas.
+Angulo de costa-Bertoni-moriau 142 grados.
+Pie plano longitudinal.
+Hallux valgus derecho 44 grados.
+Huesos del tarso alineados con contornos regulares.
+No hay calcificaciones intra ni extra articulares.
+Segundo ortejo con disposicion en garra.
+Partes blandas visibles sin cambios significativos.
+
+
+================================================================================
+IMPRESION DIAGNOSTICA
+================================================================================
+
+Paciente masculino de 81 anos, con antecedentes de HTA, HPB (en
+seguimiento por urologia) y dislipidemia, en tratamiento con Losartan
+50 mg/dia y Atorvastatina 20 mg/dia. Tabaquismo activo (++) y consumo
+de OH moderado (vino dia por medio). Sin antecedente de IAM-ECV.
+
+Presenta cuadro de dolor y deformidad de los pies, con imagenologia
+que confirma hallux valgus bilateral (mas acentuado a derecha, 44
+grados), pie plano longitudinal, osteoartrosis de la articulacion
+metatarsofalangica del hallux, y segundo ortejo en disposicion en
+garra. Sin fracturas ni lesiones destructivas.
+
+Hipotesis diagnostica principal:
+  - Hallux valgus bilateral (M20.1)
+  - Pie plano adquirido (M21.40)
+  - Osteoartrosis MTF del hallux (M18.9)
+  - Dedo en garra del segundo ortejo (M20.5)
+  - Dolor en pie (M79.67)
+
+Consideraciones adicionales:
+  - HTA controlada con Losartan 50 mg (TA 119/71 en consulta)
+  - Dislipidemia en tratamiento con Atorvastatina 20 mg
+  - HPB en seguimiento por urologia (no causa de consulta actual)
+  - Alergia a penicilina: RELEVANTE para futuras prescripciones
+  - Tabaquismo activo ++: factor de riesgo cardiovascular mayor
+
+Estudios pendientes en APS:
+  - HbA1c y glicemia en ayuno (descartar DM2, no consignada en APP)
+  - Perfil lipidico actual (control de dislipidemia)
+  - Funcion renal (ajuste de Losartan en adulto mayor)
+  - Control de adherencia farmacologica
+  - Re-evaluar riesgo cardiovascular segun edad + comorbilidades
+  - Consejo breve de cesacion tabagica
+
+================================================================================
+INTERCONSULTA SIC - KINESIOLOGIA
+================================================================================
+
+Establecimiento:      CESFAM Raul Cuevas, San Bernardo
+Medico derivante:     Dra. Yadira Hernandez
+Fecha derivacion:     22-07-2026
+Plazo sugerido:       30 dias
+
+DATOS DEL PACIENTE
+------------------
+
+Nombre:              Hector Bueno Barrientos
+Edad:                81 anos
+Sexo:                Hombre
+RUN:                 5.296.648-5
+Fecha de nacimiento:  18-03-1945
+Direccion:           Pasaje LUDERNA PARC. 7 B CAMINO BARRANCON 7 B,
+                     San Bernardo
+Telefono:            956750011
+
+MOTIVO DE DERIVACION
+--------------------
+
+Pie doloroso bilateral con deformidad. Imagenologia (RX pie en carga,
+15-07-2026) confirma hallux valgus bilateral, pie plano longitudinal,
+cambio degenerativo de la articulacion metatarsofalangica del hallux
+y segundo ortejo en disposicion en garra. Sin fracturas ni lesiones
+destructivas.
+
+ANTECEDENTES PERSONALES
+-----------------------
+
+APP:                 HTA, HPB (control por urologia en red de salud),
+                     dislipidemia
+ALERGIAS:            Penicilina (critica, no prescribir)
+APQX:                No consignado
+APF:                 Sin antecedentes de IAM-ECV
+
+MEDICAMENTOS ACTUALES
+---------------------
+
+  - Atorvastatina 20 mg c/24h
+  - Losartan 50 mg c/24h
+
+HABITOS
+-------
+
+TBQ:                 ++ (fumador activo)
+OH:                  Dia por medio, un vaso de vino en la noche
+Drogas:              Niega
+
+EXAMEN FISICO (22-07-2026)
+--------------------------
+
+PA: 119/71 mmHg. FC: 73 x min.
+
+Paciente en condiciones clinicas estables.
+Cardiopulmonar: RsCsRs SS, MV +, sin agregado.
+Abdomen: no doloroso a la palpacion.
+Extremidades: moviles, sin edemas. Pulsos pedios ++.
+Neurologico: consciente en tiempo, espacio y persona.
+
+EXAMENES DISPONIBLES
+--------------------
+
+RX PIE AP-LAT IZQUIERDO EN CARGA (15-07-2026):
+Densidad osea normal. Cambio degenerativo de articulacion
+metatarsofalangica del hallux. Resto de espacios articulares de
+amplitud conservada. Sin imagenes oseas destructivas ni fracturas.
+Angulo de costa-Bertoni-moriau 142 grados. Pie plano longitudinal.
+Hallux valgus derecho 44 grados. Huesos del tarso alineados con
+contornos regulares. Sin calcificaciones intra ni extra articulares.
+Segundo ortejo con disposicion en garra. Partes blandas visibles
+sin cambios significativos.
+
+OBJETIVOS DE LA INTERCONSULTA
+-----------------------------
+
+- Evaluacion kinésica funcional de la marcha y postura
+- Fortalecimiento de musculatura intrinseca del pie
+- Estiramientos de cadena posterior y musculatura periarticular
+- Reeducacion de la marcha
+- Indicacion de plantillas ortopedicas si corresponde
+- Educacion sobre calzado adecuado
+- Manejo no farmacologico del dolor (ejercicios, hielo, AINEs topicos
+  si se requieren)
+- Coordinacion con APS para seguimiento
+
+================================================================================
+PENDIENTES
+================================================================================
+
+  [ ]  HbA1c y glicemia en ayuno (descartar DM2)
+  [ ]  Perfil lipidico actual
+  [ ]  Funcion renal (ajuste de Losartan)
+  [ ]  Control de adherencia farmacologica
+  [ ]  Consejo breve de cesacion tabagica
+  [ ]  Confirmar alergia a penicilina registrada en Rayen
+       (informacion critica para futuras prescripciones)
+
+================================================================================
+
+Confidencial - datos clinicos. Ley 20.584.

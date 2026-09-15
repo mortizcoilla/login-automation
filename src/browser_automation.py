@@ -15,6 +15,7 @@ from selenium.common.exceptions import (
     WebDriverException,
 )
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -64,7 +65,10 @@ TIMEOUT_SECONDS = int(os.getenv("TIMEOUT_SECONDS", _SELECTORS["timeouts"]["defau
 NAVIGATION_TIMEOUT = _SELECTORS["timeouts"]["navigation"]
 
 
-def _build_chrome_options(headless: bool = False) -> Options:
+def _build_chrome_options(
+    headless: bool = False,
+    download_dir: str | None = None,
+) -> Options:
     opts = Options()
     opts.add_argument("--incognito")
     opts.add_argument("--no-sandbox")
@@ -76,6 +80,18 @@ def _build_chrome_options(headless: bool = False) -> Options:
     opts.add_experimental_option("useAutomationExtension", False)
     if headless:
         opts.add_argument("--headless=new")
+    if download_dir:
+        # Configurar carpeta de descargas para que Chrome NO muestre
+        # el dialogo "Guardar como" y guarde directo a download_dir.
+        opts.add_experimental_option(
+            "prefs",
+            {
+                "download.default_directory": download_dir,
+                "download.prompt_for_download": False,
+                "download.directory_upgrade": True,
+                "safebrowsing.enabled": True,
+            },
+        )
     return opts
 
 
@@ -141,10 +157,19 @@ def run_login(
     credentials: dict[str, str],
     logger: logging.Logger,
     headless: bool = False,
+    download_dir: str | None = None,
 ) -> WebDriver:
     logger.info("Iniciando instancia de Google Chrome en modo incognito...")
-    options = _build_chrome_options(headless)
-    driver = webdriver.Chrome(options=options)
+    options = _build_chrome_options(headless, download_dir=download_dir)
+    _log_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "logs",
+    )
+    os.makedirs(_log_dir, exist_ok=True)
+    service = Service(
+        service_log_path=os.path.join(_log_dir, "chromedriver.log")
+    )
+    driver = webdriver.Chrome(options=options, service=service)
     wait = _make_wait(driver)
 
     try:

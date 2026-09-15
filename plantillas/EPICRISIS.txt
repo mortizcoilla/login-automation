@@ -1,0 +1,45 @@
+Planilla de seguimiento
+Hoja de seguimiento de alta hospitalaria
+
+A. Dato administrativos.
+Fecha de ingreso:
+Fecha de alta:
+Hospital:
+Fono del paciente:
+
+B. Resumen de epicrisis atingente/ evaluación por sistemas
+Sistemas: Cardiovascular, metabólico, respiratorio, funcional. Neurológico, nefrológico.
+Poner las acciones a realizar para asegurar intervenciones propuestas.
+
+C. Diagnósticos de egreso
+
+
+D. Indicaciones al alta
+Control policlínico especialidades (Fecha y hora)
+Retiro de exámenes
+Medicamentos indicados
+Persona a cargo del paciente
+
+
+E. Examen físico actual
+
+
+F. Evaluación: impacto funcional/orgánico post hospitalización- pueden usar Barthel
+
+
+ Indicaciones
+Se elabora plan de cuidados.
+Dieta- consejería antitabaco(sala ERA), disminuir consumo de alcohol.
+Tipo de reposo
+Ajuste de medicamentos
+Derivación a TO según funcionalidad, a PAD según funcionalidad- derivar a asistente social.
+
+
+Próximo control en Cesfam: multimorbilidad, PSCV(ingreso o control), Programa de salud
+mental(amputación pie diabético), , EMPA, Sala ERA(neumonía en mayores de 65 años,
+sospecha EPOC, para consejería antitabaco) , nutrición, RBC(acv, amputación pie
+diabético) etc.
+
+Derivación a nivel secundario:
+
+Actividad a registrar: CONTRARREFERENCIA

@@ -1,0 +1,287 @@
+cd C:\Workspace\Login-Automation
+.\venv\Scripts\Activate.ps1
+
+
+
+
+================================================================================
+ COMANDOS DEL PROYECTO - Login Automation (Rayen APS)
+ Ultima actualizacion: 2026-08-22
+================================================================================
+
+Indice
+------
+  1. App principal (main.py) - login + rellenar plantillas
+  2. Demos locales (sin Rayen real)
+  3. Setup inicial (API discovery + extraccion raw)
+  4. Actualizacion periodica de datos
+  5. Consultas y listados
+  6. Tests
+  7. Convenciones operativas
+
+
+================================================================================
+1. APP PRINCIPAL (main.py) - Login + rellenar plantillas
+================================================================================
+  Flujo Yadira: login Rayen, navega a Pacientes citados, muestra fichas
+  "Iniciado" del dia, rellena plantilla local, medico aprueba y guarda.
+
+  Opciones CLI:
+    --user, -u       ID de usuario (omite prompt interactivo)
+    --date, -d       Fecha objetivo en formato dd-mm-yyyy
+    --headless       Chrome sin ventana visible
+    --no-input       Modo no interactivo (falla si falta --user o --date)
+    --list-users     Lista usuarios disponibles y sale
+    --log-level      DEBUG | INFO | WARNING | ERROR
+
+  Basico (prompt para usuario y fecha):
+    python main.py
+
+  Usuario y fecha en linea, sin prompt:
+    python main.py --user yadira --date 22-08-2026
+
+  Modo automatico (sin prompts, solo login + listado):
+    python main.py --user yadira --date 22-08-2026 --no-input
+
+  Modo headless (servidor, sin pantalla):
+    python main.py --user yadira --date 22-08-2026 --headless
+
+  Solo listar usuarios configurados:
+    python main.py --list-users
+
+
+================================================================================
+2. DEMOS LOCALES (sin tocar Rayen)
+================================================================================
+  Demo end-to-end del flujo Pilita/Teodoro/Pancho/Anita con datos simulados.
+  Util para entender la state machine y el reporte sin tener sesion real.
+
+  Demo completa (state machine + auditoria + reporte):
+    python demo_app.py
+
+  Demo solo del reporte de Anita:
+    python demo_reporte.py
+
+
+================================================================================
+3. SETUP INICIAL (se corre una sola vez o cuando cambia la API)
+================================================================================
+  3.1 Descubrir la API de Rayen
+  --------------------------------
+  Genera config/api_config.json a partir de la sesion real. Solo necesario
+  si la URL o los headers de la API cambian.
+
+    python -m src.discover_api
+
+  Pasos: prompt pide user_id, abre Chrome visible, abre Rayen, te pide
+  una fecha de prueba, captura la llamada de la API y guarda la config.
+
+
+  3.2 Extraccion raw historica (solo si se necesita regenerar raw_responses/)
+  --------------------------------------------------------------------------
+  Recorre todos los dias habiles 2026-01-01 -> HOY, hace GET a la API por
+  cada dia, guarda data/raw_responses/<dd-mm-yyyy>.json + CSV maestro
+  data/pacientes_2026.csv. Tiene checkpoint automatico (reanuda si se
+  interrumpe).
+
+    python -m src.extract_patients
+
+  Output:
+    - data/raw_responses/*.json   (un JSON por dia, ~10 MB total)
+    - data/pacientes_2026.csv     (CSV maestro consolidado, ~280 KB)
+    - data/.checkpoint.json       (estado de avance, no borrar)
+
+
+================================================================================
+4. ACTUALIZACION PERIODICA DE DATOS
+================================================================================
+  4.1 Llenar DB SQLite completa (lo mas importante para reportes)
+  ---------------------------------------------------------------
+  Recorre dias habiles y UPSERT en data/analysis/fichas_completo.db.
+  Re-correr es seguro: usa (fecha, hora, nombre) como clave unica.
+
+  Hasta hoy (auto-detecta el minimo en la DB):
+    python -m src.analysis.fichas_completo_db <user_id>
+
+  Periodo especifico:
+    python -m src.analysis.fichas_completo_db <user_id> --desde 01-07-2026 --hasta 31-07-2026
+
+  Anio completo (desde 01-01-2026):
+    python -m src.analysis.fichas_completo_db <user_id> --historico
+
+  Output:
+    - data/analysis/fichas_completo.db  (DB con tabla 'fichas', todas las
+      citas con todos los campos, todos los estados)
+
+
+  4.2 Actualizar SOLO el mes en curso (cron diario recomendado)
+  -------------------------------------------------------------
+  Borra los registros del mes en la DB y los reinserta con datos frescos.
+  Pensado para correr todos los dias ~2-3 min.
+
+    python -m src.analysis.actualizar_mes_actual <user_id>
+
+  No acepta --mes ni --anio: siempre usa el mes del sistema.
+
+
+  4.3 Tracking diario de fichas "Iniciado" (backlog real de Yadira)
+  -----------------------------------------------------------------
+  Recorre desde 01-01-2026 (o desde la fecha minima ya en la DB) hasta
+  HOY, hace UPSERT por cita_id en data/analysis/tracking.db. Solo
+  persiste cita_id y tipo_atencion (sin PII).
+
+  Hasta hoy:
+    python -m src.analysis.tracking_diario <user_id>
+
+  Periodo especifico:
+    python -m src.analysis.tracking_diario <user_id> --desde 01-08-2026 --hasta 22-08-2026
+
+  Anio completo:
+    python -m src.analysis.tracking_diario <user_id> --historico
+
+  Output:
+    - data/analysis/tracking.db  (tabla fichas + runs, sin PII)
+
+
+  4.4 Tracking completo anual (todos los estados, agregados)
+  -----------------------------------------------------------
+  Variante de tracking_diario que trae TODAS las citas (no solo
+  "Iniciado") y guarda agregados por dia en una DB aparte.
+
+  Hasta hoy:
+    python -m src.analysis.tracking_completo <user_id>
+
+  Anio completo:
+    python -m src.analysis.tracking_completo <user_id> --historico
+
+  Output:
+    - data/analysis/tracking_completo.db  (agregados_diarios + runs, sin PII)
+    - data/analysis/tracking_completo_run_<timestamp>.txt  (output completo)
+
+
+================================================================================
+5. CONSULTAS Y LISTADOS
+================================================================================
+  5.1 Listado de TODAS las fichas del dia (todos los estados)
+  -----------------------------------------------------------
+  Live check: hace login a Rayen, trae la tabla de Pacientes citados
+  de HOY, muestra una tabla con todos los campos agrupados por estado.
+
+    python -m src.analysis.listar_fichas_hoy <user_id>
+
+  Output:
+    - Consola: tabla formateada
+    - data/analysis/fichas_<dd-mm-yyyy>.txt
+
+
+  5.2 Listado de fichas "Iniciado" del dia (deuda clinica de Yadira)
+  -----------------------------------------------------------------
+  Live check: igual al anterior pero filtrado a "Iniciado" + cruza
+  con tracking.db para mostrar primera/ultima vista.
+
+    python -m src.analysis.listar_fichas_abiertas <user_id>
+
+  Output:
+    - Consola: tabla formateada con todos los campos + tracking
+    - data/analysis/listado_<dd-mm-yyyy>.txt
+
+
+  5.3 Informe de fichas abiertas desde la DB local
+  ------------------------------------------------
+  Lee data/analysis/fichas_completo.db (NO requiere login a Rayen) y
+  genera un informe con: total abiertas, detalle por fecha, distribucion
+  por tipo de atencion.
+
+  Mes en curso (default):
+    python -m src.analysis.informe_fichas_abiertas
+
+  Mes especifico:
+    python -m src.analysis.informe_fichas_abiertas --mes 07
+    python -m src.analysis.informe_fichas_abiertas --mes 7 --anio 2026
+
+  Anio completo:
+    python -m src.analysis.informe_fichas_abiertas --anio 2026 --todos
+
+  Rango personalizado:
+    python -m src.analysis.informe_fichas_abiertas --desde 01-07-2026 --hasta 25-07-2026
+
+  Output:
+    - Consola: tabla + resumen
+    - data/analysis/informe_fichas_abiertas_<periodo>.txt
+
+
+  5.4 Analisis historico desde raw_responses/ (legacy, deprecado)
+  ---------------------------------------------------------------
+  Lee los JSON en data/raw_responses/ y produce un CSV historico con
+  agregados por dia. SOLO util si regeneras raw_responses; si no,
+  usa 5.3 que lee la DB.
+
+    python -m src.analysis.fichas_abiertas_historico
+
+  Output:
+    - data/analysis/fichas_abiertas_historico.csv
+
+
+================================================================================
+6. TESTS
+================================================================================
+  Correr toda la suite:
+    pytest
+
+  Suite con output verboso:
+    pytest -v
+
+  Solo un test file:
+    pytest tests/test_api_client.py -v
+
+  Solo un test:
+    pytest tests/test_api_client.py::test_load_api_config -v
+
+  Marcador de integracion (requiere browser real):
+    pytest -m integration
+
+
+================================================================================
+7. CONVENCIONES OPERATIVAS
+================================================================================
+  Formato de fecha:        dd-mm-yyyy (ej. 22-08-2026)
+  Venv:                    .\venv\Scripts\Activate.ps1
+  Activar venv:            .\venv\Scripts\Activate.ps1
+  Alias de entry point:    python -m <modulo.path>   (en vez de python src/...py)
+
+  Donde viven los datos:
+    config/api_config.json        config de la API capturada
+    config/users.json             usuarios conocidos
+    config/selectors.json         selectores CSS de Rayen
+    data/pacientes_2026.csv       CSV maestro de extraccion raw
+    data/raw_responses/*.json     JSON diario (legacy, 10 MB)
+    data/analysis/fichas_completo.db   DB principal (recomendada para queries)
+    data/analysis/tracking.db     DB backlog "Iniciado" (sin PII)
+    data/analysis/tracking_completo.db   DB agregados anuales (sin PII)
+    data/analysis/informe_*.txt   reportes generados
+    data/analysis/fichas_*.txt    listados live
+    data/analysis/listado_*.txt   listados live + tracking
+    plantillas/*.txt              plantillas de fichas
+    plantillas/completadas/       fichas ya aprobadas (gitignored)
+    Manuales/*.pdf                manuales clinicos validados
+
+  Que hace cada DB:
+    - fichas_completo.db  =  todas las citas, todos los campos, todos los
+                             estados, del periodo que le pidas. Tiene PII.
+    - tracking.db         =  solo "Iniciado" (backlog de Yadira), sin PII,
+                             con fecha_primera_vista / fecha_ultima_vista.
+    - tracking_completo.db = agregados por dia de TODAS las citas, sin PII.
+
+  Flujo recomendado (semanal):
+    1. Una vez al dia:   python -m src.analysis.actualizar_mes_actual <user>
+    2. Cuando hay cambios:  python -m src.analysis.fichas_completo_db <user> --historico
+    3. Backlog live:     python -m src.analysis.tracking_diario <user>
+    4. Informe:          python -m src.analysis.informe_fichas_abiertas
+    5. Live check hoy:   python -m src.analysis.listar_fichas_abiertas <user>
+
+  Privacidad:
+    - Las DB y CSVs en data/ tienen PII (nombre, RUT) y estan en .gitignore.
+    - tracking*.db NO tienen PII (solo cita_id + tipo_atencion).
+    - NUNCA commitear data/.
+
+================================================================================

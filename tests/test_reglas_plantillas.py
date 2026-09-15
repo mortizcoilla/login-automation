@@ -1,8 +1,11 @@
 """Tests para la regla de uso de plantillas."""
+import inspect
+
 import pytest
 
 from src.reglas_plantillas import (
     _REGLA,
+    _normalizar_clave as normalizar_clave,
     listar_plantillas_canonicas,
     listar_tipos_con_plantilla,
     resolver_plantilla,
@@ -139,3 +142,88 @@ class TestListar:
                 "CONTROL INTEGRAL SIN FICHA ANTERIOR", "CONTROL DE NIÑO SANO",
                 "NO APLICA",
             }
+
+
+class TestNormalizarClave:
+    """La normalizacion es accent + lowercase + colapsar espacios."""
+
+    def test_lowercase(self):
+        assert normalizar_clave("Hola Mundo") == "hola mundo"
+
+    def test_sin_acentos(self):
+        assert normalizar_clave("Morbilidad telefónica") == "morbilidad telefonica"
+        assert normalizar_clave("Control niño sano") == "control nino sano"
+
+    def test_colapsa_espacios(self):
+        assert normalizar_clave("  hola   mundo  ") == "hola mundo"
+        assert normalizar_clave("a\tb\nc") == "a b c"
+
+    def test_input_vacio(self):
+        assert normalizar_clave("") == ""
+        assert normalizar_clave(None) == ""  # type: ignore[arg-type]
+
+
+class TestReglaEsCodigo:
+    """La fuente de verdad es el dict _REGLA en codigo, NO un archivo externo."""
+
+    def test_no_se_lee_excel(self):
+        """reglas_plantillas.py no debe mencionar openpyxl ni PLANTILLAS.xlsx.
+        Si vuelve a leer el Excel, el dict en codigo deja de ser la fuente."""
+        from src import reglas_plantillas
+        src = inspect.getsource(reglas_plantillas)
+        assert "openpyxl" not in src, (
+            "reglas_plantillas.py esta importando openpyxl. "
+            "El Excel debe estar fuera del flujo."
+        )
+        assert "PLANTILLAS.xlsx" not in src, (
+            "reglas_plantillas.py referencia PLANTILLAS.xlsx. "
+            "El Excel debe estar fuera del flujo."
+        )
+
+    def test_regla_es_dict_en_codigo(self):
+        """La regla es un dict normal de Python, no algo cargado de disco."""
+        from src import reglas_plantillas
+        assert isinstance(reglas_plantillas._REGLA, dict)
+        assert len(reglas_plantillas._REGLA) > 10
+
+    def test_regla_tiene_entradas_esperadas(self):
+        """Verifica que las entradas del dict son las que Yadira definio."""
+        assert _REGLA["Recetas"] == "RECETA"
+        assert _REGLA["Morbilidad"] == "MORBILIDAD"
+        assert _REGLA["Ingreso salud mental infantil"] == "INGRESO SALUD MENTAL SIN ECICEP"
+        assert _REGLA["Ingreso integral ecicep-g1"] == "INGRESO ECICEP"
+        assert _REGLA["Control salud"] == "CONTROL DE NIÑO SANO"  # placeholder
+        assert _REGLA["Gestion administrativa"] == "NO APLICA"
+
+
+class TestRobustezMatching:
+    """El resolver matchea con/sin acentos, mayusculas, espacios."""
+
+    @pytest.mark.parametrize(
+        "tipo_input,esperado",
+        [
+            ("Morbilidad telefónica", "MORBILIDAD"),
+            ("Morbilidad telefonica", "MORBILIDAD"),  # sin acento
+            ("MORBILIDAD TELEFONICA", "MORBILIDAD"),  # mayusculas sin acento
+            ("MoRbIlIdAd TeLeFoNiCa", "MORBILIDAD"),  # mixto
+            ("  Morbilidad telefónica  ", "MORBILIDAD"),  # espacios
+            ("Morbilidad", "MORBILIDAD"),
+            ("Ingreso salud mental infantil", "INGRESO SALUD MENTAL SIN ECICEP"),
+            ("Ingreso multidisciplinario salud mental - infantil", "INGRESO SALUD MENTAL SIN ECICEP"),
+            ("Ingreso integral ecicep-g1", "INGRESO ECICEP"),
+        ],
+    )
+    def test_resolver_matchea_variantes(self, tipo_input, esperado):
+        assert resolver_plantilla(tipo_input) == esperado
+
+    def test_resolver_devuelve_none_para_no_aplica(self):
+        assert resolver_plantilla("Gestion administrativa") is None
+        assert resolver_plantilla("Seguimiento a distancia multimorbilidad g2") is None
+        assert resolver_plantilla("Consultoria salud mental (sesiones)") is None
+        assert resolver_plantilla("Control") is None
+
+    def test_resolver_devuelve_none_para_tipo_inexistente(self):
+        assert resolver_plantilla("Tipo inventado") is None
+        assert resolver_plantilla("xyz") is None
+        assert resolver_plantilla("") is None
+        assert resolver_plantilla(None) is None  # type: ignore[arg-type]

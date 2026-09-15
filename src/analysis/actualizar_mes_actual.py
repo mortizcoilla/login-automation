@@ -238,10 +238,6 @@ def main() -> int:
         logger.error(f"Error fatal: {e}")
         return 1
     finally:
-        try:
-            input("\nPresione Enter para cerrar el browser...")
-        except EOFError:
-            pass
         safe_quit(driver, logger)
         conn.close()
 

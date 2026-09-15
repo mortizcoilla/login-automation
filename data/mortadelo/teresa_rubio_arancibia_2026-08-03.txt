@@ -1,0 +1,335 @@
+MOTIVO DE CONSULTA: INGRESO INTEGRAL
+
+Se explica brevemente a paciente sobre ECICEP, se pregunta sobre dudas y
+apreciaciones respecto a la atención, paciente refiere comprender.
+
+IDENTIFICACIÓN DEL ACOMPAÑANTE:
+Nombre: no acude acompañada (acude sola)
+Edad: —
+Relación con paciente índice: —
+Teléfono: —
+Otros: —
+
+DIAGNÓSTICOS DE INGRESO:
+- Trastorno Bipolar (F31) en tratamiento, comórbido con Trastorno Límite de
+  Personalidad (F60.3)
+- Hipotiroidismo (E03) en tratamiento
+- Riesgo suicida alto (Z91.5) — 3 hospitalizaciones previas por intento
+
+Fármacos de uso diario: ADHERENCIA
+- Eutirox 75 mcg 1 comp/día (hipotiroidismo)
+- Olanzapina 10 mg 1.5 comp/día
+- Risperidona 1 mg 1 comp/día
+- Venlafaxina 75 mg 1 comp/día
+- Litio 400 mg 2 comp/día
+- Paroxetina: SUSPENDIDA hace 2 meses sin indicación médica
+Adherencia: parcial. Suspendió Paroxetina por cuenta propia. Polifarmacia
+compleja. Riesgo de descompensación.
+
+ANAMNESIS BIOMÉDICA:
+Antecedentes quirúrgicos (incluir fecha): colecistectomía (sin fecha), 2
+cesáreas (sin fecha)
+Alergias: (Especificar alergias a medicamentos) — no
+Antecedentes familiares: (preguntar dirigidamente antecedentes de cáncer).
+- Madre: fallecida de cáncer gástrico a los 47 años
+- Padre: fallecido (cáncer)
+- Tío y primo: suicidio (2016 y 2026)
+- Sin otros antecedentes de cáncer registrados por la paciente
+Hábitos
+- Tabaco/Alcohol/ drogas: niega todo
+- Alimentación: (régimen en particular, dificultades en deglutir, RETIRA LECHE)
+  3 comidas + 1 colación ocasional. RETIRA LECHE: no
+- Actividad Física: no
+- Entretenimiento: (radio/televisión/cocina…. Etc) TV y lectura
+- Ciclo sueño-vigilia: alterado (insomnio mixto)
+- Deposiciones/diuresis: sin alteración
+
+ANTECEDENTES BIO PSICOSOCIALES
+- Ocupación: estudiante de Ingeniería Civil Industrial, 4° año, UNAB.
+  Adicionalmente cuida al hijo de su sobrina, ingreso de $50.000/semana.
+- Estado civil: divorciada desde 2024 (infidelidad de la pareja)
+- Estructura Familiar: Padre- Hijos- Hermanos (relación)
+  - Ambos padres fallecidos (cáncer)
+  - Hermanos: Paula (50 años, con quien vive) y Eduardo (47 años)
+  - 2 hijos: Emiliano (17) y Ernesto (12), viven con el padre
+- Escolaridad: universitaria incompleta
+- Religión o creencias: no
+- Servicios básicos: Luz, agua, gas, electricidad: sí
+- Tipo de vivienda: sólida/material ligero: sólida, arrendada
+- Con quién vive: con su hermana Paula (50 años). Hijos viven con el padre
+- Red de apoyo: hermana Paula (única red efectiva)
+- Participación comunitaria: no
+
+TAMIZAJES:
+- EMPA / EMPAM VIGENCIA: no vigente
+- PAP / MAMOGRAFIA VIGENCIA: PAP vigente hasta 01/01/2029. Mamografía:
+  sin dato
+- APE VIGENCIA: no aplica (mujer, no APE de rutina)
+- FICHA CLAP: no aplica (sin antecedente de embarazo actual)
+- CALIFICACIÓN DEL RIESGO FAMILIAR: riesgo psicosocial alto (red de apoyo
+  limitada, cuidadora, antecedentes familiares de suicidio y cáncer, polifarmacia
+  irregular). Sugiere reevaluación con pauta local.
+
+SÍNTOMAS ACTUALES
+Al interrogatorio dirigido evaluación por sistema: angina (-), palpitaciones
+(-), síncope (-), disnea (-), ortopnea (-), DPN (-), nicturia (-),
+Claudicación intermitente (-), edema (-), proteinuria (-).
+poliuria (-), polidipsia (-), polifagia (-), baja de peso (-).
+Cefalea (-), tinitus (-), mareos (-).
+Astenia (-), Adinamia (-), Caída pelo (-), uñas quebradizas (-), piel seca
+(-), intolerancia al frío (-), Alteraciones del sueño (+) mixto.
+Tos crónica (-), disfagia (-), disfonía (-).
+Gonalgia (-), Coxalgia (-), Rigidez AM (-), caídas (-).
+
+Evaluación salud mental actual:
+- Ánimo inestable, energía inestable, irritabilidad ++
+- Anhedonia: negativa
+- Insomnio mixto
+- Apetito disminuido, mantiene sobrepeso
+- Inhibición psicomotora: negativa
+- Bradipsiquia: negativa, concentración sin alteración
+- Ideas de muerte: último episodio junio 2026
+- Ideación suicida actual: NEGATIVA
+- Planificación suicida: negativa
+- Intento suicida: negativo
+- Autolesiones: no se evidencia; describe "apretarse y rasguñarse" al frustrarse
+- Agorafobia: negativa
+- Alucinaciones (auditivas/olfatorias): negativas
+- Ilusiones: negativas
+
+Evaluación subjetiva (entrevista clínica por dupla):
+- Goldberg GHQ-12: 12 puntos (sospecha de depresión, sobre umbral de 5)
+- 3 hospitalizaciones previas por intento suicida (2024)
+- Episodio agudo junio 2026: consumo de psicofármacos sin hospitalización,
+  contenida por hermana en casa, asociado a no renovación de contrato
+- Adherencia parcial al tratamiento, suspendió Paroxetina sin indicación
+
+Síntomas ansiosos: no referidos explícitamente, pero irritabilidad
+aumentada y ciclo sueño-vigilia alterado
+Ideas delirantes: no
+Estado cognitivo: memoria sin alteraciones, concentración sin alteración,
+lenguaje fluido y coherente, pensamiento sin alteraciones de curso/contenido/
+velocidad
+Síntomas depresivos: ánimo inestable, energía inestable, insomnio mixto,
+apetito disminuido, Goldberg 12 (sospecha), ideas de muerte (junio 2026)
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses:
+- Fecha: febrero 2024 / Causa: intento suicida (ingesta de pastillas) /
+  Centro: Clínica Macul / Duración: 1 mes
+- Fecha: junio 2024 / Causa: intento suicida / Centro: CETEC (Pedro Montt) /
+  Duración: 1 mes
+- Fecha: octubre 2024 / Causa: intento suicida / Centro: CETEC (Pedro Montt) /
+  Duración: 1 mes
+- Fecha: junio 2026 / Causa: ingesta de psicofármacos (olanzapina, risperidona
+  y otros) sin hospitalización, contenida en casa por hermana / Centro: no
+  consultó servicio de urgencia
+
+EXAMEN FÍSICO
+Signos vitales: REGISTRADO EN FORMULARIO
+Antropometría: REGISTRADO EN FORMULARIO
+Revisión por sistemas: sin hallazgos
+Registrar examen físico: pendiente (revisar pestaña Rayen)
+
+EXÁMENES DE LABORATORIO: REGISTRADO EN FORMULARIO
+OTROS:
+Registro de parámetros clínicos atingentes a lo abordado en el control:
+- Litemia: pendiente
+- TSH y T4 libre: pendiente (Eutirox 75 mcg en curso)
+- Función renal (BUN, creatinina, RAC): pendiente
+
+DIAGNÓSTICOS ACTUALES: (REVISAR LISTADO DE PATOLOGÍAS QUE PONDERAN)
+- F31 Trastorno Bipolar (eje central, comórbido con TLP)
+- F60.3 Trastorno Límite de Personalidad
+- E03 Hipotiroidismo
+- Z91.5 Historia personal de riesgo suicida (3 hospitalizaciones previas)
+- F32/F33 episodio depresivo actual (sospecha, GHQ-12 = 12)
+
+Nuevos diagnósticos: ninguno en esta consulta
+
+ACTUALIZACIÓN Estratificación de Riesgo: FECHA 03-08-2026
+- Estrato G3: multimorbilidad severa (TBP + TLP + riesgo suicida alto +
+  polifarmacia irregular + 3 hospitalizaciones previas)
+- Riesgo cardiovascular: a calcular con tablas chilenas (EMPA pendiente)
+- Plan de cuidado integral: SÍ (coordinación con equipo en dupla)
+
+Registro de Vivencia / Dolencia: (Sentimientos, Ideas, Función y Expectativas)
+- ¿Qué es lo que más le preocupa actualmente respecto a su salud?
+  Estabilidad emocional, situación económica (cuidado del hijo de su
+  sobrina por $50.000/semana), completar el año académico (4° Ingeniería
+  Civil Industrial).
+- ¿Por qué cree que le está pasando esto?
+  Stress psicosocial (separación 2024, polifarmacia irregular, comorbilidad
+  psiquiátrica).
+- ¿Cómo le afecta esto en su diario vivir?
+  Irritabilidad, insomnio, aislamiento, riesgo de descompensación.
+  Dificulta sostener rutina y rendimiento académico.
+- ¿Qué espera de nosotros para que le ayudemos a mejorar esta condición?
+  Que el equipo la acompañe sin suspender más medicamentos sin indicación,
+  que la escuchen, que la ayuda llegue a tiempo. Espera coordinación
+  efectiva entre médico tratante y psiquiatra extrasistema (Dr. Poblete).
+
+LISTADO DE PROBLEMAS PRINCIPALES DEL PACIENTE:
+- Problemas priorizados consensuados con la persona y/o su familia:
+  • Riesgo de descompensación de TBP por polifarmacia irregular
+  • Necesidad de estabilizar sueño y ánimo
+  • Mantener escolaridad (4° año Ing. Civil Industrial)
+  • Cuidado del hijo de su sobrina como ingreso
+
+- Problemas observados no consensuados entre clínicos y paciente:
+  • Riesgo de nuevo intento suicida (3 hospitalizaciones previas +
+    Paroxetina suspendida + junio 2026 sin hospitalización)
+  • Polifarmacia sin supervisión estrecha reciente
+  • Red de apoyo limitada (solo hermana)
+  Etapa del cambio respecto al problema: paciente en etapa contemplativa
+  (reconoce necesidad de ayuda, pero mantiene conductas de riesgo).
+  Caso se presentará en consultoría para definir intervención.
+
+PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS
+1. Objetivo: Estabilizar ánimo y sueño, mantener adherencia al esquema
+   farmacológico, evitar nuevo intento suicida, completar año académico
+2. Opciones:
+   - Mantener esquema actual (Litio + Olanzapina + Risperidona + Venlafaxina
+     + Eutirox), con seguimiento estrecho y control de litemia
+   - Reiniciar Paroxetina (NO recomendado por riesgo de síndrome
+     serotoninérgico con Venlafaxina, requiere decisión de consultoría)
+   - Ajustar dosis de Olanzapina o cambiar antipsicótico según respuesta
+3. Acuerdos (actividades):
+   - Paciente: no suspender medicamentos por cuenta propia, asistir
+     a controles programados, contactar al equipo ante ideas de muerte
+   - Equipo: presentación en consultoría psiquiátrica, monitoreo de
+     adherencia, receta unificada, próximos controles coordinados
+4. Responsable: equipo de salud (médico tratante) + paciente + red
+   (hermana Paula)
+5. Plazo: 3 meses (revisión en septiembre 2026 con HbA1c, litemia, GHQ-12)
+
+- Se acuerda en conjunto con paciente derivación a Gestión de casos: NO
+  (a revisar en consultoría — el perfil de riesgo suicida alto podría
+  justificar reconsideración; decisión pendiente de consultoría)
+- Se deriva a sus exámenes de medicina preventivos: ¿Cuáles?
+  - EMPA pendiente
+  - TSH y T4 libre
+  - Litemia
+  - Función renal (BUN, creatinina, RAC)
+  - Perfil lipídico
+- Receta farmacológica unificada: sí (incluir TODOS los psicofármacos
+  en una sola receta con indicación explícita de NO suspender por
+  cuenta propia)
+- Generación de interconsultas: no (caso se presenta en consultoría)
+- Fecha aproximada de próximo control:
+  - Psicóloga: agosto 2026
+  - Trabajadora social: agosto 2026
+  - Médico + exámenes: septiembre 2026
+- Recomendación social de Activos Comunitarios, cuando corresponda.
+  (No se identifica activo específico por el momento. Revisar en
+  control de T. social.)
+
+DATOS PARA MONITOREO A DISTANCIA
+Actualizar n° de teléfono: +56 9 58334082 (interpretado del original;
+confirmar formato con paciente)
+Dirección: (pendiente — preguntar en próximo control)
+Uso de Whatsapp: (pendiente — preguntar en próximo control)
+Mecanismo de comunicación a distancia acordado: (pendiente de
+acordar con paciente en próximo control)
+
+ANTES DE TERMINAR VERIFICAR ACTIVIDADES REGISTRATADA Y FORMULARIOS REQUERIDOS.
+RECUERDE REGISTRAR LOS ACUERDOS EN "ACUERDOS"
+
+ACTIVIDADES:
+INGRESO INTEGRAL RIESGO G3
+PLAN CUIDADO INTEGRAL RIESGO G3
+CONTROL QUE CORRESPONDA
+
+
+** Doctora:
+Diagnóstico diferencial:
+1. Trastorno Bipolar (F31) en tratamiento — eje central del caso, en
+   control con Dr. Poblete (psiquiatra extrasistema) 2024-2026
+2. Comorbilidad TLP (F60.3) — patrón de impulsividad (consumo
+   junio 2026), conducta autolesiva leve, inestabilidad relacional
+3. Hipotiroidismo (E03) en tratamiento con Eutirox 75 mcg/día
+4. Episodio depresivo actual (sospecha, GHQ-12 = 12) — evaluar si
+   es del TBP o comorbilidad adicional
+5. Riesgo suicida alto (Z91.5) — 3 hospitalizaciones previas por
+   intento + episodio junio 2026 sin hospitalización + polifarmacia
+   irregular
+6. Insomnio mixto secundario a descompensación
+
+Sugerencias para la nota:
+- Documentar el episodio de junio 2026 (consumo de pastillas sin
+  hospitalización) con la gravedad que tiene — está minimizado en la
+  nota original
+- Especificar fecha exacta de suspensión de Paroxetina y dosis que era
+- Anamnesis más detallada del sueño (latencia, despertares, horario)
+- Confirmar si la paciente tiene pareja actual y red de apoyo efectiva
+  más allá de la hermana
+- Anamnesis de patrón alimentario y peso actual
+
+Sugerencias para el diagnóstico:
+- Considerar Young (escala de manía) si sospecha de episodio actual del
+  TBP — el ánimo "inestable" puede ser mixto
+- PHQ-9 basal para seguimiento objetivo de severidad depresiva
+- Litemia si lleva > 3 meses con Litio (rango terapéutico 0.6-1.2
+  mEq/L)
+- TSH y T4 libre actualizados (Eutirox 75 mcg, posible ajuste)
+- Función renal y tiroidea (Litio + Hipotiroidismo)
+- Riesgo cardiovascular: pendiente EMPA
+
+Red flags / alertas:
+- 🔴 ALTO: 3 hospitalizaciones previas por intento suicida
+  (feb/jun/oct 2024) + episodio agudo junio 2026 sin consultar
+  urgencia = patrón recurrente grave. Plan de seguridad obligatorio
+- 🔴 ALTO: Paroxetina suspendida hace 2 meses SIN indicación médica —
+  riesgo de descompensación y, si se reinicia, riesgo de síndrome
+  serotoninérgico con Venlafaxina
+- 🔴 Polifarmacia compleja (5 psicofármacos) sin supervisión estrecha
+  reciente
+- 🔴 Ideas de muerte presentes (último junio 2026), ideación actual
+  negativa pero riesgo fluctuante
+- 🔴 Antecedentes familiares de suicidio (tío y primo) — factor de
+  riesgo adicional
+- 🔴 "Apretarse y rasguñarse" al frustrarse — conducta autolesiva
+  subclínica no documentada como riesgo
+- 🔴 TLP + TBP + polifarmacia + cuidadora + red extendida limitada =
+  perfil de riesgo elevado
+- ⚠️ Considerar derivación a Gestión de Casos: aunque Yadira marcó
+  NO, el perfil clínico y social lo justifica. Recomiendo reconsiderar
+  en consultoría
+- ⚠️ EMPA no vigente — riesgo cardiovascular sin cuantificar en
+  paciente con TBP + múltiples FRCV implícitos
+- ⚠️ Conducta de junio 2026: ingesta de olanzapina y risperidona (no
+  son las más letales en sobredosis, pero indica patrón de acceso a
+  psicofármacos sin supervisión)
+
+Recomendaciones:
+- Caso prioritario para consultoría (ya planificado por Yadira) —
+  confirmar adherencia al esquema Litio + Olanzapina + Risperidona +
+  Venlafaxina. Decisión colegiada sobre Paroxetina
+- NO reiniciar Paroxetina sin decisión del comité (riesgo
+  serotoninérgico con Venlafaxina)
+- Plan de seguridad explícito con la paciente y la hermana:
+  • Identificar señales de alerta personales
+  • Acordar contactos de emergencia
+  • Limitar acceso a medicamentos (entregar a hermana Paula)
+  • No comprar psicofármacos sin indicación
+- Litemia en 1 semana si no se ha controlado recientemente
+- TSH + T4L en control de septiembre
+- Perfil lipídico y glicemia (completar panel CV)
+- Reforzar adherencia con Test de Morisky Green Levine
+- Verificar que psicóloga y T. social de agosto se concreten
+- Receta unificada: incluir TODOS los psicofármacos en una sola
+  receta con indicación explícita de "NO suspender por cuenta
+  propia"
+- Coordinar con Dr. Poblete (psiquiatra extrasistema) para
+  continuidad del esquema
+- Reevaluar derivación a Gestión de Casos — la nota dice NO pero
+  el perfil lo justifica
+- Insomnio: evaluar higiene del sueño, evitar benzodiacepinas
+  (riesgo de dependencia + TLP)
+- Teléfono validado: +56 9 58334082 (interpretado del original;
+  confirmar formato en box)
+- Preguntar en próximo control: dirección, WhatsApp, mecanismo de
+  monitoreo a distancia (campos pendientes en sección DATOS PARA
+  MONITOREO A DISTANCIA)
+- EMPA: coordinar reagendamiento (mujer 36 años, EMPA vigente cada
+  3-5 años)
+**

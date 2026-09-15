@@ -22,7 +22,9 @@ ENV/
 
 config/users.json
 config/users.local.json
+config/api_config.json
 config/api_config.local.json
+config/api_config.*.json
 
 login_automation.log
 *.log
@@ -36,6 +38,17 @@ data/*.db-wal
 data/*.db-shm
 plantillas/completadas/
 plantillas/*.bak
+
+# Manuales MINSAL (190 MB, referenciados por path — no se commitean al repo)
+manuales/
+
+# Trash / backups locales
+.trash/
+**/.trash/
+*.bak_*.cleanup
+*.bak_*
+**/_chrome_dl/
+**/_adjuntos/_chrome_dl/
 
 # Debug artifacts de browser_automation (screenshots + HTML de errores)
 error_*.html
