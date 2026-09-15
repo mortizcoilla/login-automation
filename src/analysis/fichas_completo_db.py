@@ -139,7 +139,7 @@ def _ensure_session_alive(driver, credentials, logger):
         return driver
     logger.warning("Sesión expiró, re-logueando...")
     safe_quit(driver, logger)
-    return login_rayen(credentials, logger, headless=False)
+    return login_rayen(credentials, logger)
 
 
 def main() -> int:
@@ -206,7 +206,7 @@ def main() -> int:
     MAX_ERRORES_CONSECUTIVOS = 3
 
     try:
-        driver = login_rayen(credentials, logger, headless=False)
+        driver = login_rayen(credentials, logger)
         print("[OK] Login realizado. Recorriendo dia por dia...\n")
 
         for idx, dia in enumerate(dias, 1):

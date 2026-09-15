@@ -156,7 +156,7 @@ def _run(logger: logging.Logger) -> int:
     pacientes: list = []
     hoy = datetime.now().strftime(DATE_FORMAT)
     try:
-        driver = login_rayen(credentials, logger, headless=False)
+        driver = login_rayen(credentials, logger)
         print(f"\nListando fichas 'Iniciado' para {hoy}...")
         pacientes = listar_iniciados(driver, logger, fecha=hoy)
     except Exception as e:  # noqa: BLE001

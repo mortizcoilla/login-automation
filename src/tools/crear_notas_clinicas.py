@@ -2594,7 +2594,6 @@ def main() -> int:
         driver = run_login(
             credentials,
             logger,
-            headless=False,
             download_dir=str(ADJUNTOS_DOWNLOAD_DIR.resolve()),
         )
         if not ensure_session_alive(driver, logger):
@@ -2773,7 +2772,6 @@ def main() -> int:
                 driver = run_login(
                     credentials,
                     logger,
-                    headless=False,
                     download_dir=str(ADJUNTOS_DOWNLOAD_DIR.resolve()),
                 )
                 if not ensure_session_alive(driver, logger):

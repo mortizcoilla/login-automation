@@ -132,7 +132,7 @@ def _run(logger: logging.Logger) -> int:
     filas_por_estado: dict[str, list[dict]] = {}
     hoy = datetime.now().strftime(DATE_FORMAT)
     try:
-        driver = login_rayen(credentials, logger, headless=False)
+        driver = login_rayen(credentials, logger)
         print(f"\nListando TODAS las fichas para {hoy}...")
 
         if not ensure_session_alive(driver, logger):

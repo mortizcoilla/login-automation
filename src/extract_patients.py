@@ -229,7 +229,7 @@ def main() -> int:
     credentials = load_credentials(user_id)
     driver: WebDriver | None = None
     try:
-        driver = run_login(credentials, logger, headless=False)
+        driver = run_login(credentials, logger)
         if not ensure_session_alive(driver, logger):
             logger.error("Sesion invalida tras login. Abortando.")
             return 1

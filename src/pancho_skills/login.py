@@ -17,14 +17,16 @@ from src.browser_automation import run_login
 def login_rayen(
     credentials: dict[str, str],
     logger: logging.Logger,
-    headless: bool = False,
+    headless: bool | None = None,
 ) -> WebDriver:
     """Autentica en Rayen APS y retorna el WebDriver listo para operar.
 
     Args:
         credentials: dict con `location`, `username`, `password`.
         logger: logger compartido (se recomienda el logger de Mavis/Pilita).
-        headless: si True, ejecuta Chrome sin ventana visible.
+        headless: si True, ejecuta Chrome sin ventana visible. Si None (default),
+            se usa el valor de la env var `HEADLESS` (cargado al importar
+            `src.browser_automation`).
 
     Returns:
         WebDriver autenticado en Rayen.

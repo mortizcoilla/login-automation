@@ -65,6 +65,31 @@ TIMEOUT_SECONDS = int(os.getenv("TIMEOUT_SECONDS", _SELECTORS["timeouts"]["defau
 NAVIGATION_TIMEOUT = _SELECTORS["timeouts"]["navigation"]
 
 
+def _env_bool(key: str, default: bool = False) -> bool:
+    """Lee una env var como bool. True si el valor (case-insensitive, stripped)
+    esta en {"1", "true", "yes", "on"}. Cualquier otro valor (incluido vacio)
+    devuelve `default`. Ausencia de la variable tambien devuelve `default`.
+    """
+    val = os.getenv(key)
+    if val is None:
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
+
+
+# Default leido al importar modulo. run_login()/login_rayen() usan este valor
+# cuando el caller NO pasa `headless` explicitamente. Para CI / produccion
+# setear HEADLESS=true; para desarrollo local dejar sin definir (False = visible).
+HEADLESS_DEFAULT: bool = _env_bool("HEADLESS", False)
+
+
+def _resolve_headless(headless: bool | None) -> bool:
+    """Resuelve el flag `headless` final: si el caller pasa None, usa
+    `HEADLESS_DEFAULT` (env var). Si pasa bool explicito, gana el caller.
+    Funcion pura para facilitar testing.
+    """
+    return HEADLESS_DEFAULT if headless is None else headless
+
+
 def _build_chrome_options(
     headless: bool = False,
     download_dir: str | None = None,
@@ -156,9 +181,22 @@ def _cerrar_alertas(driver: WebDriver, logger: logging.Logger) -> int:
 def run_login(
     credentials: dict[str, str],
     logger: logging.Logger,
-    headless: bool = False,
+    headless: bool | None = None,
     download_dir: str | None = None,
 ) -> WebDriver:
+    """Inicia Chrome, autentica en Rayen y retorna el WebDriver.
+
+    Args:
+        credentials: dict con `location`, `username`, `password`.
+        logger: logger compartido.
+        headless: si True, Chrome corre sin ventana visible. Si None (default),
+            se usa el valor de la env var `HEADLESS` (cargado al importar el
+            modulo). Pase un bool explicito para forzar el modo independientemente
+            del environment.
+        download_dir: carpeta de descargas para Chrome (None = dialogo nativo).
+    """
+    if headless is None:
+        headless = _resolve_headless(headless)
     logger.info("Iniciando instancia de Google Chrome en modo incognito...")
     options = _build_chrome_options(headless, download_dir=download_dir)
     _log_dir = os.path.join(

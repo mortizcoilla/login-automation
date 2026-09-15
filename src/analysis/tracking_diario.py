@@ -154,7 +154,7 @@ def _ensure_session_alive(driver, credentials, logger):
         return driver
     logger.warning("Sesión expiró (URL de login detectada). Re-logueando...")
     _safe_quit(driver, logger)
-    return login_rayen(credentials, logger, headless=False)
+    return login_rayen(credentials, logger)
 
 
 class _TeeStdout:
@@ -319,7 +319,7 @@ def _run(logger: logging.Logger) -> int:
     pacientes_para_cerrar: list[tuple[str, str, str]] = []
 
     try:
-        driver = login_rayen(credentials, logger, headless=False)
+        driver = login_rayen(credentials, logger)
         print("[OK] Login realizado. Iniciando recorrido día por día...\n")
 
         for idx, dia in enumerate(dias, 1):

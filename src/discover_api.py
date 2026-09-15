@@ -110,7 +110,7 @@ def main() -> int:
     try:
         user_id = prompt_user_id()
         credentials = load_credentials(user_id)
-        driver = run_login(credentials, logger, headless=False)
+        driver = run_login(credentials, logger)
 
         logger.info("Inyectando interceptor de red...")
         inject_interceptor(driver)

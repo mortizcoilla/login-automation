@@ -149,7 +149,7 @@ def main() -> int:
     MAX_ERRORES = 3
 
     try:
-        driver = login_rayen(credentials, logger, headless=False)
+        driver = login_rayen(credentials, logger)
         print("[OK] Login realizado. Recorriendo el mes...\n")
 
         for idx, dia in enumerate(dias, 1):
@@ -161,7 +161,7 @@ def main() -> int:
                 else:
                     raise RuntimeError("sesion expirada")
             except Exception:
-                driver = login_rayen(credentials, logger, headless=False)
+                driver = login_rayen(credentials, logger)
 
             try:
                 select_date(driver, logger, fecha_str=fecha_str)
