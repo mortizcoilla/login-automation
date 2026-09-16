@@ -819,29 +819,15 @@ class TestGuardarRespaldoAnamnesis:
         idx_anamnesis = contenido.index("Paciente consulta por control.")
         assert idx_motivo < idx_anamnesis
 
-    def test_sin_motivo_no_inserta_blockquote(
+    def test_motivo_vacio_tambien_inserta_blockquote(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        # Si motivo_consulta esta vacio, NO se inserta blockquote (el
-        # archivo solo tiene la anamnesis directamente despues del
-        # frontmatter).
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
-
-        out = guardar_respaldo_anamnesis(
-            paciente_basico,
-            "Anamnesis sin motivo",
-            motivo_consulta="",
-            backup_dir=tmp_path,
-        )
-        contenido = out.read_text(encoding="utf-8")
-        assert "Motivo de atencion" not in contenido
-        assert "Anamnesis sin motivo" in contenido
-
-    def test_motivo_solo_whitespace_se_ignora(
-        self, paciente_basico: PacienteObjetivo, tmp_path: Path
-    ) -> None:
+        # Sesion 2026-09-16 15:35 (Yadira): el motivo JAMAS estara
+        # vacio. Mismo principio que la anamnesis. Si el extractor
+        # retorna motivo vacio es un bug del extractor (NO un caso
+        # normal). Por lo tanto, esta funcion SIEMPRE escribe el
+        # blockquote del motivo, aunque venga vacio (como senal visible
+        # del bug).
         from src.tools.crear_notas_clinicas import (
             guardar_respaldo_anamnesis,
         )
@@ -849,11 +835,13 @@ class TestGuardarRespaldoAnamnesis:
         out = guardar_respaldo_anamnesis(
             paciente_basico,
             "Anamnesis aqui",
-            motivo_consulta="   \n  \t  ",
+            motivo_consulta="",
             backup_dir=tmp_path,
         )
         contenido = out.read_text(encoding="utf-8")
-        assert "Motivo de atencion" not in contenido
+        # El blockquote ESTA presente aunque motivo venga vacio.
+        assert "> **Motivo de atencion:**" in contenido
+        assert "Anamnesis aqui" in contenido
 
     def test_nombre_rayen_en_frontmatter(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path

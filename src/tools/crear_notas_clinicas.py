@@ -2175,19 +2175,24 @@ def guardar_respaldo_anamnesis(
 
     Sesion 2026-09-16 15:14 (regla Yadira): Yadira quiere un respaldo
     de las anamnesis que escribe en Rayen, separado de las notas
-    clinicas completas. Esto le da una copia de seguridad local en
-    formato facil de buscar por nombre y fecha, igual que las notas
-    clinicas.
+    clinicas completas.
 
-    Sesion 2026-09-16 15:27 (segundo feedback de Yadira): el respaldo
+    Sesion 2026-09-16 15:27 (segundo feedback Yadira): el respaldo
     tambien debe incluir el motivo de atencion. Yadira escribe primero
-    el motivo (como encabezado) y despues la anamnesis — ambos son
-    parte del mismo registro clinico.
+    el motivo y despues la anamnesis.
 
-    Solo respalda si la anamnesis NO esta vacia (no respalda extracciones
-    fallidas). Si solo hay motivo de consulta sin anamnesis, tampoco
-    respalda (sin anamnesis no es un registro completo). El
-    sobreescribir es OK: la ultima extraccion es la que vale.
+    Sesion 2026-09-16 15:35 (tercer feedback Yadira): el motivo de
+    atencion JAMAS estara vacio. Mismo principio que la anamnesis
+    (regla dura Yadira: la anamnesis SIEMPRE existe). Cuando Yadira
+    abre una ficha en Rayen, el sistema la obliga a llenar primero el
+    motivo de atencion y despues la anamnesis. Por lo tanto, si el
+    extractor retorna motivo vacio es un bug, NO un caso normal.
+    Esta funcion SIEMPRE escribe el blockquote del motivo (aunque sea
+    vacio, como senal visible de bug del extractor).
+
+    Solo respalda si la anamnesis NO esta vacia (no respalda
+    extracciones fallidas). El sobreescribir es OK: la ultima
+    extraccion es la que vale.
 
     Returns:
         Path al .md escrito, o None si la anamnesis estaba vacia.
@@ -2209,9 +2214,11 @@ def guardar_respaldo_anamnesis(
     md.append(f'fecha_extraccion: "{_now_iso()}"')
     md.append("---")
     md.append("")
-    if motivo_consulta and motivo_consulta.strip():
-        md.append(f"> **Motivo de atencion:** {motivo_consulta.strip()}")
-        md.append("")
+    # Regla Yadira 2026-09-16 15:35: el motivo SIEMPRE existe. Lo
+    # escribimos siempre, aunque venga vacio (eso es senal de bug del
+    # extractor, no un caso normal).
+    md.append(f"> **Motivo de atencion:** {motivo_consulta.strip()}")
+    md.append("")
     md.append(anamnesis.strip())
     md.append("")
 
