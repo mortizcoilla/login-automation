@@ -326,8 +326,11 @@ MAX_FICHAS_POR_SESION = 8
 
 
 # ---- Paso 4.2.b: verificar adjuntos (SIEMPRE, aunque no haya nada) ----
-
-ADJUNTOS_DIR = ROOT / "data" / "notas_clinicas" / "_adjuntos"
+# Sesion 2026-09-16: se movio de data/notas_clinicas/_adjuntos/ a
+# data/adjuntos/ para consolidar la carpeta de adjuntos (la usa tanto
+# el flujo de Rayen scrape como recibir_foto_examen.py). El cache de
+# Chrome queda como subdirectorio _chrome_dl/ (gitignored).
+ADJUNTOS_DIR = ROOT / "data" / "adjuntos"
 # Directorio que Chrome usa para bajar archivos cuando se hace click
 # en un attachment. Se setea en las prefs de Chrome (browser_automation.py).
 # Mientras la descarga esta en curso, Chrome deja un .crdownload. Cuando

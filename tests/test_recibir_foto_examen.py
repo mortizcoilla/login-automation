@@ -90,6 +90,7 @@ def test_guarda_archivo_basico(dummy_png: Path, destino_dir: Path):
         "--fecha", "10-07-2026",
         "--tipo", "audiometria",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is True
@@ -108,6 +109,7 @@ def test_default_tipo_examen(dummy_jpg: Path, destino_dir: Path):
         "--paciente", "Cecilia Reyes",
         "--fecha", "10-07-2026",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is True
@@ -124,6 +126,7 @@ def test_normaliza_tildes_y_apellido(dummy_jpg: Path, destino_dir: Path):
         "--fecha", "15-08-2026",
         "--tipo", "radiografia",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is True
@@ -145,6 +148,7 @@ def test_normaliza_tipos_sinonimos(dummy_jpg: Path, destino_dir: Path):
         "--fecha", "10-07-2026",
         "--tipo", "RX",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out1["tipo"] == "radiografia"
@@ -155,6 +159,7 @@ def test_normaliza_tipos_sinonimos(dummy_jpg: Path, destino_dir: Path):
         "--fecha", "11-07-2026",
         "--tipo", "lab",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out2["tipo"] == "laboratorio"
@@ -168,6 +173,7 @@ def test_input_inexistente(destino_dir: Path):
         "--paciente", "Cecilia Reyes",
         "--fecha", "10-07-2026",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is False
@@ -182,6 +188,7 @@ def test_fecha_mal_formada(dummy_png: Path, destino_dir: Path):
         "--paciente", "Cecilia Reyes",
         "--fecha", "2026-07-10",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is False
@@ -196,6 +203,7 @@ def test_paciente_sin_apellido(dummy_png: Path, destino_dir: Path):
         "--paciente", "Cecilia",
         "--fecha", "10-07-2026",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is False
@@ -212,6 +220,7 @@ def test_extension_invalida(tmp_path: Path, destino_dir: Path):
         "--paciente", "Cecilia Reyes",
         "--fecha", "10-07-2026",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is False
@@ -232,6 +241,7 @@ def test_no_sobrescribe_existente(dummy_png: Path, destino_dir: Path):
         "--tipo", "audiometria",
         "--timestamp", "120000",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out1["ok"] is True
@@ -243,6 +253,7 @@ def test_no_sobrescribe_existente(dummy_png: Path, destino_dir: Path):
         "--tipo", "audiometria",
         "--timestamp", "120000",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     # El nombre debe terminar en _v2 (no debe ser el mismo archivo)
@@ -273,6 +284,7 @@ def test_nombre_matchea_convencion_matcher(dummy_png: Path, destino_dir: Path):
         "--fecha", "10-07-2026",
         "--tipo", "audiometria",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is True
@@ -301,6 +313,7 @@ def test_round_trip_con_matcher(dummy_png: Path, destino_dir: Path):
         "--fecha", "10-07-2026",
         "--tipo", "audiometria",
         "--destino", str(destino_dir),
+        "--no-ocr",
         cwd=repo,
     )
     assert out["ok"] is True
@@ -319,3 +332,108 @@ def test_round_trip_con_matcher(dummy_png: Path, destino_dir: Path):
         f"Archivo guardado {out['nombre']} no esta en destino. "
         f"Encontrados: {nombres}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Tests del flujo OCR (sesion 2026-09-16)
+# ---------------------------------------------------------------------------
+
+def test_no_ocr_skip_marca_ocr_skipped(dummy_png: Path, destino_dir: Path, tmp_path: Path):
+    """Con --no-ocr, el resultado debe marcar ocr_skipped=True y NO generar .md."""
+    repo = Path(r"C:\Workspace\Login-Automation")
+    out = _run_cli(
+        "--input", str(dummy_png),
+        "--paciente", "Cecilia Reyes",
+        "--fecha", "10-07-2026",
+        "--tipo", "audiometria",
+        "--destino", str(destino_dir),
+        "--no-ocr",
+        cwd=repo,
+    )
+    assert out["ok"] is True
+    assert out["ocr_skipped"] is True
+    assert out["ocr_ok"] is False
+    assert out["examen_path"] == ""
+    assert out["ocr_error"] == ""
+    # El respaldo raw SI esta guardado
+    assert (destino_dir / out["nombre"]).exists()
+
+
+def test_no_ocr_no_genera_md_en_examenes(dummy_png: Path, destino_dir: Path, tmp_path: Path):
+    """Con --no-ocr, NO debe haber .md en data/examenes/."""
+    repo = Path(r"C:\Workspace\Login-Automation")
+    # Redirigir EXAMENES_DIR a un tmp_path para que el test sea aislado
+    examenes_dir = tmp_path / "examenes_test"
+    examenes_dir.mkdir()
+    monkeypatch_examenes(examenes_dir)
+
+    try:
+        out = _run_cli(
+            "--input", str(dummy_png),
+            "--paciente", "Cecilia Reyes",
+            "--fecha", "10-07-2026",
+            "--tipo", "audiometria",
+            "--destino", str(destino_dir),
+            "--no-ocr",
+            cwd=repo,
+        )
+        assert out["ok"] is True
+        # El directorio de examenes debe estar vacio
+        assert list(examenes_dir.iterdir()) == [], (
+            f"--no-ocr no deberia generar archivos en examenes_dir. "
+            f"Encontrados: {list(examenes_dir.iterdir())}"
+        )
+    finally:
+        monkeypatch_examenes(None)
+
+
+def test_construir_nombre_examen_md_formato():
+    """El nombre del .md debe seguir el formato Cecilia_Reyes_10-07-2026_audiometria.md
+    (mayusculas y tildes preservadas, distinto del inbox que va en lowercase)."""
+    from src.tools.recibir_foto_examen import construir_nombre_examen_md
+    nombre = construir_nombre_examen_md(
+        nombre_paciente="Cecilia Reyes",
+        fecha_dd_mm_yyyy="10-07-2026",
+        tipo="audiometria",
+    )
+    assert nombre == "Cecilia_Reyes_10-07-2026_audiometria.md"
+
+
+def test_safe_filename_coincide_con_crear_notas_clinicas():
+    """_safe_filename debe usar el mismo regex que crear_notas_clinicas
+    para que la nomenclatura del .md digitalizado sea identica a la de
+    las notas clinicas.
+
+    Como crear_notas_clinicas importa selenium (no testeable aqui),
+    validamos contra los outputs esperados del regex canonico.
+    Si este test falla, es senal de que el regex se desincronizo
+    de crear_notas_clinicas._safe_filename.
+    """
+    from src.tools.recibir_foto_examen import _safe_filename
+
+    # Outputs esperados segun el regex canonico:
+    # re.sub(r"[^\\w\\s\\-]+", "", s, flags=re.UNICODE)  # quita punct
+    # re.sub(r"\\s+", "_", s.strip())                    # espacios -> _
+    casos_esperados = [
+        ("Cecilia Reyes", "Cecilia_Reyes"),
+        ("María José González", "María_José_González"),
+        ("Pedro Pérez", "Pedro_Pérez"),
+        ("Ana O'Brien", "Ana_OBrien"),
+        ("  Luis 多个  名字  ", "Luis_多个_名字"),
+        ("sin tildes", "sin_tildes"),
+    ]
+    for caso, esperado in casos_esperados:
+        assert _safe_filename(caso) == esperado, (
+            f"Divergencia en '{caso}': "
+            f"recibir={_safe_filename(caso)!r} esperado={esperado!r}"
+        )
+
+
+def monkeypatch_examenes(nuevo_dir: Path | None):
+    """Monkeypatch EXAMENES_DIR en el modulo recibir_foto_examen."""
+    import src.tools.recibir_foto_examen as rfe
+    if nuevo_dir is None:
+        # Restaurar
+        rfe.EXAMENES_DIR = rfe.ROOT / "data" / "examenes"
+    else:
+        rfe.EXAMENES_DIR = nuevo_dir
