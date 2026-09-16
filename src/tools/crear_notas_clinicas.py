@@ -2167,6 +2167,7 @@ ANAMNESIS_BACKUP_DIR = ROOT / "anamnesis"
 def guardar_respaldo_anamnesis(
     paciente: PacienteObjetivo,
     anamnesis: str,
+    motivo_consulta: str = "",
     backup_dir: Path = ANAMNESIS_BACKUP_DIR,
 ) -> Path | None:
     """Escribe un respaldo de la anamnesis cruda de Yadira en un .md
@@ -2178,9 +2179,15 @@ def guardar_respaldo_anamnesis(
     formato facil de buscar por nombre y fecha, igual que las notas
     clinicas.
 
+    Sesion 2026-09-16 15:27 (segundo feedback de Yadira): el respaldo
+    tambien debe incluir el motivo de atencion. Yadira escribe primero
+    el motivo (como encabezado) y despues la anamnesis — ambos son
+    parte del mismo registro clinico.
+
     Solo respalda si la anamnesis NO esta vacia (no respalda extracciones
-    fallidas). El sobreescribir es OK: la ultima anamnesis es la que
-    vale.
+    fallidas). Si solo hay motivo de consulta sin anamnesis, tampoco
+    respalda (sin anamnesis no es un registro completo). El
+    sobreescribir es OK: la ultima extraccion es la que vale.
 
     Returns:
         Path al .md escrito, o None si la anamnesis estaba vacia.
@@ -2202,6 +2209,9 @@ def guardar_respaldo_anamnesis(
     md.append(f'fecha_extraccion: "{_now_iso()}"')
     md.append("---")
     md.append("")
+    if motivo_consulta and motivo_consulta.strip():
+        md.append(f"> **Motivo de atencion:** {motivo_consulta.strip()}")
+        md.append("")
     md.append(anamnesis.strip())
     md.append("")
 
@@ -3064,9 +3074,13 @@ def main() -> int:
                 # Es un .md liviano, separado de la nota clinica completa,
                 # para que Yadira tenga una copia de seguridad local facil
                 # de buscar por nombre y fecha. Solo si la anamnesis no
-                # esta vacia.
+                # esta vacia. Sesion 15:27: tambien incluye motivo de
+                # atencion como blockquote antes de la anamnesis (es la
+                # primera linea que Yadira escribe en Rayen).
                 if anamnesis:
-                    guardar_respaldo_anamnesis(paciente, anamnesis)
+                    guardar_respaldo_anamnesis(
+                        paciente, anamnesis, motivo_consulta=motivo_consulta
+                    )
                 diagnosticos = (
                     extraer_diagnosticos(driver, logger) if click_ok else []
                 )

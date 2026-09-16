@@ -795,6 +795,66 @@ class TestGuardarRespaldoAnamnesis:
         assert "Anamnesis nueva" in contenido
         assert "Anamnesis vieja" not in contenido
 
+    def test_incluye_motivo_de_atencion(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        # Sesion 2026-09-16 15:27 (Yadira): el respaldo tambien debe
+        # incluir el motivo de atencion. Es la primera linea que Yadira
+        # escribe en Rayen.
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        out = guardar_respaldo_anamnesis(
+            paciente_basico,
+            "Paciente consulta por control.",
+            motivo_consulta="Control de HTA cronica",
+            backup_dir=tmp_path,
+        )
+        contenido = out.read_text(encoding="utf-8")
+        # El motivo va como blockquote antes de la anamnesis.
+        assert "> **Motivo de atencion:** Control de HTA cronica" in contenido
+        # Anamnesis despues del motivo.
+        idx_motivo = contenido.index("> **Motivo de atencion:**")
+        idx_anamnesis = contenido.index("Paciente consulta por control.")
+        assert idx_motivo < idx_anamnesis
+
+    def test_sin_motivo_no_inserta_blockquote(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        # Si motivo_consulta esta vacio, NO se inserta blockquote (el
+        # archivo solo tiene la anamnesis directamente despues del
+        # frontmatter).
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        out = guardar_respaldo_anamnesis(
+            paciente_basico,
+            "Anamnesis sin motivo",
+            motivo_consulta="",
+            backup_dir=tmp_path,
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert "Motivo de atencion" not in contenido
+        assert "Anamnesis sin motivo" in contenido
+
+    def test_motivo_solo_whitespace_se_ignora(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        out = guardar_respaldo_anamnesis(
+            paciente_basico,
+            "Anamnesis aqui",
+            motivo_consulta="   \n  \t  ",
+            backup_dir=tmp_path,
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert "Motivo de atencion" not in contenido
+
     def test_nombre_rayen_en_frontmatter(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
