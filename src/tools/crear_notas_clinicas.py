@@ -2449,37 +2449,23 @@ def paso_4_1_abrir_ficha(
         # (la estratificacion carga primero). Esperar el card tambien.
         "//*[contains(@class, 'stratification-card')]"
     )
-    # Sesion 2026-09-16: 30s -> 60s para ECICEP-g3. Vimos en el run del
-    # 16-09 que el panel de ECICEP tarda >30s (probable carga de
-    # estratificacion + adjuntos). Con 60s cubrimos el caso lento.
-    # El retry de 3s antes del segundo intento da margen adicional.
+    # Sesion 2026-09-16: 30s -> 60s para ECICEP-g3.
+    # IMPORTANTE: NO hacer retry del doble-click aqui. El primer click
+    # ya nos llevo a la ficha del paciente. Si el panel no cargo,
+    # un segundo click no ayuda (la fila ya esta stale y ademas
+    # get_pacientes_del_dia espera 15s por div.rt-tr-group que ya
+    # no existe -> TimeoutException). Mejor: 1 sola espera de 60s,
+    # si falla -> placeholder, navegar manualmente al siguiente.
     panel_timeout = 60
     panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
 
-    # Reintento: si el primer doble click no abrio el panel (click
-    # perdido, render lento, etc.), esperamos 3s y volvemos a hacer
-    # doble click. Esto cubre flakiness transitoria sin afectar el caso
-    # normal. El doble doble-click no rompe Rayen (la ficha ya abierta
-    # ignora el segundo click).
     if panel is None:
+        # Panel no cargo en 60s. NO re-clickamos. Marcamos el flag y
+        # dejamos que la extraccion proceda (devuelve vacios). La nota
+        # se guarda con placeholders + flag REVISION.
         logger.warning(
-            f"[crear_notas] Panel no aparecio en {panel_timeout}s, "
-            f"reintentando doble click en 3s..."
-        )
-        time.sleep(3)
-        _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
-        panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
-
-    if panel is None:
-        # Sesion 2026-09-16: NO retornar False aca. El script anterior
-        # saltaba al paciente y dejaba notas_clinicas/ vacia para los
-        # pacientes ECICEP con panel lento. Ahora dejamos que la extraccion
-        # proceda (devuelve vacios para todo) y guardar_nota_clinica() escribe
-        # la nota con placeholders + flag "PANEL NO CARGO". Yadira revisa y
-        # completa manualmente. La carpeta SIEMPRE tiene archivos.
-        logger.warning(
-            f"[crear_notas] Panel no aparecio en {panel_timeout}s tras "
-            f"doble click + reintento. Extraccion procedera sobre lo que haya; "
+            f"[crear_notas] Panel no aparecio en {panel_timeout}s. "
+            f"Extraccion procedera sobre lo que haya; "
             f"guardar_nota_clinica() escribira placeholder con flag REVISION."
         )
         paciente.panel_cargo = False
