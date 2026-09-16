@@ -258,9 +258,12 @@ Indice
     data/analysis/listado_*.txt   listados live + tracking
     data/plantillas/*.txt         plantillas de fichas (INMUTABLES Yadira)
     data/notas_clinicas/          notas crudas extraidas de Rayen (gitignored)
+                                  naming: <paciente>_<fecha>.md (sin prefijo)
     data/fichas_clinicas/         fichas rellenadas por Mortadelo (gitignored)
     data/anamnesis/               respaldo de SOLO la anamnesis Yadira (gitignored)
+                                  naming: anam_<paciente>_<fecha>.md
     data/info_paciente/           TODO lo del paciente MENOS la anamnesis (gitignored)
+                                  naming: info_<paciente>_<fecha>.md
     data/adjuntos/                inbox de fotos de examenes (Yadira/Pilita) — futuro
     data/examenes/                examenes procesados por vision LLM — futuro
     data/manuales_md/             manuales clinicos convertidos a .md + index.json

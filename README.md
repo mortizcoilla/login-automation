@@ -110,10 +110,13 @@ Login-Automation/
     ├── docs/               ← COMANDOS.txt, HANDOFFs, guias
     ├── manuales_md/        ← manuales convertidos a .md + index.json
     ├── plantillas/         ← plantillas Yadira (INMUTABLES)
-    ├── notas_clinicas/     ← notas crudas extraidas de Rayen (incluye anamnesis)
+    ├── notas_clinicas/     ← notas crudas extraidas de Rayen
+    │                          naming: <paciente>_<fecha>.md (sin prefijo)
     ├── fichas_clinicas/    ← fichas rellenadas por Mortadelo
     ├── anamnesis/          ← respaldo de SOLO la anamnesis Yadira
+    │                          naming: anam_<paciente>_<fecha>.md
     ├── info_paciente/      ← TODO lo del paciente MENOS la anamnesis (complemento)
+    │                          naming: info_<paciente>_<fecha>.md
     ├── adjuntos/           ← inbox de fotos de examenes (Yadira/Pilita) — futuro
     ├── examenes/           ← examenes procesados por vision LLM — futuro
     ├── analysis/           ← DBs (fichas_completo.db, tracking*.db) + reportes
