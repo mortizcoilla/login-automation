@@ -4,17 +4,26 @@ Sesion 2026-09-16: las notas se guardan en .md (markdown con frontmatter
 YAML + headers ##) en armonia con manuales_md/. Antes era .txt con
 marcadores '=== INICIO/FIN ==='.
 
+Regla dura Yadira (2026-09-16): la anamnesis SIEMPRE existe en Rayen
+(Yadira la llena al abrir la ficha). Si la extraccion retorna vacia,
+es un bug y el archivo NO se escribe. Cubierto por tests de rechazo
+(`test_anamnesis_vacia_rechaza_escritura_*`) y por el regression guard
+sobre `notas_clinicas/` (`TestRegressionGuardNotasClinicas`).
+
 Cubre:
 - `_safe_filename`: casos con acentos, espacios, caracteres raros
 - `guardar_nota_clinica`: estructura completa del .md (todos los
 -  ## headers presentes, frontmatter YAML con datos del paciente,
 -  secciones con placeholders cuando no hay datos)
-- `guardar_nota_clinica`: flag `panel_cargo=False` agrega el aviso
--  "ATENCION: panel no cargo" al inicio de la nota
+- `guardar_nota_clinica`: RECHAZA escritura si `anamnesis` esta vacia
+-  (regla dura Yadira, ver arriba)
 - `guardar_nota_clinica`: NO sobrescribe archivos existentes
 - `guardar_nota_clinica`: filename formato `<safe>_<fecha>.md`
 - `parsear_informe`: smoke test del parser basico
 - `PacienteObjetivo.panel_cargo`: default True, se puede setear False
+- Regression guard: `notas_clinicas/*.md` no debe contener archivos
+-  con `panel_cargo=false` (extraccion rota que el pipeline anterior
+-  permitio)
 """
 from __future__ import annotations
 
@@ -282,11 +291,62 @@ class TestGuardarNotaClinicaVacias:
         contenido = out.read_text(encoding="utf-8")
         assert "_(no se pudo extraer el historial)_" in contenido
 
-    def test_anamnesis_vacia_se_renderea_vacia(
-        self, kwargs_minimos: dict
+    def test_anamnesis_vacia_rechaza_escritura_panel_cargo_true(
+        self, kwargs_minimos: dict, tmp_path: Path
     ) -> None:
+        # Regla dura Yadira 2026-09-16: la anamnesis SIEMPRE existe en
+        # Rayen (Yadira la llena al abrir la ficha). Si la extraccion
+        # retorna vacia, es un bug y el archivo NO se escribe.
         kwargs_minimos["anamnesis"] = ""
+        kwargs_minimos["panel_cargo"] = True
+        with pytest.raises(ValueError, match="anamnesis vacia"):
+            guardar_nota_clinica(**kwargs_minimos)
+        # Ningun archivo creado.
+        assert list(tmp_path.iterdir()) == []
+
+    def test_anamnesis_vacia_rechaza_escritura_panel_cargo_false(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        # Caso del panel que no cargo: el script retorno panel_cargo=False
+        # y anamnesis="". Esto sigue siendo una falla de extraccion (no
+        # estamos capturando lo que Yadira SIEMPRE lleno). La regla es
+        # dura: NO se escribe el archivo.
+        with pytest.raises(ValueError, match="anamnesis vacia"):
+            guardar_nota_clinica(
+                paciente=paciente_basico,
+                identificacion={},
+                historial="",
+                anamnesis="",
+                diagnosticos=[],
+                actividades=[],
+                profesionales=[],
+                pautas=[],
+                notas_dir=tmp_path,
+                panel_cargo=False,
+            )
+        assert list(tmp_path.iterdir()) == []
+
+    def test_anamnesis_solo_espacios_tambien_rechaza(
+        self, kwargs_minimos: dict, tmp_path: Path
+    ) -> None:
+        # Un string con solo whitespace tampoco cuenta como anamnesis
+        # valida. La regla es dura.
+        kwargs_minimos["anamnesis"] = "   \n\t  "
+        with pytest.raises(ValueError, match="anamnesis vacia"):
+            guardar_nota_clinica(**kwargs_minimos)
+        assert list(tmp_path.iterdir()) == []
+
+    def test_anamnesis_no_vacia_pasa_normal(
+        self, kwargs_minimos: dict, tmp_path: Path
+    ) -> None:
+        # Caso normal: la extraccion devolvio texto. Funcion OK.
+        kwargs_minimos["anamnesis"] = (
+            "Paciente consulta por control de su patologia cronica. "
+            "Sin sintomas nuevos."
+        )
         out = guardar_nota_clinica(**kwargs_minimos)
+        assert out is not None
+        assert out.exists()
         contenido = out.read_text(encoding="utf-8")
         assert "## Nota clinica de Yadira" in contenido
 
@@ -313,35 +373,6 @@ class TestGuardarNotaClinicaVacias:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "_(sin ordenes de laboratorio)_" in contenido
-
-    def test_extraccion_minima_vacia_no_falla(
-        self, paciente_basico: PacienteObjetivo, tmp_path: Path
-    ) -> None:
-        # Caso del placeholder completo (panel no cargo): todo vacio.
-        out = guardar_nota_clinica(
-            paciente=paciente_basico,
-            identificacion={},
-            historial="",
-            anamnesis="",
-            diagnosticos=[],
-            actividades=[],
-            profesionales=[],
-            pautas=[],
-            notas_dir=tmp_path,
-            panel_cargo=False,
-        )
-        assert out is not None
-        assert out.exists()
-        contenido = out.read_text(encoding="utf-8")
-        # Estructura basica presente a pesar de estar todo vacio.
-        assert 'title: "Nota clinica - Nicolas Ignacio Piña Rojas"' in contenido
-        assert "panel del paciente NO CARGO" in contenido
-        for header in [
-            "## Identificacion",
-            "## Diagnosticos",
-            "## Actividades",
-        ]:
-            assert header in contenido
 
 
 # ---------------------------------------------------------------------------
@@ -472,3 +503,57 @@ class TestPacienteObjetivoPanelCargo:
             panel_cargo=False,
         )
         assert p.panel_cargo is False
+
+
+# ---------------------------------------------------------------------------
+# Regression guard: notas_clinicas/ no debe contener archivos con
+# extraccion rota. Regla dura Yadira 2026-09-16: la anamnesis SIEMPRE
+# existe en Rayen. Si la extraccion retorno vacia (panel_cargo=false),
+# NO se deberia haber escrito el archivo.
+# ---------------------------------------------------------------------------
+class TestRegressionGuardNotasClinicas:
+    """Escanea `notas_clinicas/*.md` y falla si encuentra archivos con
+    `panel_cargo: "false"` (extraccion rota que el pipeline anterior
+    permitio)."""
+
+    NOTAS_DIR = Path(__file__).resolve().parents[1] / "notas_clinicas"
+
+    def test_no_hay_notas_con_panel_cargo_false(
+        self, tmp_path: Path
+    ) -> None:
+        if not self.NOTAS_DIR.exists():
+            pytest.skip(
+                "no hay directorio notas_clinicas/ en este checkout"
+            )
+        rotas: list[str] = []
+        for f in sorted(self.NOTAS_DIR.glob("*.md")):
+            contenido = f.read_text(encoding="utf-8")
+            # Detectar el patron: panel_cargo="false" en frontmatter.
+            if 'panel_cargo: "false"' in contenido:
+                rotas.append(f.name)
+        assert not rotas, (
+            f"Regla dura Yadira: hay {len(rotas)} notas con "
+            f"extraccion rota (panel_cargo=false). Estas notas se "
+            f"escribieron con placeholder en vez de fallar. "
+            f"Re-ejecutar `crear_notas_clinicas` para estos "
+            f"pacientes o borrarlas manualmente:\n  - "
+            + "\n  - ".join(rotas)
+        )
+
+    def test_todas_las_notas_tienen_seccion_yadira(
+        self, tmp_path: Path
+    ) -> None:
+        if not self.NOTAS_DIR.exists():
+            pytest.skip(
+                "no hay directorio notas_clinicas/ en este checkout"
+            )
+        sin_seccion: list[str] = []
+        for f in sorted(self.NOTAS_DIR.glob("*.md")):
+            contenido = f.read_text(encoding="utf-8")
+            if "## Nota clinica de Yadira" not in contenido:
+                sin_seccion.append(f.name)
+        assert not sin_seccion, (
+            f"Estas notas no tienen la seccion '## Nota clinica de "
+            f"Yadira' (fueron generadas antes del esquema markdown):\n"
+            f"  - " + "\n  - ".join(sin_seccion)
+        )

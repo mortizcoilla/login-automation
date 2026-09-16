@@ -2215,6 +2215,14 @@ def guardar_nota_clinica(
 
     El historial de atenciones se filtra a las entradas de los ultimos
     6 meses respecto a paciente.fecha.
+
+    Raises:
+        ValueError: si `anamnesis` esta vacia. Regla dura de Yadira
+            (sesion 2026-09-16): Rayen SIEMPRE tiene la anamnesis
+            escrita por la doctora al abrir la ficha. Si la extraccion
+            no la encontro, es un bug del extractor y el archivo NO se
+            debe escribir (nota sin anamnesis no sirve). El pipeline
+            caller atrapa la excepcion y marca al paciente como error.
     """
     if otros_items is None:
         otros_items = {}
@@ -2223,6 +2231,18 @@ def guardar_nota_clinica(
     if laboratorio is None:
         laboratorio = []
     _log = logging.getLogger("crear_notas_clinicas")
+    if not (anamnesis or "").strip():
+        _log.error(
+            f"[crear_notas] {paciente.nombre}: anamnesis vacia. "
+            f"Rayen SIEMPRE tiene la anamnesis escrita por Yadira al "
+            f"abrir la ficha (regla dura). Extraccion fallo: NO se "
+            f"escribe la nota. panel_cargo={panel_cargo}."
+        )
+        raise ValueError(
+            f"anamnesis vacia para {paciente.nombre}: la extraccion "
+            f"fallo (panel_cargo={panel_cargo}). Ver logs de "
+            f"`extraer_anamnesis()` y reintentar."
+        )
     historial = filtrar_historial_ultimos_6_meses(
         historial, paciente.fecha, logger=_log
     )
