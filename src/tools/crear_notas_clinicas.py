@@ -93,6 +93,11 @@ class PacienteObjetivo:
     # informe sigue siendo el canonico para el filename; este campo
     # es solo metadato para que Mortadelo pueda matchear.
     nombre_rayen: Optional[str] = None
+    # Sesion 2026-09-16: flag que paso_4_1_abrir_ficha setea segun si
+    # el panel del paciente cargo o no. Si False, guardar_nota_clinica()
+    # escribe una nota con placeholder + "REVISION MANUAL" para que
+    # Yadira sepa que tiene que completar la ficha a mano.
+    panel_cargo: bool = True
 
 
 # ---- Carga de credenciales (reutiliza patron de main.py) ----
@@ -2172,6 +2177,7 @@ def guardar_nota_clinica(
     recetas: list[str] | None = None,
     laboratorio: list[str] | None = None,
     notas_dir: Path = None,
+    panel_cargo: bool = True,
 ) -> Optional[Path]:
     """Guarda la nota clinica extraida en un .txt. Devuelve el path o None.
 
@@ -2231,6 +2237,13 @@ def guardar_nota_clinica(
         f"# Fecha atencion: {paciente.fecha}",
         "",
     ]
+    # Sesion 2026-09-16: si el panel NO cargo, flag visible al inicio de la
+    # nota. Yadira ve inmediatamente cuales fichas requieren revision manual
+    # completa (no hubo tiempo para extraer datos) vs cuales se extrajeron OK.
+    if not panel_cargo:
+        lineas.append("!!! ATENCION: panel del paciente NO CARGO en Rayen.")
+        lineas.append("!!! La nota tiene placeholders. Revisar manualmente en Rayen.")
+        lineas.append("")
 
     # ==== INICIO IDENTIFICACION ====
     lineas.append("=" * 70)
@@ -2458,15 +2471,22 @@ def paso_4_1_abrir_ficha(
         panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
 
     if panel is None:
+        # Sesion 2026-09-16: NO retornar False aca. El script anterior
+        # saltaba al paciente y dejaba notas_clinicas/ vacia para los
+        # pacientes ECICEP con panel lento. Ahora dejamos que la extraccion
+        # proceda (devuelve vacios para todo) y guardar_nota_clinica() escribe
+        # la nota con placeholders + flag "PANEL NO CARGO". Yadira revisa y
+        # completa manualmente. La carpeta SIEMPRE tiene archivos.
         logger.warning(
-            f"[crear_notas] Tras doble click + reintento, el panel del "
-            f"paciente no aparecio en {panel_timeout}s. Marcando como "
-            f"skipped para evitar extraccion sobre panel vacio."
+            f"[crear_notas] Panel no aparecio en {panel_timeout}s tras "
+            f"doble click + reintento. Extraccion procedera sobre lo que haya; "
+            f"guardar_nota_clinica() escribira placeholder con flag REVISION."
         )
-        return False
-    logger.info(
-        f"[crear_notas] Panel del paciente cargado ({panel.tag_name})"
-    )
+        paciente.panel_cargo = False
+    else:
+        logger.info(
+            f"[crear_notas] Panel del paciente cargado ({panel.tag_name})"
+        )
 
     logger.info(
         f"[crear_notas] Ficha abierta para {paciente.nombre} "
@@ -2768,6 +2788,7 @@ def main() -> int:
                     diagnosticos, actividades, profesionales, pautas,
                     examenes, otros_items, estratificacion, motivo_consulta,
                     recetas, laboratorio, notas_dir,
+                    panel_cargo=paciente.panel_cargo,
                 )
                 if out_path is None:
                     logger.warning(
