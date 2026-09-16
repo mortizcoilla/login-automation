@@ -2251,30 +2251,11 @@ def guardar_nota_clinica(
     )
     out_path = notas_dir / nombre_archivo
     if out_path.exists():
-        # Regla dura Yadira (2026-09-16): si el archivo existente es
-        # de EXTRACCION ROTA (panel_cargo="false" en frontmatter), se
-        # SOBREESCRIBE con la extraccion nueva. La nota rota no
-        # contiene la anamnesis que Yadira SI lleno en Rayen, asi
-        # que regenerarla es la correccion correcta. Si Yadira la
-        # hubiera corregido a mano, el panel_cargo ya seria "true"
-        # y respetariamos su edicion.
-        contenido_existente = out_path.read_text(encoding="utf-8")
-        if 'panel_cargo: "false"' in contenido_existente:
-            logger = logging.getLogger("crear_notas_clinicas")
-            logger.warning(
-                f"[crear_notas] {out_path.name}: archivo existente es "
-                f"extraccion rota (panel_cargo=false). SE SOBREESCRIBE "
-                f"con la nueva extraccion."
-            )
-            out_path.unlink()
-        else:
-            logger = logging.getLogger("crear_notas_clinicas")
-            logger.warning(
-                f"[crear_notas] {out_path.name} ya existe (extraccion "
-                f"valida). NO se sobrescribe para respetar edicion "
-                f"manual."
-            )
-            return None
+        logger = logging.getLogger("crear_notas_clinicas")
+        logger.warning(
+            f"[crear_notas] El archivo {out_path} ya existe. NO se sobrescribe."
+        )
+        return None
     notas_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- Frontmatter YAML ----
