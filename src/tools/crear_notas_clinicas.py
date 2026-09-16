@@ -2431,7 +2431,10 @@ def paso_4_1_abrir_ficha(
     panel_xpath = (
         "//table[.//tbody/th] | "
         "//li[@id='anamnesis'] | "
-        "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')]"
+        "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')] | "
+        # ECICEP-g3 a veces no tiene tabla de identificacion visible
+        # (la estratificacion carga primero). Esperar el card tambien.
+        "//*[contains(@class, 'stratification-card')]"
     )
     # Sesion 2026-09-16: 30s -> 60s para ECICEP-g3. Vimos en el run del
     # 16-09 que el panel de ECICEP tarda >30s (probable carga de
