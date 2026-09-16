@@ -32,7 +32,7 @@ from datetime import date as _date, datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -205,7 +205,9 @@ def _buscar_paciente_en_tabla(
     for row in rows:
         try:
             datos = extraer_datos_fila(row)
-        except ValueError:
+        except (ValueError, StaleElementReferenceException):
+            # StaleElement: la fila se re-renderizo mientras iterabamos.
+            # Saltamos y seguimos con las siguientes.
             continue
         if datos.get("nombre", "").strip().lower() == nombre_norm:
             return (row, None)
@@ -215,7 +217,7 @@ def _buscar_paciente_en_tabla(
     for row in rows:
         try:
             datos = extraer_datos_fila(row)
-        except ValueError:
+        except (ValueError, StaleElementReferenceException):
             continue
         nombre_row = datos.get("nombre", "").strip()
         if not nombre_row:
@@ -244,16 +246,45 @@ def _doble_click_en_paciente(
     driver: WebDriver,
     logger: logging.Logger,
     row,
+    nombre_objetivo: str | None = None,
 ) -> None:
-    """Hace doble click en la celda de nombre del paciente para abrir la ficha."""
-    # Intentamos el doble click en la fila completa primero. Si la UI requiere
-    # doble click en la celda de nombre especificamente, refinar el selector.
+    """Hace doble click en la fila del paciente para abrir la ficha.
+
+    Si la fila quedo stale (Rayen re-renderizo la tabla mientras esperabamos),
+    re-busca por nombre y re-intenta una vez. Sesion 2026-09-16: bug que
+    afectaba ECICEP-g3 porque el panel tarda 15-30s en cargar y durante esa
+    espera la fila original quedaba stale, haciendo fallar los 6 pacientes
+    del mes con `StaleElementReferenceException`.
+    """
     try:
         ActionChains(driver).double_click(row).perform()
         logger.info("[crear_notas] Doble click sobre la fila del paciente")
+        return
+    except StaleElementReferenceException:
+        if not nombre_objetivo:
+            # Sin nombre no podemos re-find. Propagamos el error original.
+            logger.warning(
+                "[crear_notas] Fila stale pero no se paso nombre para re-find"
+            )
+            raise
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[crear_notas] No se pudo doble-click en fila: {e}")
         raise
+
+    # Stale + tenemos nombre: re-buscar y re-intentar una sola vez.
+    logger.warning(
+        "[crear_notas] Fila stale tras esperar panel (15-30s). "
+        "Re-buscando por nombre..."
+    )
+    time.sleep(1)
+    resultado = _buscar_paciente_en_tabla(driver, logger, nombre_objetivo)
+    if resultado is None:
+        raise RuntimeError(
+            f"No se encontro '{nombre_objetivo}' tras stale element"
+        )
+    row_fresh, _ = resultado
+    ActionChains(driver).double_click(row_fresh).perform()
+    logger.info("[crear_notas] Doble click (re-find) OK")
 
 
 # ---- Navegacion: volver a la lista de Pacientes citados ----
@@ -2383,7 +2414,7 @@ def paso_4_1_abrir_ficha(
         paciente.nombre_rayen = nombre_rayen
 
     # 4.1.c: doble click en la fila para abrir la ficha
-    _doble_click_en_paciente(driver, logger, row)
+    _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
 
     # Esperar a que el panel del paciente se cargue. Senal inequivoca:
     # la tabla de identificacion del paciente tiene <th> en <tbody>
@@ -2402,7 +2433,11 @@ def paso_4_1_abrir_ficha(
         "//li[@id='anamnesis'] | "
         "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')]"
     )
-    panel_timeout = 30
+    # Sesion 2026-09-16: 30s -> 60s para ECICEP-g3. Vimos en el run del
+    # 16-09 que el panel de ECICEP tarda >30s (probable carga de
+    # estratificacion + adjuntos). Con 60s cubrimos el caso lento.
+    # El retry de 3s antes del segundo intento da margen adicional.
+    panel_timeout = 60
     panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
 
     # Reintento: si el primer doble click no abrio el panel (click
@@ -2416,19 +2451,19 @@ def paso_4_1_abrir_ficha(
             f"reintentando doble click en 3s..."
         )
         time.sleep(3)
-        _doble_click_en_paciente(driver, logger, row)
+        _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
         panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
 
     if panel is None:
         logger.warning(
             f"[crear_notas] Tras doble click + reintento, el panel del "
-            f"paciente no aparecio en {panel_timeout}s. Continuando con "
-            f"extraccion (probablemente falle)."
+            f"paciente no aparecio en {panel_timeout}s. Marcando como "
+            f"skipped para evitar extraccion sobre panel vacio."
         )
-    else:
-        logger.info(
-            f"[crear_notas] Panel del paciente cargado ({panel.tag_name})"
-        )
+        return False
+    logger.info(
+        f"[crear_notas] Panel del paciente cargado ({panel.tag_name})"
+    )
 
     logger.info(
         f"[crear_notas] Ficha abierta para {paciente.nombre} "
@@ -2745,9 +2780,17 @@ def main() -> int:
             except Exception as e:  # noqa: BLE001
                 stats["errores"] += 1
                 pinfo.estado = "error"
-                pinfo.errores.append(str(e))
+                # Guardar tipo de excepcion + mensaje. Mensajes vacios ("Message: \n")
+                # son tipicos de WebDriverException con msg vacio; el TIPO es lo
+                # unico que da pista del problema real.
+                import traceback as _tb
+                err_repr = f"{type(e).__name__}: {e!r}"
+                pinfo.errores.append(err_repr)
+                tb_short = _tb.format_exc().splitlines()[-3:]
                 logger.error(
-                    f"[crear_notas] Error con {paciente.nombre}: {e}. Sigue con el siguiente."
+                    f"[crear_notas] Error con {paciente.nombre}: {err_repr}. "
+                    f"Ultimas lineas del traceback: {tb_short}. "
+                    f"Sigue con el siguiente."
                 )
 
             pinfo.warnings = warnings_collector.snapshot()
