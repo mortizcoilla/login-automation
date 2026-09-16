@@ -2323,17 +2323,23 @@ def guardar_nota_clinica(
 
     md.append("## Nota clinica de Yadira")
     md.append("")
-    # Sesion 2026-09-16: el bloque de Yadira NO se llena aca. La anamnesis
-    # queda en el archivo original de Rayen (que el LLM leera para inferir
-    # el contenido). El script `src.tools.completar_yadira` toma este .md,
-    # invoca al LLM con manuales + internet + conocimiento medico, y
-    # escribe la version completada en notas_clinicas_completadas/.
+    # Sesion 2026-09-16 (corregido 13:42 tras feedback de Yadira): el
+    # bloque Yadira contiene la ANAMNESIS CRUDA que Yadira lleno en
+    # Rayen al abrir la ficha. Es el INSUMO PRINCIPAL del flujo:
+    # `completar_yadira.py` lee este bloque, lo pasa al LLM junto con
+    # los demas bloques estructurados + manuales + conocimiento medico,
+    # y el LLM lo enriquece en una version final que Yadira revisa.
+    # El resultado del enriquecimiento se guarda en
+    # `notas_clinicas_completadas/<paciente>_<fecha>.md`.
     if motivo_consulta:
         md.append(f"> **Motivo de atencion:** {motivo_consulta}")
         md.append("")
-    md.append(
-        "_(bloque a completar por el LLM en `notas_clinicas_completadas/`)_"
-    )
+    if anamnesis and anamnesis.strip():
+        md.append(anamnesis.strip())
+    else:
+        # Si llegamos aca, el ValueError de arriba deberia haber
+        # detenido la escritura. Esto es solo defensa en profundidad.
+        md.append("_(sin anamnesis — error de extraccion)_")
     md.append("")
 
     md.append("## Diagnosticos")

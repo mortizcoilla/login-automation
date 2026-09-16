@@ -1,22 +1,28 @@
-"""Completa el bloque "## Nota clinica de Yadira" de las notas clinicas.
+"""Enriquece el bloque "## Nota clinica de Yadira" de las notas clinicas.
 
-Sesion 2026-09-16: el bloque queda vacio en `guardar_nota_clinica` para
-ser llenado por un LLM. Este script orquesta ese llenado.
+Sesion 2026-09-16 (corregido 13:42 tras feedback de Yadira): el bloque
+Yadira contiene la **anamnesis cruda** que Yadira lleno en Rayen al abrir
+la ficha. Este script orquesta el ENRIQUECIMIENTO de esa anamnesis con
+informacion cruzada de la nota estructurada + manuales MINSAL + conocimiento
+medico del LLM.
 
 Flujo:
-1. Lee una nota incompleta de `notas_clinicas/<paciente>_<fecha>.md`.
+1. Lee una nota de `notas_clinicas/<paciente>_<fecha>.md` (que ya tiene la
+   anamnesis cruda en el bloque Yadira, mas los otros bloques estructurados).
 2. Construye un prompt que contiene:
    - Los OTROS bloques de la nota (identificacion, historial, diagnosticos,
      estratificacion, actividades, profesionales, plan) como contexto.
    - Lista de manuales disponibles en `manuales_md/` para que el LLM
      pueda citarlos con [manual: minsal-ECICEP, p.42].
-   - Instrucciones claras: "eres un medico experto, completa el bloque
-     '## Nota clinica de Yadira' con texto clinico fundamentado, citando
-     fuentes; deduce lo que no este explicito de los manuales, internet
-     y tu conocimiento".
+   - Instrucciones claras: "eres un medico experto; toma la anamnesis
+     cruda de Yadira como insumo principal y enriquécela con info
+     cruzada de los bloques estructurados + manuales + conocimiento
+     medico. Cita fuentes con [manual: id, p.N]".
 3. Invoca al LLM via `opencode` (CLI agent con system prompt medico).
-4. Inserta la respuesta del LLM en el lugar del placeholder.
-5. Guarda la nota completada en `notas_clinicas_completadas/<paciente>_<fecha>.md`.
+4. Reemplaza la anamnesis cruda del bloque Yadira con la version
+   enriquecida del LLM.
+5. Guarda la nota enriquecida en
+   `notas_clinicas_completadas/<paciente>_<fecha>.md`.
 
 Estado actual: skeleton listo. La llamada al LLM (#3) esta marcada como
 TODO porque vive en la zona a corregir (Mortadelo/opencode). Cuando
@@ -39,8 +45,6 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 NOTAS_DIR = ROOT / "notas_clinicas"
 NOTAS_COMPLETADAS_DIR = ROOT / "notas_clinicas_completadas"
 MANUALES_DIR = ROOT / "manuales_md"
-
-PLACEHOLDER = "_(bloque a completar por el LLM en `notas_clinicas_completadas/`)_"
 
 
 def leer_bloques_nota(nota_md: str) -> dict[str, str]:
@@ -79,30 +83,45 @@ def construir_prompt(
     manuales_disponibles: list[str],
     paciente_dict: dict[str, str] | None = None,
 ) -> str:
-    """Construye el prompt que se envia al LLM para llenar el bloque Yadira.
+    """Construye el prompt que se envia al LLM para enriquecer el bloque Yadira.
 
     Args:
-        bloques: dict con los bloques extraidos de la nota (excepto el de
-            Yadira, que ya quedo vacio con placeholder).
+        bloques: dict con los bloques extraidos de la nota (incluye el
+            bloque "Nota clinica de Yadira" con la anamnesis CRUDA de
+            Yadira como insumo principal).
         manuales_disponibles: lista de IDs de manuales (nombres de carpeta
             en manuales_md/) que el LLM puede leer/consultar.
         paciente_dict: opcional, datos del paciente (RUN, edad, etc.)
             extraidos del frontmatter.
 
     Returns:
-        Prompt completo en markdown. El LLM debe responder con el contenido
-        del bloque "## Nota clinica de Yadira" (sin la seccion ni el titulo).
+        Prompt completo en markdown. El LLM debe responder con la version
+        ENRIQUECIDA del bloque "## Nota clinica de Yadira" (sin la
+        seccion ni el titulo).
     """
+    anamnesis_cruda = bloques.get("Nota clinica de Yadira", "").strip()
+
     prompt = """# TAREA
 
 Eres un **medico experto** (medico familiar / internista chileno, MINSAL CESFAM).
-Tu trabajo es completar el bloque **"## Nota clinica de Yadira"** de una nota clinica
-que ya viene con los datos del paciente, historial, diagnosticos, etc. extraidos de
-Rayen. La nota original de Yadira en Rayen trae solo datos estructurados (los bloques
-que te entrego); tu rol es **escribir el texto clinico libre** que normalmente va
-dentro de la nota de atencion.
+Tu trabajo es **enriquecer la nota clinica de Yadira** que esta en el bloque
+"## Nota clinica de Yadira" del archivo de entrada.
 
-# DATOS DEMOGRAFICOS DEL PACIENTE
+# INSUMO PRINCIPAL: ANAMNESIS CRUDA DE YADIRA
+
+Este es el texto que Yadira escribio en Rayen al abrir la ficha del paciente.
+ES LA FUENTE PRIMARIA de tu trabajo. NO la descartes, NO la reescribas de
+cero. Tu rol es **enriquecerla** con informacion cruzada de los bloques
+estructurados, los manuales MINSAL disponibles, y tu propio conocimiento
+medico. Lo que Yadira ya escribio se preserva (puede ser parafraseado
+ligeramente, pero el contenido clinico no se pierde).
+
+```
+"""
+    prompt += anamnesis_cruda if anamnesis_cruda else "_(sin anamnesis)_"
+    prompt += "\n```\n\n"
+
+    prompt += """# DATOS DEMOGRAFICOS DEL PACIENTE
 
 """
     if paciente_dict:
@@ -123,31 +142,41 @@ dentro de la nota de atencion.
         "Plan - Recetas",
         "Plan - Laboratorio",
     ]:
-        if nombre in bloques:
+        if nombre in bloques and nombre != "Nota clinica de Yadira":
             prompt += f"## {nombre}\n\n"
             prompt += bloques[nombre] or "_(vacio)_"
             prompt += "\n\n"
 
-    prompt += """# INSTRUCCIONES PARA COMPLETAR "## Nota clinica de Yadira"
+    prompt += """# INSTRUCCIONES PARA ENRIQUECER LA ANAMNESIS DE YADIRA
 
-Escribe el contenido del bloque en prosa clinica, incluyendo:
+Tu trabajo es tomar la anamnesis cruda de Yadira (el insumo principal
+arriba) y producir una version enriquecida que conserve su contenido
+clinico pero agregue:
 
-1. **Anamnesis**: motivo de consulta + sintomas + antecedentes relevantes.
-   Lo que NO este en los bloques anteriores, deducelo de tu conocimiento
-   clinico + manuales + busqueda en internet.
+1. **Contexto cruzado**: integra los datos estructurados (diagnosticos,
+   historial, actividades) con la anamnesis. Si Yadira menciono "control
+   de HTA" y el bloque Diagnosticos tiene I10X, conectalos con evidencia
+   clinica de los manuales MINSAL.
 
-2. **Examen fisico**: hallazgos esperados segun patologia + tipo de atencion.
+2. **Examen fisico**: si la anamnesis menciona sintomas que requieren
+   examen fisico especifico, agregalo (ej: "soplo carotideo" sugiere
+   describir pulsos, PA en 4 extremidades).
 
-3. **Impresion diagnostica**: integrando los diagnosticos existentes con el
-   cuadro clinico.
+3. **Impresion diagnostica**: integrando los diagnosticos existentes con
+   el cuadro clinico de la anamnesis.
 
-4. **Plan**: indicaciones, controles, derivaciones.
+4. **Plan**: indicaciones, controles, derivaciones segun manuales.
+
+5. **Red flags**: senales de alarma para esta patologia + este paciente.
+
+Cada sugerencia/afirmacion clinica NO obvia debe citar fuente:
+    [manual: minsal-ECICEP, p.42]
 
 # MANUALES DISPONIBLES (consultables)
 
 Tienes acceso a estos manuales en `manuales_md/<id>/<id>.md` (frontmatter
 YAML con `title`, `source`, `source_url`, `pages`). Citálos en formato:
-    [🧠 manual: minsal-ECICEP, p.42]
+    [manual: minsal-ECICEP, p.42]
 
 Donde "minsal-ECICEP" es el id (nombre de carpeta) y p.N es la pagina.
 
@@ -169,12 +198,13 @@ Ademas de los manuales, puedes:
 
 # FORMATO DE SALIDA
 
-Devuelve SOLO el contenido del bloque "## Nota clinica de Yadira" (sin el
-titulo `## `), en markdown con prosa clinica + bullets cuando corresponda.
-NO agregues el titulo del bloque. NO incluyas meta-planning
+Devuelve SOLO el contenido enriquecido del bloque "## Nota clinica de Yadira"
+(sin el titulo `## `), en markdown con prosa clinica + bullets cuando
+corresponda. NO agregues el titulo del bloque. NO incluyas meta-planning
 ("procedo a redactar...", "voy a consultar..."). NO uses metaforas.
 
-Empieza directamente con el contenido clinico.
+Empieza directamente con el contenido clinico enriquecido (puede incluir
+la anamnesis original parafraseada + contexto agregado).
 """
     return prompt
 
@@ -202,11 +232,13 @@ def invocar_llm(prompt: str) -> str:
 
 
 def insertar_bloque_yadira(nota_md: str, contenido_yadira: str) -> str:
-    """Reemplaza el placeholder en el bloque Nota clinica de Yadira por el
-    contenido generado por el LLM.
+    """Reemplaza la anamnesis cruda en el bloque Nota clinica de Yadira por
+    el contenido enriquecido generado por el LLM.
 
-    El bloque queda con su header '## Nota clinica de Yadira' y el contenido
-    del LLM debajo. Si motivo_consulta esta como blockquote, se preserva.
+    El bloque conserva su header `## Nota clinica de Yadira`. Si motivo_consulta
+    esta como blockquote al inicio, se preserva. La anamnesis cruda original
+    se reemplaza por el contenido del LLM (que incluye esa anamnesis
+    parafraseada + el enriquecimiento).
     """
     lineas = nota_md.splitlines()
     out: list[str] = []
@@ -218,18 +250,21 @@ def insertar_bloque_yadira(nota_md: str, contenido_yadira: str) -> str:
             out.append(line)
             out.append("")
             # Si la siguiente linea no-vacia es el blockquote de motivo,
-            # copiarlo primero.
+            # copiarlo primero (se preserva como dato de Yadira).
             idx = lineas.index(line) + 1
             while idx < len(lineas) and lineas[idx].strip() == "":
                 idx += 1
             if idx < len(lineas) and lineas[idx].startswith(">"):
-                while idx < len(lineas) and (lineas[idx].startswith(">") or lineas[idx].strip() == ""):
+                while idx < len(lineas) and (
+                    lineas[idx].startswith(">") or lineas[idx].strip() == ""
+                ):
                     out.append(lineas[idx])
                     idx += 1
-            # Luego el contenido del LLM.
+            # Luego el contenido enriquecido del LLM.
             out.append(contenido_yadira)
             bloque_reemplazado = True
-            # Saltamos hasta el siguiente header.
+            # Saltamos hasta el siguiente header (ignoramos la anamnesis
+            # cruda original).
             while idx < len(lineas) and not lineas[idx].startswith("## "):
                 idx += 1
             continue
@@ -241,7 +276,7 @@ def insertar_bloque_yadira(nota_md: str, contenido_yadira: str) -> str:
 
     if not bloque_reemplazado:
         raise ValueError(
-            "No se encontro el bloque '## Nota clinica de Yadira' con placeholder"
+            "No se encontro el bloque '## Nota clinica de Yadira'"
         )
     return "\n".join(out)
 

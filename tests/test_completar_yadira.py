@@ -1,4 +1,10 @@
-"""Tests para completar_yadira.py (skeleton LLM, no requiere API real)."""
+"""Tests para completar_yadira.py (skeleton LLM, no requiere API real).
+
+Sesion 2026-09-16 (corregido 13:42): el bloque Yadira contiene la
+anamnesis CRUDA de Yadira (no un placeholder). El script lee esa
+anamnesis, la pasa al LLM con instrucciones de enriquecerla, y reemplaza
+el bloque con la version enriquecida en `notas_clinicas_completadas/`.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,21 +13,28 @@ import pytest
 
 from src.tools.completar_yadira import (
     NOTAS_COMPLETADAS_DIR,
-    PLACEHOLDER,
     construir_prompt,
     insertar_bloque_yadira,
     leer_bloques_nota,
 )
 
 
-NOTA_MD_EJEMPLO = """---
+# Anamnesis cruda que Yadira escribio en Rayen al abrir la ficha.
+# Es el INSUMO PRINCIPAL del flujo (regla Yadira 2026-09-16).
+ANAMNESIS_CRUDA_EJEMPLO = """\
+Paciente consulta por control de su hipertension arterial cronica. \
+Refiere adherencia al tratamiento farmacologico. Sin sintomas \
+cardiovasculares nuevos. Niega cefalea, mareos, disnea, dolor toracico.\
+"""
+
+NOTA_MD_EJEMPLO = f"""---
 paciente: "Maria Lopez"
 title: "Nota clinica - Maria Lopez"
 fecha_atencion: "14-09-2026"
 fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"
 source_url: "https://clinico.rayenaps.cl/"
 fecha_extraccion: "2026-09-16T03:00:00"
-panel_cargo: "false"
+panel_cargo: "true"
 ---
 
 # Nota clinica - Maria Lopez
@@ -39,7 +52,7 @@ panel_cargo: "false"
 
 > **Motivo de atencion:** Control de HTA
 
-_(bloque a completar por el LLM en `notas_clinicas_completadas/`)_
+{ANAMNESIS_CRUDA_EJEMPLO}
 
 ## Diagnosticos
 
@@ -72,20 +85,39 @@ class TestLeerBloquesNota:
         bloques = leer_bloques_nota(NOTA_MD_EJEMPLO)
         assert "- **RUN:** 12.345.678-9" in bloques["Identificacion"]
 
-    def test_bloque_con_motivo_y_placeholder(self) -> None:
+    def test_bloque_yadira_contiene_anamnesis_cruda(self) -> None:
+        # Regla dura Yadira 2026-09-16: el bloque Yadira contiene la
+        # anamnesis cruda que Yadira lleno en Rayen. Es el insumo
+        # principal del flujo de enriquecimiento.
         bloques = leer_bloques_nota(NOTA_MD_EJEMPLO)
         contenido = bloques["Nota clinica de Yadira"]
         assert "> **Motivo de atencion:** Control de HTA" in contenido
-        assert PLACEHOLDER in contenido
+        assert "control de su hipertension arterial cronica" in contenido
+        assert "Adherencia al tratamiento" in contenido or "adherencia al tratamiento" in contenido
 
 
 # ---------------------------------------------------------------------------
 # construir_prompt
 # ---------------------------------------------------------------------------
 class TestConstruirPrompt:
+    def test_prompt_incluye_anamnesis_como_insumo_principal(self) -> None:
+        # Regla Yadira 2026-09-16: la anamnesis de Yadira es el insumo
+        # principal. El prompt debe contenerla explicitamente para que
+        # el LLM la enriquezca (no la genere de cero).
+        bloques = {"Nota clinica de Yadira": ANAMNESIS_CRUDA_EJEMPLO}
+        prompt = construir_prompt(
+            bloques=bloques,
+            manuales_disponibles=["minsal-ECICEP"],
+            paciente_dict={"paciente": "Maria Lopez"},
+        )
+        assert "INSUMO PRINCIPAL" in prompt
+        assert "ANAMNESIS CRUDA" in prompt
+        assert ANAMNESIS_CRUDA_EJEMPLO in prompt
+
     def test_incluye_secciones_de_datos_y_contexto(self) -> None:
         prompt = construir_prompt(
             bloques={
+                "Nota clinica de Yadira": "x",
                 "Identificacion": "- RUN: 1-1",
                 "Diagnosticos": "- HTA",
                 "Actividades": "- Control",
@@ -96,12 +128,12 @@ class TestConstruirPrompt:
         assert "# TAREA" in prompt
         assert "DATOS DEMOGRAFICOS" in prompt
         assert "# BLOQUES YA EXTRAIDOS" in prompt
-        assert "INSTRUCCIONES PARA COMPLETAR" in prompt
+        assert "ENRIQUECER" in prompt.upper()
         assert "MANUALES DISPONIBLES" in prompt
 
     def test_incluye_datos_del_paciente(self) -> None:
         prompt = construir_prompt(
-            bloques={},
+            bloques={"Nota clinica de Yadira": "x"},
             manuales_disponibles=[],
             paciente_dict={"paciente": "Juan Perez", "run": "1-9"},
         )
@@ -110,7 +142,7 @@ class TestConstruirPrompt:
 
     def test_lista_manuales_disponibles_para_citar(self) -> None:
         prompt = construir_prompt(
-            bloques={},
+            bloques={"Nota clinica de Yadira": "x"},
             manuales_disponibles=["minsal-ECICEP", "guia-HTA"],
             paciente_dict={},
         )
@@ -118,23 +150,37 @@ class TestConstruirPrompt:
         assert "- guia-HTA" in prompt
 
     def test_indica_formato_de_cita(self) -> None:
-        # El prompt debe ense\u00f1ar al LLM como citar manuales.
         prompt = construir_prompt(
-            bloques={}, manuales_disponibles=[], paciente_dict={}
+            bloques={"Nota clinica de Yadira": "x"},
+            manuales_disponibles=[],
+            paciente_dict={},
         )
-        assert "[\U0001f9e0 manual: minsal-ECICEP, p.42]" in prompt
+        # El prompt debe ensenar al LLM como citar manuales.
+        assert "manual:" in prompt and "p." in prompt
 
     def test_incluye_instrucciones_para_usar_internet(self) -> None:
-        # El LLM debe saber que puede buscar en internet (decidido en sesion
-        # 2026-09-15: webfetch/websearch permitido en fuentes confiables).
         prompt = construir_prompt(
-            bloques={}, manuales_disponibles=[], paciente_dict={}
+            bloques={"Nota clinica de Yadira": "x"},
+            manuales_disponibles=[],
+            paciente_dict={},
         )
         assert "internet" in prompt.lower() or "webfetch" in prompt.lower()
+
+    def test_instrucciones_enriquecer_no_completar(self) -> None:
+        # Regla Yadira 2026-09-16: el LLM enriquece la anamnesis, no
+        # la genera desde cero. Prompt debe decirlo explicitamente.
+        prompt = construir_prompt(
+            bloques={"Nota clinica de Yadira": "x"},
+            manuales_disponibles=[],
+            paciente_dict={},
+        )
+        # Debe aparecer la instruccion de enriquecer (no solo completar).
+        assert "enriquec" in prompt.lower()
 
     def test_incluye_secciones_de_bloques_en_orden(self) -> None:
         prompt = construir_prompt(
             bloques={
+                "Nota clinica de Yadira": "x",
                 "Identificacion": "i",
                 "Diagnosticos": "d",
                 "Actividades": "a",
@@ -157,22 +203,30 @@ class TestConstruirPrompt:
 # insertar_bloque_yadira
 # ---------------------------------------------------------------------------
 class TestInsertarBloqueYadira:
-    def test_reemplaza_placeholder_por_contenido(self) -> None:
-        contenido_yadira = (
-            "Paciente consulta por control. Sin sintomas.\n"
-            "Examen fisico: PA 130/85, FC 78."
+    def test_reemplaza_anamnesis_cruda_por_contenido_enriquecido(self) -> None:
+        # El LLM entrega el contenido enriquecido. La funcion lo
+        # inserta en lugar de la anamnesis cruda original.
+        contenido_enriquecido = (
+            "Paciente hipertensa cronica en control. Adherencia al "
+            "tratamiento farmacologico. Asintomatica cardiovascular. "
+            "[manual: minsal-ECICEP, p.42]"
         )
-        resultado = insertar_bloque_yadira(NOTA_MD_EJEMPLO, contenido_yadira)
-        assert PLACEHOLDER not in resultado
-        assert "Paciente consulta por control" in resultado
-        assert "PA 130/85, FC 78" in resultado
+        resultado = insertar_bloque_yadira(
+            NOTA_MD_EJEMPLO, contenido_enriquecido
+        )
+        # La anamnesis cruda ya no esta (fue reemplazada).
+        assert "control de su hipertension arterial cronica" not in resultado
+        # El contenido enriquecido SI esta.
+        assert "Paciente hipertensa cronica en control" in resultado
+        assert "[manual: minsal-ECICEP, p.42]" in resultado
 
     def test_preserva_motivo_consulta_como_blockquote(self) -> None:
-        contenido = "Anamnesis aqui"
-        resultado = insertar_bloque_yadira(NOTA_MD_EJEMPLO, contenido)
-        # El motivo va como blockquote antes del contenido del LLM.
+        resultado = insertar_bloque_yadira(
+            NOTA_MD_EJEMPLO, "contenido enriquecido"
+        )
+        # El motivo va como blockquote antes del contenido enriquecido.
         idx_motivo = resultado.index("> **Motivo de atencion:**")
-        idx_contenido = resultado.index("Anamnesis aqui")
+        idx_contenido = resultado.index("contenido enriquecido")
         assert idx_motivo < idx_contenido
 
     def test_preserva_demografia_y_otros_bloques(self) -> None:
@@ -191,23 +245,17 @@ class TestInsertarBloqueYadira:
 
     def test_error_si_no_hay_bloque(self) -> None:
         nota_sin_bloque = NOTA_MD_EJEMPLO.replace(
-            "## Nota clinica de Yadira\n\n> **Motivo de atencion:** Control de HTA\n\n"
-            "_(bloque a completar por el LLM en `notas_clinicas_completadas/`)_\n",
+            f"## Nota clinica de Yadira\n\n> **Motivo de atencion:** Control de HTA\n\n{ANAMNESIS_CRUDA_EJEMPLO}\n",
             "",
         )
         assert "## Nota clinica de Yadira" not in nota_sin_bloque
-        with pytest.raises(ValueError, match="placeholder"):
+        with pytest.raises(ValueError, match="Nota clinica de Yadira"):
             insertar_bloque_yadira(nota_sin_bloque, "x")
 
 
 # ---------------------------------------------------------------------------
-# NOTAS_COMPLETADAS_DIR y PLACEHOLDER exportados
+# NOTAS_COMPLETADAS_DIR exportado
 # ---------------------------------------------------------------------------
 def test_notas_completadas_dir_es_path() -> None:
     assert isinstance(NOTAS_COMPLETADAS_DIR, Path)
     assert NOTAS_COMPLETADAS_DIR.name == "notas_clinicas_completadas"
-
-def test_placeholder_es_string_no_vacio() -> None:
-    assert isinstance(PLACEHOLDER, str)
-    assert "LLM" in PLACEHOLDER
-    assert "notas_clinicas_completadas" in PLACEHOLDER

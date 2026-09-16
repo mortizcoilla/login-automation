@@ -175,17 +175,20 @@ class TestGuardarNotaClinicaEstructura:
         contenido = out.read_text(encoding="utf-8")
         assert "control previo sin novedades" in contenido
 
-    def test_nota_clinica_yadira_con_motivo_y_anamnesis(
+    def test_nota_clinica_yadira_con_anamnesis_cruda(
         self, kwargs_minimos: dict
     ) -> None:
+        # Regla Yadira 2026-09-16 (corregido 13:42): el bloque Yadira
+        # contiene la anamnesis CRUDA que Yadira escribio en Rayen.
+        # Es el insumo principal del flujo de enriquecimiento via LLM
+        # (`completar_yadira.py`). NO queda vacio ni con placeholder.
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        # Sesion 2026-09-16: el bloque Yadira queda con PLACEHOLDER (sin
-        # anamnesis). El llenado via LLM ocurre en otro script
-        # (src.tools.completar_yadira). Solo se guarda el motivo como
-        # blockquote + el placeholder para que el LLM sepa donde insertar.
-        assert "Paciente consulta por control" not in contenido
-        assert "bloque a completar por el LLM" in contenido
+        assert "## Nota clinica de Yadira" in contenido
+        # La anamnesis cruda del kwargs_minimos esta presente.
+        assert "control de su patologia cronica" in contenido
+        # NO hay placeholder (eso era el diseno viejo, pre-13:42).
+        assert "bloque a completar por el LLM" not in contenido
 
     def test_motivo_consulta_como_blockquote(
         self, kwargs_minimos: dict
@@ -445,9 +448,11 @@ class TestGuardarNotaClinicaNoSobrescribe:
         assert 'panel_cargo: "true"' in contenido
         # Aviso de panel no cargo eliminado.
         assert "panel del paciente NO CARGO" not in contenido
-        # Estructura nueva presente.
-        assert "Paciente consulta por control" not in contenido
-        assert "bloque a completar por el LLM" in contenido
+        # La anamnesis cruda NUEVA esta presente (regla Yadira 2026-09-16
+        # corregido: el bloque Yadira contiene la anamnesis, no placeholder).
+        assert "control de su patologia cronica" in contenido
+        # El placeholder viejo NO esta.
+        assert "bloque a completar por el LLM" not in contenido
 
     def test_no_sobreescribe_archivo_extraccion_valida(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
