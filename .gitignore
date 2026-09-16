@@ -42,12 +42,23 @@ plantillas/*.bak
 # Manuales MINSAL (190 MB, referenciados por path — no se commitean al repo)
 manuales/
 
+# Markdown convertido de manuales MINSAL (varios MB — fuente para el LLM).
+# Se regenera con `python -m src.tools.convertir_manuales`. Vive en disco
+# local, referenciado por path por los bundles.
+manuales_md/
+
 # Notas clinicas de pacientes (contienen RUN, nombre, direccion, telefono,
 # datos clinicos). NO se commitean al repo publico. Vivir en disco local
 # para revision Yadira; nunca al remoto.
 notas_clinicas/*.txt
 notas_clinicas/*/*.md
 notas_clinicas/*/_chrome_dl/
+
+# Capturas de pantalla + HTML de diagnostico del flujo Selenium. Van a
+# logs/screenshots/. Se borran con `python -m src.tools.limpiar_screenshots`
+# al final de una corrida exitosa + tests OK.
+logs/screenshots/
+*.bak_*.cleanup
 
 # Trash / backups locales
 .trash/

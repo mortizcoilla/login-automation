@@ -33,6 +33,14 @@
 #       la nota clinica + adjuntos, y guarda en notas_clinicas/<paciente>_<fecha>.txt.
 #       Tiempo: ~10-30 s por paciente (10-30 min si son ~30 pacientes).
 #
+#   4. pytest tests/
+#       Corre la suite de tests como guardrail. Solo limpia screenshots si
+#       todos pasan.
+#
+#   5. limpiar_screenshots
+#       Borra logs/screenshots/*.png y *.html si el pipeline + tests
+#       terminaron OK. Si algo fallo, deja las capturas para debug.
+#
 # Que NO hace (intencional):
 #   - NO invoca el LLM (generar_ficha_con_llm / mortadelo_batch).
 #   - NO genera fichas en fichas_clinicas/.
@@ -109,6 +117,36 @@ $NotasDir = Join-Path $RepoRoot "notas_clinicas"
 $CountNotas = (Get-ChildItem -Path $NotasDir -Filter "*.txt" -ErrorAction SilentlyContinue | Measure-Object).Count
 Write-Host "  Notas clinicas (.txt): $CountNotas archivos en notas_clinicas/" -ForegroundColor Gray
 Write-Host ""
+
+# --- Paso 4/5: tests como guardrail ----------------------------------------
+Write-Host "[4/5] pytest tests/ (guardrail)" -ForegroundColor Yellow
+Write-Host "      Corriendo suite de tests para validar construccion de notas..."
+Write-Host ""
+python -m pytest tests/ -q --no-header --tb=line 2>&1 | Select-Object -Last 5 | ForEach-Object { Write-Host "      $_" }
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "[ERROR] tests fallaron (codigo $LASTEXITCODE)" -ForegroundColor Red
+    Write-Host "         Las screenshots se preservan en logs/screenshots/ para debug." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+Write-Host ""
+Write-Host "[4/5] tests OK" -ForegroundColor Green
+Write-Host ""
+
+# --- Paso 5/5: limpiar screenshots ----------------------------------------
+Write-Host "[5/5] limpiar_screenshots" -ForegroundColor Yellow
+Write-Host "      Borrando capturas de diagnostico de logs/screenshots/..."
+Write-Host ""
+python -m src.tools.limpiar_screenshots
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "[WARN] limpiar_screenshots fallo (codigo $LASTEXITCODE). Capturas quedan en disco." -ForegroundColor Yellow
+} else {
+    Write-Host ""
+    Write-Host "[5/5] OK" -ForegroundColor Green
+}
+Write-Host ""
+
 Write-Host "  Proximo paso (cuando lo decidas): pipeline LLM para procesar las" -ForegroundColor Gray
 Write-Host "  notas — vive en la zona a corregir y se corre con scripts separados." -ForegroundColor Gray
 Write-Host "========================================================================" -ForegroundColor Cyan

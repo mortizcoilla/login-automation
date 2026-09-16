@@ -5,6 +5,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from selenium import webdriver
@@ -31,6 +32,14 @@ from src.constants import (
 )
 
 ByType = str
+
+# Sesion 2026-09-16: directorio dedicado para capturas de pantalla y HTML
+# de diagnostico. Antes se guardaban en la raiz del repo (CWD) y
+# contaminaban el proyecto. Ahora van a logs/screenshots/ (gitignored).
+# Al final de una corrida exitosa + tests OK, el script
+# `src.tools.limpiar_screenshots` borra los archivos.
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+SCREENSHOTS_DIR = ROOT_DIR / "logs" / "screenshots"
 
 
 def _selector(by_str: str, value: str) -> tuple[ByType, str]:
@@ -303,8 +312,10 @@ def _capture_after_click(
     if not driver:
         return
     try:
-        path = f"step_{tag}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-        driver.save_screenshot(path)
+        SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = SCREENSHOTS_DIR / f"step_{tag}_{ts}.png"
+        driver.save_screenshot(str(path))
         logger.info(f"Screenshot: {path}")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"No se pudo capturar screenshot: {e}")
@@ -314,13 +325,13 @@ def _capture_error(driver: WebDriver | None, logger: logging.Logger, tag: str) -
     if not driver:
         return
     try:
-        path = f"error_{tag}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-        driver.save_screenshot(path)
-        logger.error(f"Screenshot guardado: {path}")
-        with open(
-            f"error_{tag}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html", "w", encoding="utf-8"
-        ) as f:
-            f.write(driver.page_source[:200000])
+        SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        png_path = SCREENSHOTS_DIR / f"error_{tag}_{ts}.png"
+        html_path = SCREENSHOTS_DIR / f"error_{tag}_{ts}.html"
+        driver.save_screenshot(str(png_path))
+        logger.error(f"Screenshot guardado: {png_path}")
+        html_path.write_text(driver.page_source[:200000], encoding="utf-8")
     except Exception as e:
         logger.warning(f"No se pudo capturar screenshot: {e}")
 
