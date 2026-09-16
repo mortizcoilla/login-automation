@@ -2629,16 +2629,6 @@ def guardar_info_paciente(
         md.append("_(sin ordenes de laboratorio)_")
     md.append("")
 
-    md.append("---")
-    md.append("")
-    md.append("## Notas")
-    md.append("- Documento complementario a la nota clinica completa.")
-    md.append("- NO contiene la anamnesis cruda de Yadira (esa vive en")
-    md.append("  `data/anamnesis/<paciente>_<fecha>.md`).")
-    md.append("- Para revisar la consulta completa, ver tambien")
-    md.append("  `data/notas_clinicas/<paciente>_<fecha>.md`.")
-    md.append("")
-
     # ---- Escritura ----
     nombre_archivo = (
         f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"

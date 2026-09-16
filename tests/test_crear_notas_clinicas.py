@@ -971,16 +971,6 @@ class TestGuardarInfoPaciente:
         contenido = out.read_text(encoding="utf-8")
         assert 'tipo_documento: "info_paciente (sin anamnesis)"' in contenido
 
-    def test_seccion_notas_documenta_que_es_complemento(
-        self, info_paciente_kwargs: dict
-    ) -> None:
-        """La seccion '## Notas' debe explicar que es complementario."""
-        out = guardar_info_paciente(**info_paciente_kwargs)
-        contenido = out.read_text(encoding="utf-8")
-        assert "## Notas" in contenido
-        assert "complementario" in contenido.lower()
-        assert "anamnesis" in contenido.lower()
-
     def test_panel_no_cargo_flag_visible(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
@@ -1058,15 +1048,13 @@ class TestGuardarInfoPaciente:
         (esa vive en data/examenes/ ahora, no en info_paciente)."""
         out = guardar_info_paciente(**info_paciente_kwargs)
         contenido = out.read_text(encoding="utf-8")
-        # El doc no debe tener '## Examenes adjuntos' como seccion propia
-        # (solo lo menciona en la seccion Notas como referencia).
         secciones = [
             line for line in contenido.split("\n")
             if line.startswith("## ")
         ]
         assert "## Examenes adjuntos" not in secciones
-        # Pero si se menciona como contexto, debe estar en la seccion Notas
-        notas_idx = contenido.find("## Notas")
-        assert notas_idx != -1
+        # Sesion 17:55: se elimino la seccion '## Notas' (Yadira pidio
+        # borrarla). El doc ahora cierra en Plan - Laboratorio.
+        assert "## Notas" not in secciones
         # No debe haber '## Pautas' (tampoco es info del paciente)
         assert "## Pautas" not in secciones
