@@ -601,96 +601,19 @@ class TestPacienteObjetivoPanelCargo:
 
 
 # ---------------------------------------------------------------------------
-# guardar_marker_extraccion_fallida: marker de error cuando la
-# extraccion falla. NO es una nota clinica, solo documenta el fallo
-# para que Yadira sepa que re-correr cuando Rayen este estable.
-# ---------------------------------------------------------------------------
-class TestGuardarMarkerExtraccionFallida:
-    def test_escribe_archivo_marker(
-        self, paciente_basico: PacienteObjetivo, tmp_path: Path
-    ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_marker_extraccion_fallida,
-        )
-
-        out = guardar_marker_extraccion_fallida(
-            paciente_basico, tmp_path, panel_cargo=False
-        )
-        assert out.exists()
-        assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
-
-    def test_marker_tiene_frontmatter_extraccion_fallida(
-        self, paciente_basico: PacienteObjetivo, tmp_path: Path
-    ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_marker_extraccion_fallida,
-        )
-
-        out = guardar_marker_extraccion_fallida(
-            paciente_basico, tmp_path, panel_cargo=False
-        )
-        contenido = out.read_text(encoding="utf-8")
-        assert 'extraccion_fallida: "true"' in contenido
-        assert 'panel_cargo: "false"' in contenido
-
-    def test_marker_no_es_nota_clinica(
-        self, paciente_basico: PacienteObjetivo, tmp_path: Path
-    ) -> None:
-        # El marker NO tiene las secciones estandar de una nota
-        # clinica valida. NO tiene anamnesis, NO tiene diagnosticos,
-        # etc. Es un marker de error, no una nota.
-        from src.tools.crear_notas_clinicas import (
-            guardar_marker_extraccion_fallida,
-        )
-
-        out = guardar_marker_extraccion_fallida(
-            paciente_basico, tmp_path, panel_cargo=True
-        )
-        contenido = out.read_text(encoding="utf-8")
-        assert "EXTRACCION FALLIDA" in contenido
-        # NO tiene la seccion '## Nota clinica de Yadira' (no es nota).
-        assert "## Nota clinica de Yadira" not in contenido
-        # NO tiene la seccion '## Diagnosticos' (no es nota).
-        assert "## Diagnosticos" not in contenido
-
-    def test_marker_incluye_extraccion_parcial(
-        self, paciente_basico: PacienteObjetivo, tmp_path: Path
-    ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_marker_extraccion_fallida,
-        )
-
-        out = guardar_marker_extraccion_fallida(
-            paciente_basico,
-            tmp_path,
-            panel_cargo=True,
-            extraccion_parcial={
-                "identificacion_campos": 14,
-                "historial_caracteres": 3481,
-                "estratificacion_grupo": "G3",
-            },
-        )
-        contenido = out.read_text(encoding="utf-8")
-        assert "Identificacion: 14 campos" in contenido
-        assert "Historial: 3481 caracteres" in contenido
-        assert "Estratificacion ECICEP: G3" in contenido
-
-
-# ---------------------------------------------------------------------------
-# Regression guard: notas_clinicas/ no debe contener archivos viejos
-# con extraccion rota (regla Yadira 2026-09-16). Los markers escritos
-# por `guardar_marker_extraccion_fallida` SON validos (tienen
-# `extraccion_fallida: "true"`) y se aceptan.
+# Regression guard: notas_clinicas/ no debe contener archivos con
+# extraccion rota. Regla dura Yadira 2026-09-16: la anamnesis SIEMPRE
+# existe en Rayen. Si la extraccion retorno vacia (panel_cargo=false),
+# NO se deberia haber escrito el archivo.
 # ---------------------------------------------------------------------------
 class TestRegressionGuardNotasClinicas:
-    """Escanea `notas_clinicas/*.md` y falla si encuentra archivos viejos
-    con extraccion rota (panel_cargo=false PERO sin flag
-    `extraccion_fallida: "true"`). Los markers validos del pipeline
-    actual se aceptan."""
+    """Escanea `notas_clinicas/*.md` y falla si encuentra archivos con
+    `panel_cargo: "false"` (extraccion rota que el pipeline anterior
+    permitio)."""
 
     NOTAS_DIR = Path(__file__).resolve().parents[1] / "notas_clinicas"
 
-    def test_no_hay_notas_viejas_con_panel_cargo_false(
+    def test_no_hay_notas_con_panel_cargo_false(
         self, tmp_path: Path
     ) -> None:
         if not self.NOTAS_DIR.exists():
@@ -700,24 +623,19 @@ class TestRegressionGuardNotasClinicas:
         rotas: list[str] = []
         for f in sorted(self.NOTAS_DIR.glob("*.md")):
             contenido = f.read_text(encoding="utf-8")
-            # Archivo roto VIEJO: tiene panel_cargo=false Y NO tiene
-            # el flag extraccion_fallida (es decir, fue escrito por
-            # la version vieja del pipeline sin marker).
-            if (
-                'panel_cargo: "false"' in contenido
-                and 'extraccion_fallida: "true"' not in contenido
-            ):
+            # Detectar el patron: panel_cargo="false" en frontmatter.
+            if 'panel_cargo: "false"' in contenido:
                 rotas.append(f.name)
         assert not rotas, (
-            f"Regla dura Yadira: hay {len(rotas)} notas VIEJAS con "
-            f"extraccion rota (panel_cargo=false sin marker). Estas "
-            f"fueron escritas antes del marker de error. "
-            f"Re-ejecutar `crear_notas_clinicas` o borrarlas "
-            f"manualmente:\n  - "
+            f"Regla dura Yadira: hay {len(rotas)} notas con "
+            f"extraccion rota (panel_cargo=false). Estas notas se "
+            f"escribieron con placeholder en vez de fallar. "
+            f"Re-ejecutar `crear_notas_clinicas` para estos "
+            f"pacientes o borrarlas manualmente:\n  - "
             + "\n  - ".join(rotas)
         )
 
-    def test_todas_las_notas_validas_tienen_seccion_yadira(
+    def test_todas_las_notas_tienen_seccion_yadira(
         self, tmp_path: Path
     ) -> None:
         if not self.NOTAS_DIR.exists():
@@ -727,12 +645,7 @@ class TestRegressionGuardNotasClinicas:
         sin_seccion: list[str] = []
         for f in sorted(self.NOTAS_DIR.glob("*.md")):
             contenido = f.read_text(encoding="utf-8")
-            # Solo archivos que NO son markers pueden tener
-            # (y DEBEN tener) la seccion Yadira.
-            if (
-                'extraccion_fallida: "true"' not in contenido
-                and "## Nota clinica de Yadira" not in contenido
-            ):
+            if "## Nota clinica de Yadira" not in contenido:
                 sin_seccion.append(f.name)
         assert not sin_seccion, (
             f"Estas notas no tienen la seccion '## Nota clinica de "
