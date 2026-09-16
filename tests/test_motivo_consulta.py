@@ -195,12 +195,14 @@ class TestGuardarNotaClinicaConMotivo:
         texto = out.read_text(encoding="utf-8")
 
         # Marcadores del bloque
-        idx_inicio = texto.index("=== INICIO NOTA CLINICA DE YADIRA ===")
-        idx_fin = texto.index("=== FIN NOTA CLINICA DE YADIRA ===")
+        # Skip past el header line para que bloque no incluya "## Nota clinica..."
+        idx_inicio = texto.index("## Nota clinica de Yadira")
+        idx_inicio = texto.index("\n", idx_inicio) + 1
+        idx_fin = texto.index("## Actividades")  # siguiente header
         bloque = texto[idx_inicio:idx_fin]
 
         # El motivo esta DENTRO del bloque
-        assert "Motivo de atencion: ingreso sm en dupla  (no logrado)" in bloque
+        assert "> **Motivo de atencion:** ingreso sm en dupla  (no logrado)" in bloque
 
         # Y es la PRIMERA linea de contenido (despues de los separadores)
         lines_bloque = bloque.splitlines()
@@ -208,11 +210,12 @@ class TestGuardarNotaClinicaConMotivo:
             l for l in lines_bloque
             if l.strip() and not l.startswith("===") and not l.startswith("=" * 5)
         ]
-        assert contenido_lines[0] == "Motivo de atencion: ingreso sm en dupla  (no logrado)", (
+        assert contenido_lines[0] == "> **Motivo de atencion:** ingreso sm en dupla  (no logrado)", (
             f"El motivo debe ser la primera linea de contenido, pero la primera es: {contenido_lines[0]!r}"
         )
         # La segunda linea de contenido es la anamnesis (hay una vacia entre medio
-        # que se filtra)
+        # que se filtra). NOTA: en markdown el blockquote "> ..." va en su
+        # propia linea, asi que la anamnesis es contenido_lines[1].
         assert contenido_lines[1] == "paciente masculino de 66 anos..."
 
     def test_motivo_va_antes_de_la_anamnesis(self, tmp_path: Path) -> None:
@@ -233,7 +236,7 @@ class TestGuardarNotaClinicaConMotivo:
             notas_dir=tmp_path,
         )
         texto = out.read_text(encoding="utf-8")
-        idx_motivo = texto.index("Motivo de atencion: MOTIVO_LINE")
+        idx_motivo = texto.index("> **Motivo de atencion:** MOTIVO_LINE")
         idx_anamnesis = texto.index("ANAMNESIS_LINE")
         assert idx_motivo < idx_anamnesis
 
@@ -283,8 +286,9 @@ class TestGuardarNotaClinicaConMotivo:
             notas_dir=tmp_path,
         )
         texto = out.read_text(encoding="utf-8")
-        idx_inicio = texto.index("=== INICIO NOTA CLINICA DE YADIRA ===")
-        idx_fin = texto.index("=== FIN NOTA CLINICA DE YADIRA ===")
+        idx_inicio = texto.index("## Nota clinica de Yadira")
+        idx_inicio = texto.index("\n", idx_inicio) + 1
+        idx_fin = texto.index("## Actividades")
         bloque = texto[idx_inicio:idx_fin].splitlines()
         # primera linea no vacia debe ser la anamnesis directa
         contenido = [l for l in bloque if l.strip() and not l.startswith("=")]
@@ -318,14 +322,14 @@ class TestGuardarNotaClinicaConMotivo:
         )
         texto = out.read_text(encoding="utf-8")
         # El motivo esta en la nota clinica
-        idx_nota = texto.index("=== INICIO NOTA CLINICA DE YADIRA ===")
-        idx_estrato = texto.index("=== INICIO ESTRATIFICACION ECICEP ===")
+        idx_nota = texto.index("## Nota clinica de Yadira")
+        idx_estrato = texto.index("## Estratificacion ECICEP")
         assert idx_nota < idx_estrato, "la nota clinica va antes que la estrato"
         # El motivo esta antes que la estrato
-        idx_motivo = texto.index("Motivo de atencion:")
+        idx_motivo = texto.index("> **Motivo de atencion:**")
         assert idx_motivo < idx_estrato
         # Y la estrato tiene su propio bloque
-        assert "=== INICIO ESTRATIFICACION ECICEP ===" in texto
+        assert "## Estratificacion ECICEP" in texto
         assert "Grupo: G2 (Riesgo moderado)" in texto
 
     def test_motivo_no_sobrescribe_archivo_existente(

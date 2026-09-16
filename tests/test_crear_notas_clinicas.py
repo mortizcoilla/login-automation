@@ -1,20 +1,20 @@
 """Tests para la construccion de notas clinicas en `crear_notas_clinicas`.
 
+Sesion 2026-09-16: las notas se guardan en .md (markdown con frontmatter
+YAML + headers ##) en armonia con manuales_md/. Antes era .txt con
+marcadores '=== INICIO/FIN ==='.
+
 Cubre:
 - `_safe_filename`: casos con acentos, espacios, caracteres raros
-- `guardar_nota_clinica`: estructura completa del .txt (todos los bloques
-  INICIO/FIN presentes, cabecera con datos del paciente, secciones
-  con placeholders cuando no hay datos)
+- `guardar_nota_clinica`: estructura completa del .md (todos los
+-  ## headers presentes, frontmatter YAML con datos del paciente,
+-  secciones con placeholders cuando no hay datos)
 - `guardar_nota_clinica`: flag `panel_cargo=False` agrega el aviso
-  "ATENCION: panel no cargo" al inicio de la nota
+-  "ATENCION: panel no cargo" al inicio de la nota
 - `guardar_nota_clinica`: NO sobrescribe archivos existentes
-- `guardar_nota_clinica`: filename formato `<safe>_<fecha>.txt`
+- `guardar_nota_clinica`: filename formato `<safe>_<fecha>.md`
 - `parsear_informe`: smoke test del parser basico
 - `PacienteObjetivo.panel_cargo`: default True, se puede setear False
-
-Sesion 2026-09-16: agregados como guardrail para que el flujo no
-regrese silenciosamente a "carpeta vacia" cuando el panel ECICEP
-tarda en cargar.
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class TestSafeFilename:
 
 
 # ---------------------------------------------------------------------------
-# guardar_nota_clinica: estructura completa
+# guardar_nota_clinica: estructura completa (markdown)
 # ---------------------------------------------------------------------------
 @pytest.fixture
 def paciente_basico() -> PacienteObjetivo:
@@ -89,70 +89,75 @@ def kwargs_minimos(paciente_basico: PacienteObjetivo, tmp_path: Path) -> dict:
 
 
 class TestGuardarNotaClinicaEstructura:
-    def test_crea_archivo_con_nombre_correcto(
+    def test_crea_archivo_con_extension_md(
         self, kwargs_minimos: dict, tmp_path: Path
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         assert out is not None
         assert out.exists()
-        # Nombre: <safe_nombre>_<fecha>.txt (sin acentos en el filename
-        # porque los acentos se mantienen con \w UNICODE, pero el caracter
-        # 'ñ' tambien se mantiene).
-        assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.txt"
+        assert out.suffix == ".md"
+        # Nombre: <safe_nombre>_<fecha>.md
+        assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
 
-    def test_cabecera_con_datos_paciente(
+    def test_frontmatter_yaml_con_datos_paciente(
         self, kwargs_minimos: dict
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "# NOTA CLINICA" in contenido
-        assert "# Paciente: Nicolas Ignacio Piña Rojas" in contenido
-        assert "# Fecha atencion: 10-09-2026" in contenido
+        # Debe empezar con frontmatter.
+        assert contenido.startswith("---\n")
+        # Campos clave en el frontmatter.
+        assert 'paciente: "Nicolas Ignacio Piña Rojas"' in contenido
+        assert 'title: "Nota clinica - Nicolas Ignacio Piña Rojas"' in contenido
+        assert 'fecha_atencion: "10-09-2026"' in contenido
+        assert 'tipo_atencion: "Control integral ecicep-g3"' in contenido
+        # Fuente Rayen hardcoded.
+        assert 'fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"' in contenido
+        assert 'source_url: "https://clinico.rayenaps.cl/"' in contenido
+        # panel_cargo default True.
+        assert 'panel_cargo: "true"' in contenido
+
+    def test_titulo_h1(
+        self, kwargs_minimos: dict
+    ) -> None:
+        out = guardar_nota_clinica(**kwargs_minimos)
+        contenido = out.read_text(encoding="utf-8")
+        assert "# Nota clinica - Nicolas Ignacio Piña Rojas" in contenido
 
     def test_sin_flag_panel_no_cargo_cuando_panel_cargo_true(
         self, kwargs_minimos: dict
     ) -> None:
         # Default panel_cargo=True -> sin flag de revision.
-        # Chequeamos la frase completa para no confundir con "HISTORIAL DE
-        # ATENCIONES" que matchea el substring "ATENCION".
+        # Frase completa para no confundir con "HISTORIAL DE ATENCIONES".
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "panel del paciente NO CARGO" not in contenido
         assert "Revisar manualmente en Rayen" not in contenido
 
-    def test_todos_los_bloques_presentes(
+    def test_todos_los_headers_presentes(
         self, kwargs_minimos: dict
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        # Cada bloque importante debe tener sus marcadores INICIO/FIN.
-        for bloque in [
-            "IDENTIFICACION",
-            "HISTORIAL DE ATENCIONES",
-            "NOTA CLINICA DE YADIRA",
-            "DIAGNOSTICOS",
-            "ACTIVIDADES",
-            "PROFESIONALES",
-            "PLAN RECETAS",
-            "PLAN LABORATORIO",
+        for header in [
+            "## Identificacion",
+            "## Historial de atenciones (ultimos 6 meses)",
+            "## Nota clinica de Yadira",
+            "## Diagnosticos",
+            "## Actividades",
+            "## Profesionales",
+            "## Plan - Recetas",
+            "## Plan - Laboratorio",
         ]:
-            assert f"=== INICIO {bloque} ===" in contenido, f"Falta INICIO {bloque}"
-            assert f"=== FIN {bloque} ===" in contenido, f"Falta FIN {bloque}"
+            assert header in contenido, f"Falta header {header}"
 
-    def test_separador_70_guiones(
+    def test_identificacion_como_bullets_clave_valor(
         self, kwargs_minimos: dict
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "=" * 70 in contenido
-
-    def test_identificacion_renderiza_campos(
-        self, kwargs_minimos: dict
-    ) -> None:
-        out = guardar_nota_clinica(**kwargs_minimos)
-        contenido = out.read_text(encoding="utf-8")
-        assert "RUN: 23.012.222-9" in contenido
-        assert "Edad: 17 años" in contenido
+        assert "- **RUN:** 23.012.222-9" in contenido
+        assert "- **Edad:** 17 años" in contenido
 
     def test_historial_renderizado(
         self, kwargs_minimos: dict
@@ -166,26 +171,36 @@ class TestGuardarNotaClinicaEstructura:
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        # Motivo y anamnesis dentro del bloque NOTA CLINICA DE YADIRA
-        # (sin marcadores propios, separados por linea en blanco).
+        # Anamnesis dentro del bloque Nota clinica de Yadira.
         assert "Paciente consulta por control" in contenido
 
-    def test_motivo_consulta_se_renderea_si_existe(
+    def test_motivo_consulta_como_blockquote(
         self, kwargs_minimos: dict
     ) -> None:
         kwargs_minimos["motivo_consulta"] = "Control de HTA cronica"
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "Motivo de atencion: Control de HTA cronica" in contenido
+        assert "> **Motivo de atencion:** Control de HTA cronica" in contenido
 
-    def test_diagnosticos_se_renderean(
+    def test_diagnosticos_como_bullets(
         self, kwargs_minimos: dict
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "I10X Hipertension esencial" in contenido
+        assert "- I10X Hipertension esencial" in contenido
 
-    def test_actividades_con_bullet(
+    def test_diagnostico_con_guion_inicial_no_se_duplica(
+        self, kwargs_minimos: dict
+    ) -> None:
+        # Si el diagnostico viene con "- " al inicio (caso del parser),
+        # el bullet no debe quedar como "- - ...".
+        kwargs_minimos["diagnosticos"] = ["- CIE 10 F32.1 Episodio depresivo"]
+        out = guardar_nota_clinica(**kwargs_minimos)
+        contenido = out.read_text(encoding="utf-8")
+        assert "- - " not in contenido
+        assert "- CIE 10 F32.1 Episodio depresivo" in contenido
+
+    def test_actividades_como_bullets(
         self, kwargs_minimos: dict
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
@@ -203,30 +218,44 @@ class TestPanelCargoFlag:
         kwargs_minimos["panel_cargo"] = False
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "!!! ATENCION: panel del paciente NO CARGO en Rayen." in contenido
-        assert "!!! La nota tiene placeholders. Revisar manualmente en Rayen." in contenido
+        assert (
+            "> \u26a0\ufe0f **ATENCION: panel del paciente NO CARGO en Rayen.**"
+            in contenido
+        )
+        assert (
+            "> La nota tiene placeholders. Revisar manualmente en Rayen."
+            in contenido
+        )
 
-    def test_panel_no_cargo_flag_antes_de_bloques(
+    def test_panel_no_cargo_se_refleja_en_frontmatter(
         self, kwargs_minimos: dict
     ) -> None:
-        # El flag debe estar al inicio, antes del primer === INICIO ===
-        # para que Yadira lo vea inmediatamente al abrir el .txt.
+        kwargs_minimos["panel_cargo"] = False
+        out = guardar_nota_clinica(**kwargs_minimos)
+        contenido = out.read_text(encoding="utf-8")
+        assert 'panel_cargo: "false"' in contenido
+
+    def test_panel_no_cargo_flag_antes_del_primer_header(
+        self, kwargs_minimos: dict
+    ) -> None:
+        # El flag debe estar antes del primer ## Identificacion para que
+        # Yadira lo vea inmediatamente.
         kwargs_minimos["panel_cargo"] = False
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         pos_flag = contenido.index("panel del paciente NO CARGO")
-        pos_bloque = contenido.index("=== INICIO IDENTIFICACION ===")
+        pos_bloque = contenido.index("## Identificacion")
         assert pos_flag < pos_bloque
 
     def test_panel_cargo_default_es_true(
         self, kwargs_minimos: dict
     ) -> None:
         # Sin pasar panel_cargo -> default True -> sin flag.
-        # Frase completa para no confundir con "HISTORIAL DE ATENCIONES".
         assert "panel_cargo" not in kwargs_minimos
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "panel del paciente NO CARGO" not in contenido
+        assert 'panel_cargo: "true"' in contenido
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +268,7 @@ class TestGuardarNotaClinicaVacias:
         kwargs_minimos["identificacion"] = {}
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "(no se pudo extraer la tabla de identificacion)" in contenido
+        assert "_(no se pudo extraer la tabla de identificacion)_" in contenido
 
     def test_historial_vacio_muestra_placeholder(
         self, kwargs_minimos: dict
@@ -247,17 +276,15 @@ class TestGuardarNotaClinicaVacias:
         kwargs_minimos["historial"] = ""
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "(no se pudo extraer el historial)" in contenido
+        assert "_(no se pudo extraer el historial)_" in contenido
 
     def test_anamnesis_vacia_se_renderea_vacia(
         self, kwargs_minimos: dict
     ) -> None:
-        # Anamnesis vacia -> bloque NOTA CLINICA DE YADIRA existe pero sin texto.
         kwargs_minimos["anamnesis"] = ""
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "=== INICIO NOTA CLINICA DE YADIRA ===" in contenido
-        assert "=== FIN NOTA CLINICA DE YADIRA ===" in contenido
+        assert "## Nota clinica de Yadira" in contenido
 
     def test_diagnosticos_vacios_muestran_placeholder(
         self, kwargs_minimos: dict
@@ -265,7 +292,7 @@ class TestGuardarNotaClinicaVacias:
         kwargs_minimos["diagnosticos"] = []
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "(sin diagnosticos)" in contenido
+        assert "_(sin diagnosticos)_" in contenido
 
     def test_recetas_vacias_muestran_placeholder(
         self, kwargs_minimos: dict
@@ -273,13 +300,20 @@ class TestGuardarNotaClinicaVacias:
         kwargs_minimos["recetas"] = []
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "(sin recetas)" in contenido
+        assert "_(sin recetas)_" in contenido
+
+    def test_laboratorio_vacio_muestra_placeholder(
+        self, kwargs_minimos: dict
+    ) -> None:
+        kwargs_minimos["laboratorio"] = []
+        out = guardar_nota_clinica(**kwargs_minimos)
+        contenido = out.read_text(encoding="utf-8")
+        assert "_(sin ordenes de laboratorio)_" in contenido
 
     def test_extraccion_minima_vacia_no_falla(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        # El caso del placeholder completo (panel no cargo): todo vacio
-        # pero igual debe generar un archivo valido.
+        # Caso del placeholder completo (panel no cargo): todo vacio.
         out = guardar_nota_clinica(
             paciente=paciente_basico,
             identificacion={},
@@ -296,10 +330,14 @@ class TestGuardarNotaClinicaVacias:
         assert out.exists()
         contenido = out.read_text(encoding="utf-8")
         # Estructura basica presente a pesar de estar todo vacio.
-        assert "# NOTA CLINICA" in contenido
-        assert "ATENCION" in contenido
-        for bloque in ["IDENTIFICACION", "DIAGNOSTICOS", "ACTIVIDADES"]:
-            assert f"=== INICIO {bloque} ===" in contenido
+        assert 'title: "Nota clinica - Nicolas Ignacio Piña Rojas"' in contenido
+        assert "panel del paciente NO CARGO" in contenido
+        for header in [
+            "## Identificacion",
+            "## Diagnosticos",
+            "## Actividades",
+        ]:
+            assert header in contenido
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +348,7 @@ class TestGuardarNotaClinicaNoSobrescribe:
         self, kwargs_minimos: dict, tmp_path: Path
     ) -> None:
         # Crear el archivo primero (con contenido cualquiera).
-        target = tmp_path / "Nicolas_Ignacio_Piña_Rojas_10-09-2026.txt"
+        target = tmp_path / "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
         target.write_text("CONTENIDO PREEXISTENTE", encoding="utf-8")
 
         out = guardar_nota_clinica(**kwargs_minimos)
@@ -335,16 +373,16 @@ class TestGuardarNotaClinicaNoSobrescribe:
 # guardar_nota_clinica: nombre real de Rayen (match parcial)
 # ---------------------------------------------------------------------------
 class TestGuardarNotaClinicaNombreRayen:
-    def test_nombre_rayen_distinto_se_renderea_en_cabecera(
-        self, kwargs_minimos: dict, tmp_path: Path
+    def test_nombre_rayen_distinto_aparece_en_frontmatter(
+        self, kwargs_minimos: dict
     ) -> None:
-        kwargs_minimos["paciente"].nombre_rayen = "Nicolas Piña"  # truncado
+        kwargs_minimos["paciente"].nombre_rayen = "Nicolas Piña"
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "# Paciente: Nicolas Ignacio Piña Rojas" in contenido  # original
-        assert "# Paciente (Rayen): Nicolas Piña" in contenido  # real
+        assert 'paciente: "Nicolas Ignacio Piña Rojas"' in contenido  # original
+        assert 'paciente_rayen: "Nicolas Piña"' in contenido  # real
 
-    def test_nombre_rayen_igual_al_informe_no_se_renderea(
+    def test_nombre_rayen_igual_al_informe_no_aparece(
         self, kwargs_minimos: dict
     ) -> None:
         kwargs_minimos["paciente"].nombre_rayen = (
@@ -352,7 +390,7 @@ class TestGuardarNotaClinicaNombreRayen:
         )
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert "Paciente (Rayen)" not in contenido
+        assert "paciente_rayen" not in contenido
 
 
 # ---------------------------------------------------------------------------

@@ -2179,28 +2179,42 @@ def guardar_nota_clinica(
     notas_dir: Path = None,
     panel_cargo: bool = True,
 ) -> Optional[Path]:
-    """Guarda la nota clinica extraida en un .txt. Devuelve el path o None.
+    """Guarda la nota clinica extraida en un .md en armonia con manuales_md.
+
+    Sesion 2026-09-16: cambio de .txt con marcadores '=== INICIO/FIN ==='
+    a markdown con frontmatter YAML + headers (##). Mismo formato que
+    `manuales_md/<basename>/<basename>.md`. Esto permite que Yadira, el
+    LLM y los scripts que parsean manuales trabajen sobre una sola
+    estructura.
 
     NO sobrescribe si el archivo ya existe.
 
-    Cada bloque importante va entre marcadores '=== INICIO BLOQUE ===' /
-    '=== FIN BLOQUE ===' para que sea trivial de aislar al parsear despues.
+    Estructura del .md generado:
+        ---
+        <frontmatter YAML>
+        ---
+        # Nota clinica - <paciente>
+        (flag si panel no cargo)
+        ## Identificacion
+        ## Historial de atenciones (ultimos 6 meses)
+        ## Nota clinica de Yadira
+        ## Diagnosticos
+        ## Estratificacion ECICEP (solo si hay grupo)
+        ## Actividades
+        ## Profesionales
+        ## Plan - Recetas
+        ## Plan - Laboratorio
 
-    La seccion EXAMENES ADJUNTOS solo aparece si hay adjuntos (no se
-    crea una seccion vacia para los pacientes que no traen examenes).
     La seccion ESTRATIFICACION ECICEP solo aparece si el paciente esta
     estratificado (la extraccion devolvio un grupo). Va entre
     DIAGNOSTICOS y ACTIVIDADES, porque es informacion del sistema
     (no de la atencion actual) que sirve para el ECICEP.
 
-    El motivo de consulta (si lo hay) va DENTRO del bloque NOTA CLINICA
-    DE YADIRA, como primera linea con el formato:
-        Motivo de atencion: <texto>
-    sin marcadores propios. Si no hay motivo, no se agrega la linea.
+    El motivo de consulta (si lo hay) va DENTRO de la seccion
+    "Nota clinica de Yadira" como blockquote en la primera linea.
 
     El historial de atenciones se filtra a las entradas de los ultimos
-    6 meses respecto a paciente.fecha. Lineas con fecha no parseable se
-    conservan (no destruimos data por parsing).
+    6 meses respecto a paciente.fecha.
     """
     if otros_items is None:
         otros_items = {}
@@ -2208,14 +2222,13 @@ def guardar_nota_clinica(
         recetas = []
     if laboratorio is None:
         laboratorio = []
-    # Filtrar historial a los ultimos 6 meses respecto a fecha_objetivo.
-    # Asi la nota llega al LLM con contexto relevante y no contaminado por
-    # atenciones muy antiguas. Lineas sin fecha parseable se conservan.
     _log = logging.getLogger("crear_notas_clinicas")
     historial = filtrar_historial_ultimos_6_meses(
         historial, paciente.fecha, logger=_log
     )
-    nombre_archivo = f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.txt"
+    nombre_archivo = (
+        f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
+    )
     out_path = notas_dir / nombre_archivo
     if out_path.exists():
         logger = logging.getLogger("crear_notas_clinicas")
@@ -2224,161 +2237,118 @@ def guardar_nota_clinica(
         )
         return None
     notas_dir.mkdir(parents=True, exist_ok=True)
-    lineas: list[str] = [
-        f"# NOTA CLINICA — extraida de Rayen",
-        f"# Paciente: {paciente.nombre}",
-    ]
-    # Si hubo match parcial, el nombre de Rayen difiere del informe
-    # (caso truncado). Lo guardamos en la cabecera para que Mortadelo
-    # pueda matchear tanto por el nombre del informe como por el real.
-    if paciente.nombre_rayen and paciente.nombre_rayen != paciente.nombre:
-        lineas.append(f"# Paciente (Rayen): {paciente.nombre_rayen}")
-    lineas += [
-        f"# Fecha atencion: {paciente.fecha}",
-        "",
-    ]
-    # Sesion 2026-09-16: si el panel NO cargo, flag visible al inicio de la
-    # nota. Yadira ve inmediatamente cuales fichas requieren revision manual
-    # completa (no hubo tiempo para extraer datos) vs cuales se extrajeron OK.
-    if not panel_cargo:
-        lineas.append("!!! ATENCION: panel del paciente NO CARGO en Rayen.")
-        lineas.append("!!! La nota tiene placeholders. Revisar manualmente en Rayen.")
-        lineas.append("")
 
-    # ==== INICIO IDENTIFICACION ====
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO IDENTIFICACION ===")
-    lineas.append("=" * 70)
+    # ---- Frontmatter YAML ----
+    md = ["---"]
+    md.append(f'paciente: "{paciente.nombre}"')
+    md.append(f'title: "Nota clinica - {paciente.nombre}"')
+    md.append(f'fecha_atencion: "{paciente.fecha}"')
+    md.append(f'tipo_atencion: "{paciente.tipo_atencion}"')
+    if paciente.nombre_rayen and paciente.nombre_rayen != paciente.nombre:
+        md.append(f'paciente_rayen: "{paciente.nombre_rayen}"')
+    md.append('fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"')
+    md.append('source_url: "https://clinico.rayenaps.cl/"')
+    md.append(f'fecha_extraccion: "{_now_iso()}"')
+    md.append(f'panel_cargo: "{str(panel_cargo).lower()}"')
+    md.append("---")
+    md.append("")
+
+    # ---- Titulo ----
+    md.append(f"# Nota clinica - {paciente.nombre}")
+    md.append("")
+
+    # ---- Flag de revision si aplica ----
+    if not panel_cargo:
+        md.append(
+            "> ⚠️ **ATENCION: panel del paciente NO CARGO en Rayen.**"
+        )
+        md.append(
+            "> La nota tiene placeholders. Revisar manualmente en Rayen."
+        )
+        md.append("")
+
+    # ---- Secciones ----
+    md.append("## Identificacion")
+    md.append("")
     if identificacion:
         for k, v in identificacion.items():
-            lineas.append(f"{k}: {v}")
+            md.append(f"- **{k}:** {v}")
     else:
-        lineas.append("(no se pudo extraer la tabla de identificacion)")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN IDENTIFICACION ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+        md.append("_(no se pudo extraer la tabla de identificacion)_")
+    md.append("")
 
-    # ==== INICIO HISTORIAL DE ATENCIONES ====
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO HISTORIAL DE ATENCIONES ===")
-    lineas.append("=" * 70)
-    lineas.append(historial or "(no se pudo extraer el historial)")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN HISTORIAL DE ATENCIONES ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+    md.append("## Historial de atenciones (ultimos 6 meses)")
+    md.append("")
+    md.append(historial or "_(no se pudo extraer el historial)_")
+    md.append("")
 
-    # ==== INICIO NOTA CLINICA DE YADIRA ====
-    # Anamnesis (texto libre de Yadira). El motivo de atencion va como
-    # primera linea con label propio (sin marcadores de bloque) si existe.
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO NOTA CLINICA DE YADIRA ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+    md.append("## Nota clinica de Yadira")
+    md.append("")
     if motivo_consulta:
-        lineas.append(f"Motivo de atencion: {motivo_consulta}")
-        lineas.append("")
-    lineas.append(anamnesis)
-    lineas.append("")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN NOTA CLINICA DE YADIRA ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+        md.append(f"> **Motivo de atencion:** {motivo_consulta}")
+        md.append("")
+    md.append(anamnesis)
+    md.append("")
 
-    # ==== INICIO DIAGNOSTICOS ====
-    # Codigos CIE-10 que Yadira asigno (seccion aparte, no parte de la nota libre)
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO DIAGNOSTICOS ===")
-    lineas.append("=" * 70)
+    md.append("## Diagnosticos")
+    md.append("")
     if diagnosticos:
         for d in diagnosticos:
-            lineas.append(d)
+            md.append(f"- {d.lstrip('- ')}")  # evitar "- - ..."
     else:
-        lineas.append("(sin diagnosticos)")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN DIAGNOSTICOS ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+        md.append("_(sin diagnosticos)_")
+    md.append("")
 
-    # ==== INICIO ESTRATIFICACION ECICEP ====
-    # Informacion del SISTEMA (no de la atencion actual) sobre el grupo de
-    # riesgo del paciente y sus problemas activos (agudos/cronicos). Sirve
-    # para ECICEP y evita que Yadira tenga que transcribir a mano.
     estrat_texto = formatear_estratificacion(estratificacion)
     if estrat_texto:
-        lineas.append("=" * 70)
-        lineas.append("=== INICIO ESTRATIFICACION ECICEP ===")
-        lineas.append("=" * 70)
-        lineas.append(estrat_texto)
-        lineas.append("=" * 70)
-        lineas.append("=== FIN ESTRATIFICACION ECICEP ===")
-        lineas.append("=" * 70)
-        lineas.append("")
+        md.append("## Estratificacion ECICEP")
+        md.append("")
+        md.append(estrat_texto)
+        md.append("")
 
-    # ==== INICIO ACTIVIDADES ====
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO ACTIVIDADES ===")
-    lineas.append("=" * 70)
+    md.append("## Actividades")
+    md.append("")
     if actividades:
         for a in actividades:
-            lineas.append(f"- {a}")
+            md.append(f"- {a}")
     else:
-        lineas.append("(sin actividades)")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN ACTIVIDADES ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+        md.append("_(sin actividades)_")
+    md.append("")
 
-    # ==== INICIO PROFESIONALES ====
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO PROFESIONALES ===")
-    lineas.append("=" * 70)
+    md.append("## Profesionales")
+    md.append("")
     if profesionales:
         for p in profesionales:
-            lineas.append(p)
+            md.append(f"- {p}")
     else:
-        lineas.append("(sin profesionales)")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN PROFESIONALES ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+        md.append("_(sin profesionales)_")
+    md.append("")
 
-    # ==== INICIO PLAN RECETAS ====
-    # Bloque 8 (orden Yadira, sesion 2026-08-26). Lista de prescripciones
-    # que Yadira dejo escritas para el paciente. Cada prescripcion puede
-    # ocupar varias lineas (header + farmacos indentados).
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO PLAN RECETAS ===")
-    lineas.append("=" * 70)
+    md.append("## Plan - Recetas")
+    md.append("")
     if recetas:
         for r in recetas:
-            for sub in r.split("\n"):
-                lineas.append(sub)
+            for i, sub in enumerate(r.split("\n")):
+                if i == 0:
+                    md.append(f"- {sub}")
+                else:
+                    md.append(f"  - {sub}")
     else:
-        lineas.append("(sin recetas)")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN PLAN RECETAS ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+        md.append("_(sin recetas)_")
+    md.append("")
 
-    # ==== INICIO PLAN LABORATORIO ====
-    # Bloque 9 (orden Yadira, sesion 2026-08-26). Lista de examenes de
-    # laboratorio pedidos en "Plan -> Orden de examen -> Laboratorio".
-    # Cada orden puede ocupar varias lineas (header + examenes indentados).
-    lineas.append("=" * 70)
-    lineas.append("=== INICIO PLAN LABORATORIO ===")
-    lineas.append("=" * 70)
+    md.append("## Plan - Laboratorio")
+    md.append("")
     if laboratorio:
         for lab in laboratorio:
-            for sub in lab.split("\n"):
-                lineas.append(sub)
+            for i, sub in enumerate(lab.split("\n")):
+                if i == 0:
+                    md.append(f"- {sub}")
+                else:
+                    md.append(f"  - {sub}")
     else:
-        lineas.append("(sin ordenes de laboratorio)")
-    lineas.append("=" * 70)
-    lineas.append("=== FIN PLAN LABORATORIO ===")
-    lineas.append("=" * 70)
-    lineas.append("")
+        md.append("_(sin ordenes de laboratorio)_")
+    md.append("")
 
     # SCOPE 2026-08-26: bloques quitados (fuera de scope):
     # - PAUTAS
@@ -2386,12 +2356,16 @@ def guardar_nota_clinica(
     # - OTROS ITEMS DE LA ATENCION
     # - Plan -> Imagenologia
     # - Plan -> Interconsulta
-    # ESTRATIFICACION ECICEP esta entre DIAGNOSTICOS y ACTIVIDADES.
-    # Motivo de atencion dentro de NOTA CLINICA.
-    out_path.write_text("\n".join(lineas), encoding="utf-8")
+    out_path.write_text("\n".join(md), encoding="utf-8")
     logger = logging.getLogger("crear_notas_clinicas")
     logger.info(f"[crear_notas] Nota clinica guardada en: {out_path}")
     return out_path
+
+
+def _now_iso() -> str:
+    """Helper: timestamp ISO 8601 al segundo. Usado para el frontmatter."""
+    from datetime import datetime
+    return datetime.now().isoformat(timespec="seconds")
 
 
 def paso_4_1_abrir_ficha(

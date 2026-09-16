@@ -50,6 +50,8 @@ manuales_md/
 # Notas clinicas de pacientes (contienen RUN, nombre, direccion, telefono,
 # datos clinicos). NO se commitean al repo publico. Vivir en disco local
 # para revision Yadira; nunca al remoto.
+# Sesion 2026-09-16: ahora son .md (markdown con frontmatter YAML).
+notas_clinicas/*.md
 notas_clinicas/*.txt
 notas_clinicas/*/*.md
 notas_clinicas/*/_chrome_dl/
