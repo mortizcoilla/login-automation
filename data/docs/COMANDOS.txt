@@ -6,18 +6,26 @@ cd C:\Workspace\Login-Automation
 
 ================================================================================
  COMANDOS DEL PROYECTO - Login Automation (Rayen APS)
- Ultima actualizacion: 2026-08-22
+ Ultima actualizacion: 2026-09-16 (refactor data/ + limpieza demos)
 ================================================================================
+
+Nota sobre la estructura:
+  A partir de sept-2026 todos los artefactos locales viven bajo data/
+  (manuales_md/, notas_clinicas/, fichas_clinicas/, anamnesis/, logs/,
+  docs/, analysis/). Los scripts en src/ apuntan a data/...
+  Excepciones que siguen en raiz:
+    - main.py                 (entry point principal)
+    - manuales/               (PDFs fuente de los manuales clinicos)
+    - config/                 (api_config.json, users.json, selectors.json)
 
 Indice
 ------
   1. App principal (main.py) - login + rellenar plantillas
-  2. Demos locales (sin Rayen real)
-  3. Setup inicial (API discovery + extraccion raw)
-  4. Actualizacion periodica de datos
-  5. Consultas y listados
-  6. Tests
-  7. Convenciones operativas
+  2. Setup inicial (API discovery + extraccion raw)
+  3. Actualizacion periodica de datos
+  4. Consultas y listados
+  5. Tests
+  6. Convenciones operativas
 
 
 ================================================================================
@@ -51,22 +59,9 @@ Indice
 
 
 ================================================================================
-2. DEMOS LOCALES (sin tocar Rayen)
+2. SETUP INICIAL (se corre una sola vez o cuando cambia la API)
 ================================================================================
-  Demo end-to-end del flujo Pilita/Teodoro/Pancho/Anita con datos simulados.
-  Util para entender la state machine y el reporte sin tener sesion real.
-
-  Demo completa (state machine + auditoria + reporte):
-    python demo_app.py
-
-  Demo solo del reporte de Anita:
-    python demo_reporte.py
-
-
-================================================================================
-3. SETUP INICIAL (se corre una sola vez o cuando cambia la API)
-================================================================================
-  3.1 Descubrir la API de Rayen
+  2.1 Descubrir la API de Rayen
   --------------------------------
   Genera config/api_config.json a partir de la sesion real. Solo necesario
   si la URL o los headers de la API cambian.
@@ -77,7 +72,7 @@ Indice
   una fecha de prueba, captura la llamada de la API y guarda la config.
 
 
-  3.2 Extraccion raw historica (solo si se necesita regenerar raw_responses/)
+  2.2 Extraccion raw historica (solo si se necesita regenerar raw_responses/)
   --------------------------------------------------------------------------
   Recorre todos los dias habiles 2026-01-01 -> HOY, hace GET a la API por
   cada dia, guarda data/raw_responses/<dd-mm-yyyy>.json + CSV maestro
@@ -93,9 +88,9 @@ Indice
 
 
 ================================================================================
-4. ACTUALIZACION PERIODICA DE DATOS
+3. ACTUALIZACION PERIODICA DE DATOS
 ================================================================================
-  4.1 Llenar DB SQLite completa (lo mas importante para reportes)
+  3.1 Llenar DB SQLite completa (lo mas importante para reportes)
   ---------------------------------------------------------------
   Recorre dias habiles y UPSERT en data/analysis/fichas_completo.db.
   Re-correr es seguro: usa (fecha, hora, nombre) como clave unica.
@@ -114,7 +109,7 @@ Indice
       citas con todos los campos, todos los estados)
 
 
-  4.2 Actualizar SOLO el mes en curso (cron diario recomendado)
+  3.2 Actualizar SOLO el mes en curso (cron diario recomendado)
   -------------------------------------------------------------
   Borra los registros del mes en la DB y los reinserta con datos frescos.
   Pensado para correr todos los dias ~2-3 min.
@@ -124,7 +119,7 @@ Indice
   No acepta --mes ni --anio: siempre usa el mes del sistema.
 
 
-  4.3 Tracking diario de fichas "Iniciado" (backlog real de Yadira)
+  3.3 Tracking diario de fichas "Iniciado" (backlog real de Yadira)
   -----------------------------------------------------------------
   Recorre desde 01-01-2026 (o desde la fecha minima ya en la DB) hasta
   HOY, hace UPSERT por cita_id en data/analysis/tracking.db. Solo
@@ -143,7 +138,7 @@ Indice
     - data/analysis/tracking.db  (tabla fichas + runs, sin PII)
 
 
-  4.4 Tracking completo anual (todos los estados, agregados)
+  3.4 Tracking completo anual (todos los estados, agregados)
   -----------------------------------------------------------
   Variante de tracking_diario que trae TODAS las citas (no solo
   "Iniciado") y guarda agregados por dia en una DB aparte.
@@ -160,9 +155,9 @@ Indice
 
 
 ================================================================================
-5. CONSULTAS Y LISTADOS
+4. CONSULTAS Y LISTADOS
 ================================================================================
-  5.1 Listado de TODAS las fichas del dia (todos los estados)
+  4.1 Listado de TODAS las fichas del dia (todos los estados)
   -----------------------------------------------------------
   Live check: hace login a Rayen, trae la tabla de Pacientes citados
   de HOY, muestra una tabla con todos los campos agrupados por estado.
@@ -174,7 +169,7 @@ Indice
     - data/analysis/fichas_<dd-mm-yyyy>.txt
 
 
-  5.2 Listado de fichas "Iniciado" del dia (deuda clinica de Yadira)
+  4.2 Listado de fichas "Iniciado" del dia (deuda clinica de Yadira)
   -----------------------------------------------------------------
   Live check: igual al anterior pero filtrado a "Iniciado" + cruza
   con tracking.db para mostrar primera/ultima vista.
@@ -186,7 +181,7 @@ Indice
     - data/analysis/listado_<dd-mm-yyyy>.txt
 
 
-  5.3 Informe de fichas abiertas desde la DB local
+  4.3 Informe de fichas abiertas desde la DB local
   ------------------------------------------------
   Lee data/analysis/fichas_completo.db (NO requiere login a Rayen) y
   genera un informe con: total abiertas, detalle por fecha, distribucion
@@ -210,11 +205,11 @@ Indice
     - data/analysis/informe_fichas_abiertas_<periodo>.txt
 
 
-  5.4 Analisis historico desde raw_responses/ (legacy, deprecado)
+  4.4 Analisis historico desde raw_responses/ (legacy, deprecado)
   ---------------------------------------------------------------
   Lee los JSON en data/raw_responses/ y produce un CSV historico con
   agregados por dia. SOLO util si regeneras raw_responses; si no,
-  usa 5.3 que lee la DB.
+  usa 4.3 que lee la DB.
 
     python -m src.analysis.fichas_abiertas_historico
 
@@ -223,7 +218,7 @@ Indice
 
 
 ================================================================================
-6. TESTS
+5. TESTS
 ================================================================================
   Correr toda la suite:
     pytest
@@ -242,7 +237,7 @@ Indice
 
 
 ================================================================================
-7. CONVENCIONES OPERATIVAS
+6. CONVENCIONES OPERATIVAS
 ================================================================================
   Formato de fecha:        dd-mm-yyyy (ej. 22-08-2026)
   Venv:                    .\venv\Scripts\Activate.ps1
@@ -261,9 +256,14 @@ Indice
     data/analysis/informe_*.txt   reportes generados
     data/analysis/fichas_*.txt    listados live
     data/analysis/listado_*.txt   listados live + tracking
-    plantillas/*.txt              plantillas de fichas
-    plantillas/completadas/       fichas ya aprobadas (gitignored)
-    Manuales/*.pdf                manuales clinicos validados
+    data/plantillas/*.txt         plantillas de fichas (INMUTABLES Yadira)
+    data/notas_clinicas/          notas crudas extraidas de Rayen (gitignored)
+    data/fichas_clinicas/         fichas rellenadas por Mortadelo (gitignored)
+    data/anamnesis/               respaldo de anamnesis Yadira (gitignored)
+    data/manuales_md/             manuales clinicos convertidos a .md + index.json
+    manuales/*.pdf                manuales clinicos PDF fuente (sin convertir)
+    data/docs/                    documentacion operativa (HANDOFF, guias, este archivo)
+    data/logs/                    logs del pipeline + screenshots
 
   Que hace cada DB:
     - fichas_completo.db  =  todas las citas, todos los campos, todos los
