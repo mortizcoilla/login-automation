@@ -34,6 +34,7 @@ import pytest
 from src.tools.crear_notas_clinicas import (
     PacienteObjetivo,
     _safe_filename,
+    guardar_info_paciente,
     guardar_nota_clinica,
     parsear_informe,
 )
@@ -861,3 +862,211 @@ class TestGuardarRespaldoAnamnesis:
         )
         contenido = out.read_text(encoding="utf-8")
         assert 'paciente_rayen: "Maciel Vanessa Orellana Astudillo"' in contenido
+
+
+# ---------------------------------------------------------------------------
+# guardar_info_paciente (sesion 2026-09-16 17:45, pedido Yadira)
+# Doc complementario a la nota clinica: TODO lo del paciente MENOS la
+# anamnesis. Vive en data/info_paciente/.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def info_paciente_kwargs(paciente_basico: PacienteObjetivo, tmp_path: Path) -> dict:
+    """Argumentos para guardar_info_paciente (sin anamnesis/motivo)."""
+    return dict(
+        paciente=paciente_basico,
+        identificacion={
+            "RUN": "23.012.222-9",
+            "Edad Cronologica": "17 anos 4 meses 12 dias",
+            "Sexo Biologico": "Masculino",
+        },
+        historial="2024-03-15: control previo sin novedades\n2024-06-20:...",
+        diagnosticos=["I10X Hipertension esencial", "E11X Diabetes tipo 2"],
+        actividades=["Control de presion arterial", "Solicitar HbA1c"],
+        profesionales=["Dr. Lopez (medico cabecera)"],
+        recetas=["Losartan 50mg 1 vez al dia"],
+        laboratorio=["Hemoglobina glicosilada", "Perfil lipidico"],
+        info_paciente_dir=tmp_path / "info_paciente",
+    )
+
+
+class TestGuardarInfoPaciente:
+    """Sesion 2026-09-16 17:45: documento complementario sin anamnesis."""
+
+    def test_crea_archivo_md(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        assert out is not None
+        assert out.exists()
+        assert out.suffix == ".md"
+
+    def test_nombre_archivo_seguido_de_nota_y_anamnesis(
+        self, info_paciente_kwargs: dict, paciente_basico: PacienteObjetivo
+    ) -> None:
+        """Misma convencion que notas_clinicas y anamnesis para matching."""
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        # Nicolas_Ignacio_Piña_Rojas_10-09-2026.md
+        assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
+        # Comparar con notas_clinicas y anamnesis para verificar consistencia
+        nombre_esperado = (
+            f"{_safe_filename(paciente_basico.nombre)}_{paciente_basico.fecha}.md"
+        )
+        assert out.name == nombre_esperado
+
+    def test_no_incluye_seccion_anamnesis(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        """El doc NO debe tener '## Nota clinica de Yadira' ni el motivo."""
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        assert "## Nota clinica de Yadira" not in contenido
+        assert "Motivo de atencion" not in contenido
+
+    def test_incluye_identificacion_completa(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        """El doc SI debe tener el bloque Identificacion."""
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        assert "## Identificacion" in contenido
+        assert "23.012.222-9" in contenido
+        assert "Masculino" in contenido
+
+    def test_incluye_historial(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        assert "## Historial" in contenido
+        assert "control previo" in contenido
+
+    def test_incluye_diagnosticos_actividades_profesionales(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        assert "## Diagnosticos" in contenido
+        assert "I10X Hipertension esencial" in contenido
+        assert "## Actividades" in contenido
+        assert "Control de presion arterial" in contenido
+        assert "## Profesionales" in contenido
+        assert "Dr. Lopez" in contenido
+
+    def test_incluye_recetas_y_laboratorio(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        assert "## Plan - Recetas" in contenido
+        assert "Losartan" in contenido
+        assert "## Plan - Laboratorio" in contenido
+        assert "Hemoglobina glicosilada" in contenido
+
+    def test_frontmatter_tipo_documento_info_paciente(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        """El frontmatter marca este doc como 'info_paciente'."""
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        assert 'tipo_documento: "info_paciente (sin anamnesis)"' in contenido
+
+    def test_seccion_notas_documenta_que_es_complemento(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        """La seccion '## Notas' debe explicar que es complementario."""
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        assert "## Notas" in contenido
+        assert "complementario" in contenido.lower()
+        assert "anamnesis" in contenido.lower()
+
+    def test_panel_no_cargo_flag_visible(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        """Si panel_cargo=False, el flag REVISION aparece en el doc."""
+        out = guardar_info_paciente(
+            paciente=paciente_basico,
+            identificacion={"RUN": "x"},
+            historial="",
+            diagnosticos=[],
+            actividades=[],
+            profesionales=[],
+            recetas=[],
+            laboratorio=[],
+            info_paciente_dir=tmp_path / "info_paciente",
+            panel_cargo=False,
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert "panel del paciente NO CARGO" in contenido
+        assert 'panel_cargo: "false"' in contenido
+
+    def test_estrato_incluido_si_hay(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        out = guardar_info_paciente(
+            **info_paciente_kwargs,
+            estratificacion={"riesgo": "alto", "grupo": "g3"},
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert "## Estratificacion" in contenido
+        assert "alto" in contenido
+
+    def test_campos_vacios_usan_placeholder(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        """Si diagnosticos esta vacio, muestra '_(sin diagnosticos)_'."""
+        out = guardar_info_paciente(
+            paciente=paciente_basico,
+            identificacion={"RUN": "x"},
+            historial="",
+            diagnosticos=[],
+            actividades=[],
+            profesionales=[],
+            recetas=[],
+            laboratorio=[],
+            info_paciente_dir=tmp_path / "info_paciente",
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert "_(sin diagnosticos)_" in contenido
+        assert "_(sin actividades)_" in contenido
+        assert "_(sin recetas)_" in contenido
+
+    def test_crea_directorio_si_no_existe(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        """El directorio destino se crea automaticamente."""
+        destino = tmp_path / "nuevo_dir" / "sub"
+        assert not destino.exists()
+        guardar_info_paciente(
+            paciente=paciente_basico,
+            identificacion={"RUN": "x"},
+            historial="",
+            diagnosticos=[],
+            actividades=[],
+            profesionales=[],
+            recetas=[],
+            laboratorio=[],
+            info_paciente_dir=destino,
+        )
+        assert destino.exists()
+
+    def test_excluye_examenes_adjuntos_y_pautas(
+        self, info_paciente_kwargs: dict
+    ) -> None:
+        """El doc NO debe contener la seccion de examenes adjuntos
+        (esa vive en data/examenes/ ahora, no en info_paciente)."""
+        out = guardar_info_paciente(**info_paciente_kwargs)
+        contenido = out.read_text(encoding="utf-8")
+        # El doc no debe tener '## Examenes adjuntos' como seccion propia
+        # (solo lo menciona en la seccion Notas como referencia).
+        secciones = [
+            line for line in contenido.split("\n")
+            if line.startswith("## ")
+        ]
+        assert "## Examenes adjuntos" not in secciones
+        # Pero si se menciona como contexto, debe estar en la seccion Notas
+        notas_idx = contenido.find("## Notas")
+        assert notas_idx != -1
+        # No debe haber '## Pautas' (tampoco es info del paciente)
+        assert "## Pautas" not in secciones

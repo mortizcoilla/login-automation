@@ -58,6 +58,10 @@ data/notas_clinicas/*/_chrome_dl/
 # Respaldo de anamnesis de Yadira (sesion 2026-09-16 15:14).
 data/anamnesis/
 
+# Info del paciente sin anamnesis (sesion 2026-09-16 17:45, pedido Yadira).
+# Complementario a notas_clinicas/ — tiene todo MENOS la anamnesis cruda.
+data/info_paciente/
+
 # Inbox de fotos de examenes (Yadira via Pilita por Telegram). Local-only,
 # reservado para uso futuro. Sesion 2026-09-16: carpeta movida desde
 # data/notas_clinicas/_adjuntos/ a data/adjuntos/.
