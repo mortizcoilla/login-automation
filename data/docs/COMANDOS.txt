@@ -260,6 +260,8 @@ Indice
     data/notas_clinicas/          notas crudas extraidas de Rayen (gitignored)
     data/fichas_clinicas/         fichas rellenadas por Mortadelo (gitignored)
     data/anamnesis/               respaldo de anamnesis Yadira (gitignored)
+    data/adjuntos/                inbox de fotos de examenes (Yadira/Pilita) — futuro
+    data/examenes/                examenes procesados por vision LLM — futuro
     data/manuales_md/             manuales clinicos convertidos a .md + index.json
     manuales/*.pdf                manuales clinicos PDF fuente (sin convertir)
     data/docs/                    documentacion operativa (HANDOFF, guias, este archivo)

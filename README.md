@@ -113,6 +113,8 @@ Login-Automation/
     ├── notas_clinicas/     ← notas crudas extraidas de Rayen
     ├── fichas_clinicas/    ← fichas rellenadas por Mortadelo
     ├── anamnesis/          ← respaldo de anamnesis Yadira
+    ├── adjuntos/           ← inbox de fotos de examenes (Yadira/Pilita) — futuro
+    ├── examenes/           ← examenes procesados por vision LLM — futuro
     ├── analysis/           ← DBs (fichas_completo.db, tracking*.db) + reportes
     ├── logs/               ← logs del pipeline + screenshots
     ├── prompts/            ← prompts LLM
