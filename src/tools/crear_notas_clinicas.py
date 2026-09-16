@@ -2479,6 +2479,114 @@ def _rellenar_bloque_en_nota(
     nota_path.write_text("\n".join(out), encoding="utf-8")
 
 
+def guardar_marker_extraccion_fallida(
+    paciente: PacienteObjetivo,
+    notas_dir: Path,
+    panel_cargo: bool,
+    extraccion_parcial: dict | None = None,
+) -> Path:
+    """Escribe un archivo .md MARKER (no es una nota clinica) cuando la
+    extraccion de anamnesis fallo.
+
+    Sesion 2026-09-16 14:38 (regla Yadira, cardinalidad): la cantidad
+    de archivos en `notas_clinicas/` debe coincidir con la cantidad de
+    fichas en el informe de fichas abiertas. Si la extraccion falla
+    (panel no cargo, JS no encontro `li#anamnesis`, timeout), se escribe
+    un archivo marker con `extraccion_fallida: "true"` que NO es una
+    nota clinica valida pero SI ocupa el slot del paciente en la
+    carpeta. Yadira ve "EXTRACCION FALLIDA" y sabe que tiene que
+    re-correr o revisar manualmente.
+
+    Frontmatter adicional vs `guardar_nota_clinica`:
+    - `extraccion_fallida: "true"` -> marca el archivo como no-nota.
+    - `extraccion_parcial`: que se extrajo antes de fallar
+      (identificacion_campos, historial_caracteres, etc.).
+
+    El body tiene un banner grande de error, no placeholders por seccion.
+    """
+    _log = logging.getLogger("crear_notas_clinicas")
+    nombre_archivo = (
+        f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
+    )
+    out_path = notas_dir / nombre_archivo
+
+    md = ["---"]
+    md.append(f'paciente: "{paciente.nombre}"')
+    md.append(f'title: "EXTRACCION FALLIDA - {paciente.nombre}"')
+    md.append(f'fecha_atencion: "{paciente.fecha}"')
+    md.append(f'tipo_atencion: "{paciente.tipo_atencion}"')
+    if paciente.nombre_rayen and paciente.nombre_rayen != paciente.nombre:
+        md.append(f'paciente_rayen: "{paciente.nombre_rayen}"')
+    md.append('fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"')
+    md.append('source_url: "https://clinico.rayenaps.cl/"')
+    md.append(f'fecha_extraccion: "{_now_iso()}"')
+    md.append(f'panel_cargo: "{str(panel_cargo).lower()}"')
+    md.append('extraccion_fallida: "true"')
+    md.append("---")
+    md.append("")
+    md.append(f"# EXTRACCION FALLIDA - {paciente.nombre}")
+    md.append("")
+    md.append(
+        "> **Este archivo NO es una nota clinica valida.** Es un marker "
+        "de error generado por `crear_notas_clinicas.py` cuando la "
+        "extraccion de la anamnesis fallo (regla Yadira 2026-09-16: la "
+        "anamnesis SIEMPRE existe en Rayen, si no se extrajo es un bug "
+        "del extractor)."
+    )
+    md.append("")
+    md.append(
+        "> **Accion requerida:** revisar manualmente en Rayen APS. Si "
+        "la sesion estaba inestable, re-correr `crear_notas_clinicas` "
+        "cuando Rayen este fluido."
+    )
+    md.append("")
+    if extraccion_parcial:
+        md.append("## Datos que SI se pudieron extraer")
+        md.append("")
+        if extraccion_parcial.get("identificacion_campos", 0) > 0:
+            md.append(
+                f"- Identificacion: {extraccion_parcial['identificacion_campos']} campos"
+            )
+        if extraccion_parcial.get("historial_caracteres", 0) > 0:
+            md.append(
+                f"- Historial: {extraccion_parcial['historial_caracteres']} caracteres"
+            )
+        if extraccion_parcial.get("estratificacion_grupo"):
+            md.append(
+                f"- Estratificacion ECICEP: {extraccion_parcial['estratificacion_grupo']}"
+            )
+        md.append("")
+
+    md.append("## Diagnostico del fallo")
+    md.append("")
+    md.append(
+        "- El extractor `extraer_anamnesis()` retorno string vacio."
+    )
+    md.append(
+        "- La anamnesis SIEMPRE existe en Rayen (regla Yadira). Si el "
+        "extractor no la encontró, es porque:"
+    )
+    md.append("  1. La sesion de Rayen estaba inestable / timeout")
+    md.append("  2. El selector CSS `li#anamnesis` no estaba en el DOM al momento de la query")
+    md.append("  3. La pagina se navego antes de que el panel terminara de cargar")
+    md.append("")
+    md.append(
+        "Revisar `login_automation.log` y los screenshots en "
+        "`logs/screenshots/` para la corrida correspondiente."
+    )
+    md.append("")
+
+    notas_dir.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(md), encoding="utf-8")
+    _log.warning(
+        f"[crear_notas] {paciente.nombre}: extraccion FALLIDA. "
+        f"Marker escrito en {out_path.name} "
+        f"(cardinalidad: 1 archivo por paciente del informe). "
+        f"Re-intentar en proxima corrida con Rayen estable."
+    )
+    return out_path
+
+
 def validar_nota_clinica(nota_path: Path) -> list[str]:
     """Lee un .md de nota clinica y retorna la lista de bloques que estan
     vacios (es decir, bloques que requieren re-fetch).
@@ -2985,20 +3093,14 @@ def main() -> int:
                 }
 
                 # Paso 4.3
-                out_path = guardar_nota_clinica(
-                    paciente, identificacion, historial, anamnesis,
-                    diagnosticos, actividades, profesionales, pautas,
-                    examenes, otros_items, estratificacion, motivo_consulta,
-                    recetas, laboratorio, notas_dir,
-                    panel_cargo=paciente.panel_cargo,
-                )
-                if out_path is None:
-                    logger.warning(
-                        f"[crear_notas] {paciente.nombre}: no se pudo guardar."
+                try:
+                    out_path = guardar_nota_clinica(
+                        paciente, identificacion, historial, anamnesis,
+                        diagnosticos, actividades, profesionales, pautas,
+                        examenes, otros_items, estratificacion,
+                        motivo_consulta, recetas, laboratorio, notas_dir,
+                        panel_cargo=paciente.panel_cargo,
                     )
-                    stats["errores"] += 1
-                    pinfo.estado = "error"
-                else:
                     # Paso 4.4: VALIDACION POST-WRITE + RE-FETCH DE HUECOS.
                     # Regla Yadira 2026-09-16 14:14: despues de escribir,
                     # el script verifica que todos los bloques tengan
@@ -3049,7 +3151,31 @@ def main() -> int:
 
                     stats["guardados"] += 1
                     pinfo.estado = "ok"
-                    logger.info(f"[crear_notas] {paciente.nombre} OK -> {out_path.name}")
+                    logger.info(
+                        f"[crear_notas] {paciente.nombre} OK -> "
+                        f"{out_path.name}"
+                    )
+                except ValueError as ve:
+                    # Regla Yadira 2026-09-16 14:38 (cardinalidad): si la
+                    # extraccion de anamnesis fallo, NO dejamos la
+                    # carpeta sin archivo para ese paciente. Escribimos
+                    # un marker HONESTO sobre el estado: NO es una nota
+                    # clinica valida, pero ocupa el slot del paciente
+                    # en la carpeta para que la cardinalidad 1-a-1 con
+                    # el informe de fichas abiertas se mantenga.
+                    stats["errores"] += 1
+                    pinfo.estado = "extraccion_fallida"
+                    pinfo.errores.append(f"ValueError: {ve!r}")
+                    marker_path = guardar_marker_extraccion_fallida(
+                        paciente, notas_dir,
+                        panel_cargo=paciente.panel_cargo,
+                        extraccion_parcial=pinfo.extraccion,
+                    )
+                    logger.warning(
+                        f"[crear_notas] {paciente.nombre}: extraccion "
+                        f"fallida. Marker escrito en {marker_path.name} "
+                        f"(cardinalidad mantenida)."
+                    )
 
             except Exception as e:  # noqa: BLE001
                 stats["errores"] += 1
