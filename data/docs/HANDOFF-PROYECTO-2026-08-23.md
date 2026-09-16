@@ -74,7 +74,7 @@ C:\Workspace\Login-Automation\
 │   ├── selectors.json                   ← selectores CSS de la UI de Rayen
 │   └── api_config.json
 ├── main.py                              ← entry point original (login + listado)
-└── requirements.txt
+└── pyproject.toml                       ← deps (runtime + [dev]) + tool config (ruff/mypy/pytest)
 ```
 
 ---

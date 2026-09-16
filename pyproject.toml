@@ -4,6 +4,21 @@ version = "0.2.0"
 description = "Automatizacion de login y gestion de plantillas para Rayen APS"
 requires-python = ">=3.10"
 readme = "README.md"
+dependencies = [
+    "selenium>=4.27.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.10.0",
+    "types-requests>=2.31.0",
+]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
