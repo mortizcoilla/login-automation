@@ -530,7 +530,7 @@ class TestRegressionGuardNotasClinicas:
     por el LLM' (sin anamnesis real) o archivos sin la seccion de
     Yadira (legacy)."""
 
-    NOTAS_DIR = Path(__file__).resolve().parents[1] / "notas_clinicas"
+    NOTAS_DIR = Path(__file__).resolve().parents[1] / "data" / "notas_clinicas"
 
     def test_no_hay_notas_con_placeholder_yadira_viejo(
         self, tmp_path: Path

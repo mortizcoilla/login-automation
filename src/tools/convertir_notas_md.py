@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-NOTAS_DIR = ROOT / "notas_clinicas"
+NOTAS_DIR = ROOT / "data" / "notas_clinicas"
 
 # Mapeo de "=== INICIO X ===" / "=== FIN X ===" -> header markdown "## X".
 # Mantiene el orden del archivo original (los manuales tambien respetan

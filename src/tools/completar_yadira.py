@@ -42,9 +42,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-NOTAS_DIR = ROOT / "notas_clinicas"
-NOTAS_COMPLETADAS_DIR = ROOT / "notas_clinicas_completadas"
-MANUALES_DIR = ROOT / "manuales_md"
+NOTAS_DIR = ROOT / "data" / "notas_clinicas"
+NOTAS_COMPLETADAS_DIR = ROOT / "data" / "notas_clinicas_completadas"
+MANUALES_DIR = ROOT / "data" / "manuales_md"
 
 
 def leer_bloques_nota(nota_md: str) -> dict[str, str]:

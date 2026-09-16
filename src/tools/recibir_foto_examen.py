@@ -64,7 +64,7 @@ from typing import Optional
 ROOT = Path(__file__).resolve().parents[2]
 
 # Destino por convencion del proyecto
-DESTINO_DIR = ROOT / "notas_clinicas" / "_adjuntos"
+DESTINO_DIR = ROOT / "data" / "notas_clinicas" / "_adjuntos"
 
 # Extensiones de imagen aceptadas (mismas que IMAGE_EXTENSIONS en generar_ficha_con_llm.py)
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"}

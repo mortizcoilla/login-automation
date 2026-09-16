@@ -327,7 +327,7 @@ MAX_FICHAS_POR_SESION = 8
 
 # ---- Paso 4.2.b: verificar adjuntos (SIEMPRE, aunque no haya nada) ----
 
-ADJUNTOS_DIR = ROOT / "notas_clinicas" / "_adjuntos"
+ADJUNTOS_DIR = ROOT / "data" / "notas_clinicas" / "_adjuntos"
 # Directorio que Chrome usa para bajar archivos cuando se hace click
 # en un attachment. Se setea en las prefs de Chrome (browser_automation.py).
 # Mientras la descarga esta en curso, Chrome deja un .crdownload. Cuando
@@ -2161,7 +2161,7 @@ def _safe_filename(s: str) -> str:
     return s
 
 
-ANAMNESIS_BACKUP_DIR = ROOT / "anamnesis"
+ANAMNESIS_BACKUP_DIR = ROOT / "data" / "anamnesis"
 
 
 def guardar_respaldo_anamnesis(
@@ -3014,7 +3014,7 @@ def main() -> int:
         logger.info("[crear_notas] Login + navegacion OK.")
 
         # 4. Por cada paciente: 4.1 (abrir ficha) + 4.2 (extraer) + 4.3 (guardar)
-        notas_dir = ROOT / "notas_clinicas"
+        notas_dir = ROOT / "data" / "notas_clinicas"
         for i, paciente in enumerate(pacientes, 1):
             t_inicio = _time.time()
             warnings_collector.reset()  # snapshot limpio por paciente

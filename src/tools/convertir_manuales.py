@@ -34,8 +34,8 @@ from pathlib import Path
 from src.tools.pdf_a_md import extract
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-MANUALES_DIR = ROOT / "manuales"
-OUTPUT_DIR = ROOT / "manuales_md"
+MANUALES_DIR = ROOT / "data" / "manuales"
+OUTPUT_DIR = ROOT / "data" / "manuales_md"
 INDEX_PATH = OUTPUT_DIR / "index.json"
 
 # Por defecto CIE-10 y DSM-5 (enciclopedias) quedan fuera — son >30MB y

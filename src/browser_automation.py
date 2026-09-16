@@ -39,7 +39,7 @@ ByType = str
 # Al final de una corrida exitosa + tests OK, el script
 # `src.tools.limpiar_screenshots` borra los archivos.
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-SCREENSHOTS_DIR = ROOT_DIR / "logs" / "screenshots"
+SCREENSHOTS_DIR = ROOT_DIR / "data" / "logs" / "screenshots"
 
 
 def _selector(by_str: str, value: str) -> tuple[ByType, str]:

@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Optional
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-NOTAS_DIR = BASE_DIR / "notas_clinicas"
+NOTAS_DIR = BASE_DIR / "data" / "notas_clinicas"
 
 from src.analysis.informe_paths import informe_mes_actual_path
 

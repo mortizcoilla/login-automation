@@ -113,7 +113,7 @@ Write-Host "  Pipeline completo." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  DB regenerada:        data/analysis/fichas_completo.db" -ForegroundColor Gray
 Write-Host "  Informe del mes:      data/analysis/informe_fichas_abiertas_$(Get-Date -Format 'MM-yyyy').txt" -ForegroundColor Gray
-$NotasDir = Join-Path $RepoRoot "notas_clinicas"
+$NotasDir = Join-Path $RepoRoot "data\notas_clinicas"
 $CountNotas = (Get-ChildItem -Path $NotasDir -Filter "*.txt" -ErrorAction SilentlyContinue | Measure-Object).Count
 Write-Host "  Notas clinicas (.txt): $CountNotas archivos en notas_clinicas/" -ForegroundColor Gray
 Write-Host ""

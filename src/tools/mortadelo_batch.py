@@ -89,8 +89,8 @@ from src.mortadelo.skills.nino_sano.mapping import (
 )
 
 
-FICHAS_ABIERTAS = ROOT / "notas_clinicas"
-FICHAS_MODIFICADAS = ROOT / "fichas_clinicas"  # renombrado desde "fichas_modificadas" 2026-08-26
+FICHAS_ABIERTAS = ROOT / "data" / "notas_clinicas"
+FICHAS_MODIFICADAS = ROOT / "data" / "fichas_clinicas"  # renombrado desde "fichas_modificadas" 2026-08-26
 # Constante INTENCIONAL: este script deprecated leia el informe ANUAL
 # (no mensual). Como ya no se corre en produccion, queda como
 # referencia historica. El flujo mensual activo va por

@@ -355,7 +355,7 @@ def cargar_plantilla_para_tipo(
     canonica = resolver_plantilla(tipo_atencion, edad_meses=edad_meses)
     if not canonica:
         return None
-    ruta = ROOT / "plantillas" / f"{canonica}.txt"
+    ruta = ROOT / "data" / "plantillas" / f"{canonica}.txt"
     if not ruta.exists():
         return None
     return ruta.read_text(encoding="utf-8")
@@ -1956,7 +1956,7 @@ def guardar_ficha(contenido: str, nombre_salida: str, output_dir: Optional[Path]
     """Guarda la ficha en output_dir (o fichas_clinicas/ por default). NO sobrescribe.
     Devuelve la ruta si guardo, None si ya existia.
     """
-    out_dir = output_dir if output_dir is not None else (ROOT / "fichas_clinicas")
+    out_dir = output_dir if output_dir is not None else (ROOT / "data" / "fichas_clinicas")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / nombre_salida
     if out_path.exists():
@@ -2110,7 +2110,7 @@ def procesar_nota(
     # Pre-check: si la ficha ya existe, saltamos ANTES del LLM (ahorra cuota).
     # guardar_ficha() tambien valida al final, pero queremos evitar la llamada
     # al LLM entera cuando sabemos que el output ya esta en disco.
-    _output_dir = output_dir or (ROOT / "fichas_clinicas")
+    _output_dir = output_dir or (ROOT / "data" / "fichas_clinicas")
     _existing = _output_dir / nota_path.name
     if _existing.exists():
         log(f"SKIP (pre-check): ficha ya existe: {nota_path.name}")
@@ -2187,7 +2187,7 @@ def procesar_nota(
     # opcionalmente un .md de examenes si la nota lo dispara con
     # `** mortadelo examenes adjuntos`). NO logueamos nada en vision — no es
     # noticia que no exista.
-    adjuntos_dir = ROOT / "notas_clinicas" / "_adjuntos"
+    adjuntos_dir = ROOT / "data" / "notas_clinicas" / "_adjuntos"
     if skip_vision and not dry_run:
         # Vision no existe. Ignorar el folder de adjuntos por completo, en silencio.
         examenes_adjuntos = []
@@ -2433,7 +2433,7 @@ def main() -> int:
     parser.add_argument(
         "--dir",
         type=str,
-        default=str(ROOT / "notas_clinicas"),
+        default=str(ROOT / "data" / "notas_clinicas"),
         help="Directorio de notas clinicas (default: notas_clinicas/).",
     )
     parser.add_argument(
@@ -2580,7 +2580,7 @@ def main() -> int:
             # tipo = parts[2].strip()  # no lo necesitamos aqui, sale del informe
             if fecha and nombre_norm:
                 fname = f"{nombre_norm}_{fecha}.txt"
-                fpath = ROOT / "notas_clinicas" / fname
+                fpath = ROOT / "data" / "notas_clinicas" / fname
                 if fpath.exists():
                     notas_a_procesar.append(fpath)
                 else:
