@@ -346,8 +346,7 @@ class TestGuardarNotaClinicaConEstratificacion:
         )
         assert out is not None
         texto = out.read_text(encoding="utf-8")
-        assert "=== INICIO ESTRATIFICACION ECICEP ===" not in texto
-        assert "=== FIN ESTRATIFICACION ECICEP ===" not in texto
+        assert "## Estratificacion ECICEP" not in texto
 
     def test_omite_seccion_si_dict_vacio(
         self,
@@ -376,7 +375,7 @@ class TestGuardarNotaClinicaConEstratificacion:
         )
         assert out is not None
         texto = out.read_text(encoding="utf-8")
-        assert "=== INICIO ESTRATIFICACION ECICEP ===" not in texto
+        assert "## Estratificacion ECICEP" not in texto
 
     def test_no_sobrescribe_archivo_existente(
         self,

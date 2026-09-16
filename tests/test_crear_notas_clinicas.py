@@ -171,8 +171,12 @@ class TestGuardarNotaClinicaEstructura:
     ) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        # Anamnesis dentro del bloque Nota clinica de Yadira.
-        assert "Paciente consulta por control" in contenido
+        # Sesion 2026-09-16: el bloque Yadira queda con PLACEHOLDER (sin
+        # anamnesis). El llenado via LLM ocurre en otro script
+        # (src.tools.completar_yadira). Solo se guarda el motivo como
+        # blockquote + el placeholder para que el LLM sepa donde insertar.
+        assert "Paciente consulta por control" not in contenido
+        assert "bloque a completar por el LLM" in contenido
 
     def test_motivo_consulta_como_blockquote(
         self, kwargs_minimos: dict

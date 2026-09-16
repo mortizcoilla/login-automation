@@ -2284,10 +2284,17 @@ def guardar_nota_clinica(
 
     md.append("## Nota clinica de Yadira")
     md.append("")
+    # Sesion 2026-09-16: el bloque de Yadira NO se llena aca. La anamnesis
+    # queda en el archivo original de Rayen (que el LLM leera para inferir
+    # el contenido). El script `src.tools.completar_yadira` toma este .md,
+    # invoca al LLM con manuales + internet + conocimiento medico, y
+    # escribe la version completada en notas_clinicas_completadas/.
     if motivo_consulta:
         md.append(f"> **Motivo de atencion:** {motivo_consulta}")
         md.append("")
-    md.append(anamnesis)
+    md.append(
+        "_(bloque a completar por el LLM en `notas_clinicas_completadas/`)_"
+    )
     md.append("")
 
     md.append("## Diagnosticos")

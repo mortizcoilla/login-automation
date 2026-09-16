@@ -42,7 +42,111 @@ INDEX_PATH = OUTPUT_DIR / "index.json"
 # consumen contexto del LLM sin aportar valor practico para una consulta
 # clinica habitual. Si los necesitas, --max-size 200.
 DEFAULT_MAX_SIZE_MB = 100
+# Mapping de titulos semanticos para que el LLM pueda buscar por contenido.
+# Sesion 2026-09-16: los titulos por defecto del PDF (primera linea del
+# frontmatter) son genericos ("Capitulo1", "3", "Investigacion original ...")
+# y no le sirven al LLM para retrieval. Este dict los reemplaza con titulos
+# descriptivos que incluyen la patologia / tema / ano / organismo.
+# Patrones no listados usan el titulo detectado (fallback).
+MANUAL_TITLES: dict[str, str] = {
+    # GPC MINSAL (Guias de Practica Clinica)
+    "08_RE_GPC-EPOC-2019_v3":
+        "Reporte de Evaluacion - GPC EPOC (Enfermedad Pulmonar Obstructiva Cronica) MINSAL 2019 v3",
+    "2024.04.18_HIPERTENSION-ARTERIAL-EN-INFANCIA-Y-ADOLESCENCIA_v3":
+        "Hipertension Arterial en Infancia y Adolescencia - Guia MINSAL 2024 v3",
+    "GPC_alcohol_drogas_menores20_2013":
+        "GPC Alcohol y Drogas en Menores de 20 Anos - MINSAL 2013",
+    "GPC_depresion_2013":
+        "GPC Depresion en Personas de 15 Anos y Mas - MINSAL 2013",
+    "GPC_trastorno_ansioso_2018":
+        "GPC Trastorno de Ansiedad - MINSAL 2018",
+    "GUIA-CLINICA-DEPRESION-15-Y-MAS":
+        "Guia Clinica Depresion en Personas de 15 Anos y Mas - MINSAL",
+    "GuiaHTA":
+        "Guia Clinica Hipertension Arterial - MINSAL",
+    "Gu\u00eda de Pr\u00e1ctica Cl\u00ednica \u2014 Hipertensi\u00f3n Arterial Primaria o Esencial en personas de 15 a\u00f1os y m\u00e1s":
+        "Guia de Practica Clinica - Hipertension Arterial Primaria o Esencial en personas de 15 anos y m\u00e1s - MINSAL",
+    "clinica-diabetes-mellitus-tipo-2-chile":
+        "Guia Clinica Diabetes Mellitus Tipo 2 - Chile (MINSAL)",
+    "epoc-gold-2026":
+        "Estrategia GOLD 2026 - EPOC (Global Initiative for Chronic Obstructive Lung Disease)",
+    "OT-PLANIFIC-Y-PROGRAMAC-2025-en-web":
+        "Orientaciones Tecnicas Planificacion y Programacion en Red 2025 - MINSAL",
+    "OT_ Instrumento de Evaluaci\u00f3n y certificaci\u00f3n del Modelo 2024_ v22012024":
+        "Instrumento de Evaluacion y Certificacion del Modelo de Atencion 2024 v2 - MINSAL",
 
+    # ECICEP (Estrategia de Cuidado Integral Centrado en las Personas)
+    "DOC-ECICEP":
+        "Documento ECICEP - Estrategia de Cuidado Integral Centrado en las Personas - MINSAL",
+    "Lectura - Material Marco Referencial ECICEP 1":
+        "Material Marco Referencial ECICEP - Lectura 1 - MINSAL",
+
+    # Norma Tecnica Supervision Nino 0-9 anos (los 4 capitulos)
+    "Capitulo-1-Web":
+        "Capitulo 1 - Antecedentes Sociales y de Salud - Norma Tecnica Supervision Salud Integral Ninos 0-9 Anos - MINSAL 2021",
+    "Capitulo-2-Web":
+        "Capitulo 2 - Componentes Transversales y Especificos - Norma Tecnica Supervision Salud Integral Ninos 0-9 Anos - MINSAL 2021",
+    "Capitulo-3-Web":
+        "Capitulo 3 - Supervision de Salud Integral Infantil - Norma Tecnica Supervision Salud Integral Ninos 0-9 Anos - MINSAL 2021",
+    "Capitulo-4-Web":
+        "Capitulo 4 - Instrumentos para la Supervision - Norma Tecnica Supervision Salud Integral Ninos 0-9 Anos - MINSAL 2021",
+
+    # Calendario / Inmunizaciones
+    "CALENDARIO-INMUNIZACIONES-2026":
+        "Calendario Nacional de Inmunizaciones 2026 - MINSAL (Programa Nacional de Inmunizaciones - PNI)",
+
+    # Salud mental
+    "construyendo_salud_mental_2024":
+        "Construyendo Salud Mental 2024 - Documento MINSAL",
+    "plan_nacional_sm_2017_2025":
+        "Plan Nacional de Salud Mental 2017-2025 - MINSAL Chile",
+    "programa_nacional_prevencion_suicidio_2013":
+        "Programa Nacional de Prevencion del Suicidio 2013 - MINSAL",
+    "rpe11_programacion_sm_aps_2021":
+        "Orientaciones Tecnicas Programacion Salud Mental APS 2021 - MINSAL (RPE 11)",
+
+    # Operativos / Estrategias
+    "Manual-Operativo-IHAN_2025.2":
+        "Manual Operativo IHAN (Iniciativa Hospital Amigo del Nino y de la Nina) 2025 v2 - MINSAL",
+    "Marco-operativo_-Estrategia-de-cuidado-integral-centrado-en-las-personas":
+        "Marco Operativo - Estrategia de Cuidado Integral Centrado en las Personas - MINSAL",
+    "ley_21331_guia_diprece_2022":
+        "Guia Ley 21.331 (Ley de Buen Trato y Cuidado Digno) - DIPRECE 2022 - MINSAL",
+    "Orientaciones-2019-":
+        "Orientaciones Tecnicas 2019 - MINSAL",
+
+    # Codigos / clasificaciones
+    "CIE-10_2018_VOL1":
+        "CIE-10 (Clasificacion Internacional de Enfermedades, 10a ed.) Volumen 1 - MINSAL/OMS 2018",
+    "CIE-10_2018_VOL2":
+        "CIE-10 (Clasificacion Internacional de Enfermedades, 10a ed.) Volumen 2 - MINSAL/OMS 2018",
+    "CIE-10_2018_VOL3":
+        "CIE-10 (Clasificacion Internacional de Enfermedades, 10a ed.) Volumen 3 - MINSAL/OMS 2018",
+    "dsm5":
+        "DSM-5 (Manual Diagnostico y Estadistico de los Trastornos Mentales, 5a ed.) - APA",
+
+    # Articulos / papers
+    "articles-655_recurso_1":
+        "Articulo Cientifico - Recurso Academico 1",
+    "articulo-de-revision-1":
+        "Articulo de Revision 1",
+    "e160":
+        "Investigacion Original Pan American Journal - e160",
+    "es":
+        "Investigacion Original Pan American Journal - es",
+    "RSC-Vol2-Cap3":
+        "Revista Salud Comunitaria UANDES Vol. 2 - Capitulo 3 - 2024",
+    "S0300893218306791":
+        "Articulo Cientifico (Elsevier identifier S0300893218306791)",
+
+    # Informes tecnicos
+    "Sg-10_Informe-de-B\u00fasqueda-y-sintesis-de-efectividad_GPC-EPOC-2019":
+        "Informe de Busqueda y Sintesis de Efectividad - GPC EPOC 2019 (Sg-10) - MINSAL",
+    "T1_informe-busqueda-sintesis-efectividad-GPC-HTA-2018":
+        "Informe T1 - Busqueda y Sintesis de Efectividad - GPC HTA 2018 - MINSAL",
+    "T4_Informe-de-B\u00fasqueda-y-s\u00edntesis-de-VyP-de-los-pacientes_GPC-HTA-2018":
+        "Informe T4 - Busqueda y Sintesis de Valores y Preferencias de Pacientes - GPC HTA 2018 - MINSAL",
+}
 
 def convertir_uno(
     pdf_path: Path,
@@ -50,6 +154,7 @@ def convertir_uno(
     source_url: str = "",
     year: str | None = None,
     force: bool = False,
+    title_override: str | None = None,
 ) -> Path | None:
     """Convierte un PDF a markdown. Devuelve el path del .md o None si se skipeo.
 
@@ -66,7 +171,13 @@ def convertir_uno(
     target_dir.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     try:
-        extract(pdf_path, target_md, source_url=source_url, year=year)
+        extract(
+            pdf_path,
+            target_md,
+            source_url=source_url,
+            year=year,
+            title_override=title_override,
+        )
     except Exception as e:
         logging.error(f"  ERROR {pdf_path.name}: {e}")
         return None
@@ -190,12 +301,15 @@ def main() -> int:
             if str(y) in pdf.name:
                 year = str(y)
                 break
+        # Titulo del mapping si esta disponible, sino None (usa el detectado).
+        titulo_override = MANUAL_TITLES.get(pdf.stem)
         result = convertir_uno(
             pdf,
             OUTPUT_DIR,
             source_url=args.source_url,
             year=year,
             force=args.force,
+            title_override=titulo_override,
         )
         if result is not None:
             convertidos += 1

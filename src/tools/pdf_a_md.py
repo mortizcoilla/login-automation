@@ -65,7 +65,7 @@ def detect_metadata(pdf_path: Path) -> dict:
     return {"title": title, "first_lines": lines}
 
 
-def extract(pdf_path: Path, output_md: Path, *, source_url: str, year: str | None = None) -> None:
+def extract(pdf_path: Path, output_md: Path, *, source_url: str, year: str | None = None, title_override: str | None = None) -> None:
     with pdfplumber.open(pdf_path) as pdf:
         total = len(pdf.pages)
         print(f"[pdf_a_md] {pdf_path.name}: {total} paginas", flush=True)
@@ -80,9 +80,10 @@ def extract(pdf_path: Path, output_md: Path, *, source_url: str, year: str | Non
 
     # Frontmatter
     meta = detect_metadata(pdf_path)
+    title_final = title_override if title_override else meta["title"]
     frontmatter_lines = [
         "---",
-        f'title: "{meta["title"]}"',
+        f'title: "{title_final}"',
         f"source: {pdf_path.name}",
         f"source_url: {source_url}",
         f"pages: {total}",
