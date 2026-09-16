@@ -2187,7 +2187,13 @@ def guardar_nota_clinica(
     LLM y los scripts que parsean manuales trabajen sobre una sola
     estructura.
 
-    NO sobrescribe si el archivo ya existe.
+    Sesion 2026-09-16 14:14 (regla Yadira): el script SIEMPRE escribe
+    el archivo (sobrescribe si existe). El script NO depende de la
+    existencia de un archivo previo para arrancar ni para decidir que
+    hacer; cada corrida arranca fresca desde Rayen. Si la extraccion
+    falla (anamnesis vacia, panel no cargo), ValueError y el archivo
+    NO se escribe en absoluto (eso lo cubre el try/except del pipeline
+    y el test de rechazo correspondiente).
 
     Estructura del .md generado:
         ---
@@ -2250,12 +2256,13 @@ def guardar_nota_clinica(
         f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
     )
     out_path = notas_dir / nombre_archivo
-    if out_path.exists():
-        logger = logging.getLogger("crear_notas_clinicas")
-        logger.warning(
-            f"[crear_notas] El archivo {out_path} ya existe. NO se sobrescribe."
-        )
-        return None
+    # Sesion 2026-09-16 14:14 (regla Yadira): el script NO depende de
+    # la existencia de un archivo anterior. Si el archivo ya existe
+    # (corrida previa que escribio la misma paciente/fecha), SE
+    # SOBREESCRIBE con la extraccion nueva. La diferencia con versiones
+    # anteriores: esto es overwrite NATURAL de una nueva corrida, NO
+    # una estrategia "leer archivo viejo para mejorar". Si la extraccion
+    # falla, NO se reescribe (eso lo maneja el try/except del pipeline).
     notas_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- Frontmatter YAML ----
@@ -2399,6 +2406,208 @@ def _now_iso() -> str:
     """Helper: timestamp ISO 8601 al segundo. Usado para el frontmatter."""
     from datetime import datetime
     return datetime.now().isoformat(timespec="seconds")
+
+
+def _rellenar_bloque_en_nota(
+    nota_path: Path, bloque: str, contenido_nuevo
+) -> None:
+    """Sobrescribe el contenido del bloque dado en el archivo de la nota.
+
+    Sesion 2026-09-16 14:14 (regla Yadira): si validar_nota_clinica
+    detecta un bloque faltante y re_extraer_bloque() trajo contenido,
+    esta funcion actualiza SOLO ese bloque, manteniendo el resto del
+    archivo intacto. Es el "fix" parcial post-write.
+
+    Args:
+        nota_path: path al .md a actualizar.
+        bloque: nombre del bloque (header `## <nombre>`).
+        contenido_nuevo: contenido nuevo del bloque. Puede ser:
+            - str (para bloques de texto como anamnesis, historial,
+              motivo consulta)
+            - list[str] (para bloques de bullets como diagnosticos,
+              actividades, recetas)
+            - dict[str, str] (para bloques clave-valor como
+              identificacion)
+        Se serializa al formato markdown apropiado.
+    """
+    contenido = nota_path.read_text(encoding="utf-8")
+    lineas = contenido.splitlines()
+    out: list[str] = []
+    en_bloque = False
+    bloque_reemplazado = False
+
+    # Serializar contenido_nuevo al formato markdown apropiado.
+    lineas_nuevas: list[str] = []
+    if isinstance(contenido_nuevo, str):
+        if contenido_nuevo.strip():
+            lineas_nuevas.append(contenido_nuevo.strip())
+            lineas_nuevas.append("")
+    elif isinstance(contenido_nuevo, list):
+        for item in contenido_nuevo:
+            lineas_nuevas.append(f"- {item}")
+        if lineas_nuevas:
+            lineas_nuevas.append("")
+    elif isinstance(contenido_nuevo, dict):
+        for k, v in contenido_nuevo.items():
+            lineas_nuevas.append(f"- **{k}:** {v}")
+        if lineas_nuevas:
+            lineas_nuevas.append("")
+
+    for i, line in enumerate(lineas):
+        if line.startswith(f"## {bloque}"):
+            en_bloque = True
+            out.append(line)
+            out.append("")
+            out.extend(lineas_nuevas)
+            bloque_reemplazado = True
+            # Saltar hasta el siguiente header.
+            j = i + 1
+            while j < len(lineas) and not lineas[j].startswith("## "):
+                j += 1
+            continue
+        if en_bloque:
+            if line.startswith("## "):
+                en_bloque = False
+                out.append(line)
+            # Si estamos en el bloque siendo reemplazado, saltamos.
+            continue
+        out.append(line)
+
+    if not bloque_reemplazado:
+        return  # bloque no encontrado, no hacer nada
+
+    nota_path.write_text("\n".join(out), encoding="utf-8")
+
+
+def validar_nota_clinica(nota_path: Path) -> list[str]:
+    """Lee un .md de nota clinica y retorna la lista de bloques que estan
+    vacios (es decir, bloques que requieren re-fetch).
+
+    Sesion 2026-09-16 14:14 (regla Yadira): despues de escribir la nota,
+    el script valida que todos los bloques tengan contenido. Si falta
+    alguno, va a buscarlo a Rayen y sobrescribe el archivo con el bloque
+    completado.
+
+    Bloques requeridos (si el extractor fallo, son huecos a re-fetch):
+    - Identificacion
+    - Historial de atenciones
+    - Nota clinica de Yadira (anamnesis cruda)
+    - Diagnosticos
+    - Actividades
+    - Profesionales
+
+    Bloques opcionales (pueden estar vacios legitimamente):
+    - Plan - Recetas (consultas sin prescripcion)
+    - Plan - Laboratorio (consultas sin ordenes)
+    - Estratificacion ECICEP (solo si paciente estratificado)
+
+    Returns:
+        Lista de nombres de bloques vacios (sin contenido).
+        Lista vacia = OK.
+    """
+    contenido = nota_path.read_text(encoding="utf-8")
+    faltantes: list[str] = []
+
+    # Cada bloque: delimitar por "## " header y chequear contenido hasta
+    # el siguiente "## " (o fin de archivo).
+    bloques = {}
+    nombre_actual = None
+    contenido_actual: list[str] = []
+    en_frontmatter = True
+
+    for line in contenido.splitlines():
+        if en_frontmatter:
+            if line.strip() == "---":
+                en_frontmatter = False
+            continue
+        if line.startswith("## "):
+            if nombre_actual is not None:
+                bloques[nombre_actual] = "\n".join(contenido_actual).strip()
+            nombre_actual = line[3:].strip()
+            contenido_actual = []
+        else:
+            contenido_actual.append(line)
+    if nombre_actual is not None:
+        bloques[nombre_actual] = "\n".join(contenido_actual).strip()
+
+    # Chequear bloques requeridos (los que DEBEN tener contenido si se
+    # pudo extraer; recetas/laboratorio son opcionales porque una
+    # consulta puede no tener prescripcion ni ordenes de lab).
+    bloques_requeridos = [
+        "Identificacion",
+        "Historial de atenciones (ultimos 6 meses)",
+        "Nota clinica de Yadira",
+        "Diagnosticos",
+        "Actividades",
+        "Profesionales",
+    ]
+
+    for bloque in bloques_requeridos:
+        contenido_bloque = bloques.get(bloque, "")
+        if not contenido_bloque:
+            faltantes.append(bloque)
+
+    return faltantes
+
+
+def re_extraer_bloque(
+    driver: WebDriver,
+    logger: logging.Logger,
+    bloque: str,
+    click_ok: bool,
+    identificacion: dict[str, str] | None = None,
+    historial: str | None = None,
+    anamnesis: str | None = None,
+    motivo_consulta: str | None = None,
+    diagnosticos: list[str] | None = None,
+    actividades: list[str] | None = None,
+    profesionales: list[str] | None = None,
+    recetas: list[str] | None = None,
+    laboratorio: list[str] | None = None,
+) -> str | list[str] | dict[str, str] | None:
+    """Re-extrae especificamente el bloque faltante desde Rayen.
+
+    Sesion 2026-09-16 14:14 (regla Yadira): si validar_nota_clinica
+    detecta un bloque vacio, el pipeline llama a esta funcion con el
+    `driver` que sigue en la ficha del paciente (estamos dentro del
+    mismo loop, no hemos navegado a otra ficha).
+
+    NOTA: el `driver` aqui deberia estar todavia en la ficha del
+    paciente, pero NO se asume. Si `click_ok` fue False originalmente,
+    no se puede extraer el bloque (no hay panel cargado). En ese caso
+    retorna None.
+
+    Returns:
+        Contenido del bloque re-extraido, o None si no se pudo.
+    """
+    if not click_ok:
+        # Sin click en "Atencion actual", no se puede extraer nada del panel.
+        logger.warning(
+            f"[crear_notas] re-extraer {bloque}: click_ok=False, no se "
+            f"puede re-extraer (panel no cargo)."
+        )
+        return None
+
+    if bloque == "Identificacion":
+        return extraer_identificacion(driver, logger)
+    if bloque == "Historial de atenciones (ultimos 6 meses)":
+        return extraer_historial(driver, logger)
+    if bloque == "Nota clinica de Yadira":
+        # Anamnesis: si tenemos la original, intentar re-fetch.
+        return extraer_anamnesis(driver, logger)
+    if bloque == "Diagnosticos":
+        return extraer_diagnosticos(driver, logger)
+    if bloque == "Actividades":
+        return extraer_actividades(driver, logger)
+    if bloque == "Profesionales":
+        return extraer_profesionales(driver, logger)
+    if bloque == "Plan - Recetas":
+        return extraer_recetas(driver, logger)
+    if bloque == "Plan - Laboratorio":
+        return extraer_laboratorio(driver, logger)
+
+    logger.warning(f"[crear_notas] re-extraer: bloque desconocido '{bloque}'")
+    return None
 
 
 def paso_4_1_abrir_ficha(
@@ -2785,11 +2994,59 @@ def main() -> int:
                 )
                 if out_path is None:
                     logger.warning(
-                        f"[crear_notas] {paciente.nombre}: archivo ya existia, saltado."
+                        f"[crear_notas] {paciente.nombre}: no se pudo guardar."
                     )
-                    stats["saltados"] += 1
-                    pinfo.estado = "skipped"
+                    stats["errores"] += 1
+                    pinfo.estado = "error"
                 else:
+                    # Paso 4.4: VALIDACION POST-WRITE + RE-FETCH DE HUECOS.
+                    # Regla Yadira 2026-09-16 14:14: despues de escribir,
+                    # el script verifica que todos los bloques tengan
+                    # contenido. Si falta alguno, va a buscarlo a Rayen
+                    # con el `driver` que sigue activo y sobrescribe el
+                    # archivo.
+                    faltantes = validar_nota_clinica(out_path)
+                    if faltantes:
+                        logger.warning(
+                            f"[crear_notas] {paciente.nombre}: "
+                            f"validacion post-write encontro {len(faltantes)} "
+                            f"bloque(s) sin contenido: {faltantes}. "
+                            f"Re-fetch + re-write."
+                        )
+                        bloques_reescritos: list[str] = []
+                        bloques_aun_vacios: list[str] = []
+                        for bloque in faltantes:
+                            nuevo = re_extraer_bloque(
+                                driver, logger, bloque, click_ok,
+                                identificacion=identificacion,
+                                historial=historial,
+                                anamnesis=anamnesis,
+                                motivo_consulta=motivo_consulta,
+                                diagnosticos=diagnosticos,
+                                actividades=actividades,
+                                profesionales=profesionales,
+                                recetas=recetas,
+                                laboratorio=laboratorio,
+                            )
+                            if nuevo:
+                                _rellenar_bloque_en_nota(
+                                    out_path, bloque, nuevo
+                                )
+                                bloques_reescritos.append(bloque)
+                            else:
+                                bloques_aun_vacios.append(bloque)
+                        if bloques_reescritos:
+                            logger.info(
+                                f"[crear_notas] {paciente.nombre}: "
+                                f"re-fetch completo para {bloques_reescritos}."
+                            )
+                        if bloques_aun_vacios:
+                            logger.warning(
+                                f"[crear_notas] {paciente.nombre}: "
+                                f"no se pudo re-extraer: {bloques_aun_vacios}. "
+                                f"Yadira debera revisar manualmente."
+                            )
+
                     stats["guardados"] += 1
                     pinfo.estado = "ok"
                     logger.info(f"[crear_notas] {paciente.nombre} OK -> {out_path.name}")

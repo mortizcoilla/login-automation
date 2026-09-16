@@ -379,32 +379,42 @@ class TestGuardarNotaClinicaVacias:
 
 
 # ---------------------------------------------------------------------------
-# guardar_nota_clinica: no overwrite
+# guardar_nota_clinica: siempre sobrescribe (regla Yadira 2026-09-16 14:14)
 # ---------------------------------------------------------------------------
-class TestGuardarNotaClinicaNoSobrescribe:
-    def test_no_sobrescribe_archivo_existente(
+class TestGuardarNotaClinicaSiempreEscribe:
+    def test_sobrescribe_archivo_existente_si_existe(
         self, kwargs_minimos: dict, tmp_path: Path
     ) -> None:
-        # Crear el archivo primero (con contenido cualquiera).
+        # Regla Yadira 2026-09-16 14:14: el script SIEMPRE escribe el
+        # archivo, sobrescribe si ya existe (es la misma paciente en
+        # la misma fecha, corrida nueva). El script NO depende de la
+        # existencia previa; arranca fresca desde Rayen.
         target = tmp_path / "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
         target.write_text("CONTENIDO PREEXISTENTE", encoding="utf-8")
 
         out = guardar_nota_clinica(**kwargs_minimos)
 
-        # Devuelve None (no se sobrescribe).
-        assert out is None
-        # Contenido original intacto.
-        assert target.read_text(encoding="utf-8") == "CONTENIDO PREEXISTENTE"
+        # Devuelve el path (escribio).
+        assert out is not None
+        assert out.exists()
+        # Contenido nuevo, NO el viejo.
+        contenido = out.read_text(encoding="utf-8")
+        assert "CONTENIDO PREEXISTENTE" not in contenido
+        assert "Nota clinica - Nicolas Ignacio Piña Rojas" in contenido
 
-    def test_segunda_llamada_devuelve_none(
+    def test_segunda_llamada_tambien_escribe(
         self, kwargs_minimos: dict
     ) -> None:
-        # Primera llamada: crea archivo, devuelve path.
+        # Sesion 2026-09-16 14:14 (regla Yadira): cada corrida arranca
+        # fresca. Dos llamadas consecutivas al script con los mismos
+        # args producen el mismo archivo (sobrescrito, no duplicado).
         out1 = guardar_nota_clinica(**kwargs_minimos)
         assert out1 is not None
-        # Segunda llamada con mismos args: no sobrescribe, devuelve None.
         out2 = guardar_nota_clinica(**kwargs_minimos)
-        assert out2 is None
+        # Ambas devuelven path (ambas escribieron).
+        assert out2 is not None
+        # Mismo archivo.
+        assert out1 == out2
 
 
 # ---------------------------------------------------------------------------
@@ -560,3 +570,127 @@ class TestRegressionGuardNotasClinicas:
             f"Yadira' (fueron generadas antes del esquema markdown):\n"
             f"  - " + "\n  - ".join(sin_seccion)
         )
+
+
+# ---------------------------------------------------------------------------
+# validar_nota_clinica + _rellenar_bloque_en_nota: validacion post-write.
+# Sesion 2026-09-16 14:14 (regla Yadira): despues de escribir la nota,
+# el script verifica que todos los bloques tengan contenido. Si falta
+# alguno, va a buscarlo a Rayen y sobrescribe solo ese bloque.
+# ---------------------------------------------------------------------------
+class TestValidarNotaClinica:
+    def test_detecta_bloque_realmente_vacio_como_faltante(
+        self, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import validar_nota_clinica
+
+        nota = tmp_path / "paciente_test.md"
+        # Simulamos que el extractor fallo en 2 bloques (sin contenido),
+        # no que devolvio placeholder "sin X" (eso es legitimo si no hay
+        # diagnosticos/recetas en esta consulta).
+        nota.write_text(
+            "---\n"
+            "paciente: Test\n"
+            "fecha_atencion: 10-09-2026\n"
+            "---\n\n"
+            "# Nota clinica - Test\n\n"
+            "## Identificacion\n\n"
+            "- **RUN:** 1-1\n"
+            "- **Edad:** 30 anos\n\n"
+            "## Historial de atenciones (ultimos 6 meses)\n\n"
+            "control previo sin novedades\n\n"
+            "## Nota clinica de Yadira\n\n"
+            "Paciente consulta por control.\n\n"
+            "## Diagnosticos\n\n"
+            "## Actividades\n\n"
+            # Diagnosticos SIN contenido (header sin nada debajo) -> faltante.
+            # Actividades SIN contenido -> faltante.
+            "## Profesionales\n\n"
+            "- Dr. Lopez\n\n"
+            "## Plan - Recetas\n\n"
+            "- Losartan 50mg\n\n"
+            "## Plan - Laboratorio\n\n"
+            "- Glicemia\n",
+            encoding="utf-8",
+        )
+
+        faltantes = validar_nota_clinica(nota)
+        # Diagnosticos y Actividades sin contenido son faltantes.
+        assert "Diagnosticos" in faltantes
+        assert "Actividades" in faltantes
+        # Bloques con contenido NO son faltantes.
+        assert "Identificacion" not in faltantes
+        assert "Profesionales" not in faltantes
+        assert "Plan - Recetas" not in faltantes
+
+    def test_nota_completa_no_tiene_faltantes(
+        self, kwargs_minimos: dict, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import validar_nota_clinica
+
+        out = guardar_nota_clinica(**kwargs_minimos)
+        # Nota completa, no deberia haber faltantes.
+        faltantes = validar_nota_clinica(out)
+        assert faltantes == [], f"Faltantes inesperados: {faltantes}"
+
+
+class TestRellenarBloqueEnNota:
+    def test_rellena_bloque_string(
+        self, kwargs_minimos: dict, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            _rellenar_bloque_en_nota,
+        )
+
+        # Escribir nota inicial.
+        out = guardar_nota_clinica(**kwargs_minimos)
+        contenido_antes = out.read_text(encoding="utf-8")
+        assert "AnamnesisPlaceholderViejo" not in contenido_antes
+
+        # Rellenar bloque de anamnesis con texto nuevo.
+        nueva_anamnesis = "AnamnesisPlaceholderViejo — paciente controlado"
+        _rellenar_bloque_en_nota(
+            out,
+            "Nota clinica de Yadira",
+            nueva_anamnesis,
+        )
+        contenido_despues = out.read_text(encoding="utf-8")
+        assert "AnamnesisPlaceholderViejo" in contenido_despues
+        # Otros bloques intactos (ej. Identificacion).
+        assert "## Identificacion" in contenido_despues
+        assert "RUN" in contenido_despues
+
+    def test_rellena_bloque_lista_como_bullets(
+        self, kwargs_minimos: dict, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            _rellenar_bloque_en_nota,
+        )
+
+        out = guardar_nota_clinica(**kwargs_minimos)
+        _rellenar_bloque_en_nota(
+            out,
+            "Diagnosticos",
+            ["I10X Hipertension esencial", "E78.1 Hipertrigliceridemia"],
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert "- I10X Hipertension esencial" in contenido
+        assert "- E78.1 Hipertrigliceridemia" in contenido
+
+    def test_rellena_bloque_dict_como_kv(
+        self, kwargs_minimos: dict, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            _rellenar_bloque_en_nota,
+        )
+
+        out = guardar_nota_clinica(**kwargs_minimos)
+        _rellenar_bloque_en_nota(
+            out,
+            "Identificacion",
+            {"RUN": "11.111.111-1", "Edad": "40 anos", "Sexo": "Femenino"},
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert "- **RUN:** 11.111.111-1" in contenido
+        assert "- **Edad:** 40 anos" in contenido
+        assert "- **Sexo:** Femenino" in contenido
