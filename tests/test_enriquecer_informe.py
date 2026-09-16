@@ -11,6 +11,7 @@ import pytest
 
 from src.analysis.enriquecer_informe import (
     KEYWORDS_REQUERIMIENTOS,
+    _edad_a_decimal,
     _extraer_requerimientos,
     _formatear_tabla,
     _parsear_informe_basico,
@@ -175,7 +176,12 @@ def test_parser_acepta_6_columnas(tmp_path: Path):
     assert len(filas) == 1
     assert filas[0]["fecha"] == "10-09-2026"
     assert filas[0]["nombre"] == "Juan Perez"
-    assert "examenes_adjuntos" not in filas[0]  # no estan en formato viejo
+    # Sesion 2026-09-16 17:26: el parser siempre setea las keys (con None
+    # si no estan en el formato viejo), para que el main loop pueda
+    # detectar que faltan y enriquecer.
+    assert filas[0]["examenes_adjuntos"] is None
+    assert filas[0]["crear_interconsulta"] is None
+    assert filas[0]["edad_decimal"] is None
 
 
 def test_parser_acepta_8_columnas(tmp_path: Path):
@@ -469,3 +475,114 @@ def test_enriquecer_extrae_motivo_y_edad_de_nota_real():
         assert _extraer_edad(nota) == "45 años 6 meses 12 días"
     finally:
         os.unlink(tmp_path_str)
+
+
+# ---------------------------------------------------------------------------
+# _edad_a_decimal() — sesion 2026-09-16 17:26 (pedido por Yadira)
+# ---------------------------------------------------------------------------
+
+def test_edad_a_decimal_caso_canonico():
+    """'19 anios 2 meses 10 dias' -> '19,19'."""
+    assert _edad_a_decimal("19 anios 2 meses 10 dias") == "19,19"
+
+
+def test_edad_a_decimal_con_tildes():
+    """Acepta 'años' (con tilde)."""
+    assert _edad_a_decimal("19 años 2 meses 10 días") == "19,19"
+
+
+def test_edad_a_decimal_sin_meses():
+    """Sin meses, solo anos: '67 años' -> '67,00'."""
+    assert _edad_a_decimal("67 años") == "67,00"
+
+
+def test_edad_a_decimal_sin_dias():
+    """Sin dias: '40 años 6 meses' -> '40,50'."""
+    # 40 + 6/12 + 0/365.25 = 40.5 -> 40,50
+    assert _edad_a_decimal("40 años 6 meses") == "40,50"
+
+
+def test_edad_a_decimal_sin_tildes_en_label():
+    """OCR variante sin tildes en 'anos'/'dias'."""
+    # 17 + 4/12 + 12/365.25 = 17 + 0.3333 + 0.0328 = 17.3662 -> 17,37
+    assert _edad_a_decimal("17 anos 4 meses 12 dias") == "17,37"
+
+
+def test_edad_a_decimal_singular():
+    """Acepta singular: '1 ano 1 mes 1 dia'."""
+    # 1 + 1/12 + 1/365.25 = 1 + 0.0833 + 0.0027 = 1.0861 -> 1,09
+    assert _edad_a_decimal("1 ano 1 mes 1 dia") == "1,09"
+
+
+def test_edad_a_decimal_decimal_grande():
+    """Decimal > 99 funciona (3 digitos)."""
+    # 100 + 0/12 + 0/365.25 = 100 -> 100,00
+    assert _edad_a_decimal("100 anos") == "100,00"
+
+
+def test_edad_a_decimal_formato_invalido():
+    """Si no matchea el patron, devuelve None."""
+    assert _edad_a_decimal("foobar") is None
+    assert _edad_a_decimal("") is None
+
+
+def test_edad_a_decimal_strip_whitespace():
+    """Strip whitespace alrededor."""
+    assert _edad_a_decimal("  19 anos 2 meses 10 dias  ") == "19,19"
+
+
+def test_edad_a_decimal_precision_2_decimales():
+    """El formato es exactamente 2 decimales con coma."""
+    result = _edad_a_decimal("19 anos 2 meses 10 dias")
+    assert result is not None
+    # '19,19' tiene exactamente 2 decimales despues de la coma
+    parte_decimal = result.split(",")[1]
+    assert len(parte_decimal) == 2
+
+
+# ---------------------------------------------------------------------------
+# Parser con 9 columnas (sesion 2026-09-16 17:26)
+# ---------------------------------------------------------------------------
+
+def test_parser_acepta_9_columnas_con_decimal(tmp_path: Path):
+    """Informe nuevo (9 cols) parsea edad_decimal correctamente."""
+    informe = tmp_path / "informe.txt"
+    informe.write_text(
+        "10-09-2026    Juan Perez    40 anos 2 meses 10 dias    40,19    Control    control sm    CONTROL    no    no\n",
+        encoding="utf-8",
+    )
+    filas = _parsear_informe_basico(informe)
+    assert len(filas) == 1
+    assert filas[0]["edad"] == "40 anos 2 meses 10 dias"
+    assert filas[0]["edad_decimal"] == "40,19"
+    assert filas[0]["examenes_adjuntos"] == "no"
+    assert filas[0]["crear_interconsulta"] == "no"
+
+
+def test_parser_acepta_8_columnas_sin_decimal(tmp_path: Path):
+    """Informe intermedio (8 cols, version 16:30) sin decimal."""
+    informe = tmp_path / "informe.txt"
+    informe.write_text(
+        "10-09-2026    Juan Perez    40 anos    Control    control sm    CONTROL    no    no\n",
+        encoding="utf-8",
+    )
+    filas = _parsear_informe_basico(informe)
+    assert len(filas) == 1
+    assert filas[0]["edad"] == "40 anos"
+    assert filas[0]["edad_decimal"] is None  # se calcula despues
+
+
+def test_formatear_incluye_columna_edad_decimal():
+    """_formatear_tabla debe incluir la nueva columna 'Edad (anios)'."""
+    filas = [
+        {
+            "fecha": "10-09-2026", "nombre": "Juan",
+            "edad": "19 anos 2 meses 10 dias", "edad_decimal": "19,19",
+            "tipo_atencion": "Control", "motivo": "control sm",
+            "plantilla": "CONTROL",
+            "examenes_adjuntos": True, "crear_interconsulta": False,
+        },
+    ]
+    out = _formatear_tabla(filas, "09-2026")
+    assert "Edad (anios)" in out
+    assert "19,19" in out
