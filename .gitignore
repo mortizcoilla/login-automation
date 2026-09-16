@@ -90,3 +90,4 @@ debug_state_*.html
 *.swo
 .DS_Store
 Thumbs.db
+anamnesis/

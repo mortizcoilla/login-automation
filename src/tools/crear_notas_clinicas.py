@@ -2161,6 +2161,55 @@ def _safe_filename(s: str) -> str:
     return s
 
 
+ANAMNESIS_BACKUP_DIR = ROOT / "anamnesis"
+
+
+def guardar_respaldo_anamnesis(
+    paciente: PacienteObjetivo,
+    anamnesis: str,
+    backup_dir: Path = ANAMNESIS_BACKUP_DIR,
+) -> Path | None:
+    """Escribe un respaldo de la anamnesis cruda de Yadira en un .md
+    liviano en `anamnesis/<safe_nombre>_<fecha>.md`.
+
+    Sesion 2026-09-16 15:14 (regla Yadira): Yadira quiere un respaldo
+    de las anamnesis que escribe en Rayen, separado de las notas
+    clinicas completas. Esto le da una copia de seguridad local en
+    formato facil de buscar por nombre y fecha, igual que las notas
+    clinicas.
+
+    Solo respalda si la anamnesis NO esta vacia (no respalda extracciones
+    fallidas). El sobreescribir es OK: la ultima anamnesis es la que
+    vale.
+
+    Returns:
+        Path al .md escrito, o None si la anamnesis estaba vacia.
+    """
+    if not (anamnesis or "").strip():
+        return None
+    nombre_archivo = (
+        f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
+    )
+    out_path = backup_dir / nombre_archivo
+
+    md = ["---"]
+    md.append(f'paciente: "{paciente.nombre}"')
+    md.append(f'fecha_atencion: "{paciente.fecha}"')
+    if paciente.nombre_rayen and paciente.nombre_rayen != paciente.nombre:
+        md.append(f'paciente_rayen: "{paciente.nombre_rayen}"')
+    md.append('fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"')
+    md.append('source_url: "https://clinico.rayenaps.cl/"')
+    md.append(f'fecha_extraccion: "{_now_iso()}"')
+    md.append("---")
+    md.append("")
+    md.append(anamnesis.strip())
+    md.append("")
+
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(md), encoding="utf-8")
+    return out_path
+
+
 def guardar_nota_clinica(
     paciente: PacienteObjetivo,
     identificacion: dict[str, str],
@@ -3010,6 +3059,14 @@ def main() -> int:
                     extraer_motivo_consulta(driver, logger) if click_ok else ""
                 )
                 anamnesis = extraer_anamnesis(driver, logger) if click_ok else ""
+                # Paso 4.2.5 (sesion 2026-09-16 15:14): respaldo de la
+                # anamnesis cruda de Yadira en anamnesis/<paciente>_<fecha>.md.
+                # Es un .md liviano, separado de la nota clinica completa,
+                # para que Yadira tenga una copia de seguridad local facil
+                # de buscar por nombre y fecha. Solo si la anamnesis no
+                # esta vacia.
+                if anamnesis:
+                    guardar_respaldo_anamnesis(paciente, anamnesis)
                 diagnosticos = (
                     extraer_diagnosticos(driver, logger) if click_ok else []
                 )

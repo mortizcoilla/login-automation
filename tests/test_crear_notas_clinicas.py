@@ -695,3 +695,121 @@ class TestRellenarBloqueEnNota:
         assert "- **RUN:** 11.111.111-1" in contenido
         assert "- **Edad:** 40 anos" in contenido
         assert "- **Sexo:** Femenino" in contenido
+
+
+# ---------------------------------------------------------------------------
+# guardar_respaldo_anamnesis: respaldo de la anamnesis cruda de Yadira en
+# `anamnesis/<paciente>_<fecha>.md`. Sesion 2026-09-16 15:14.
+# ---------------------------------------------------------------------------
+class TestGuardarRespaldoAnamnesis:
+    def test_escribe_archivo_en_backup_dir(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        anamnesis = (
+            "Paciente consulta por control de HTA cronica. "
+            "Adherencia al tratamiento. Asintomatica cardiovascular."
+        )
+        out = guardar_respaldo_anamnesis(
+            paciente_basico, anamnesis, backup_dir=tmp_path
+        )
+        assert out is not None
+        assert out.exists()
+        # Nombre: <safe>_<fecha>.md, mismo patron que notas clinicas.
+        assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
+
+    def test_archivo_contiene_anamnesis_y_frontmatter(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        anamnesis = (
+            "Paciente consulta por control de HTA cronica. "
+            "Adherencia al tratamiento. Asintomatica cardiovascular."
+        )
+        out = guardar_respaldo_anamnesis(
+            paciente_basico, anamnesis, backup_dir=tmp_path
+        )
+        contenido = out.read_text(encoding="utf-8")
+        # Frontmatter canonico.
+        assert 'paciente: "Nicolas Ignacio Piña Rojas"' in contenido
+        assert 'fecha_atencion: "10-09-2026"' in contenido
+        assert 'fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"' in contenido
+        # Anamnesis cruda de Yadira, sin formato extra.
+        assert "control de HTA cronica" in contenido
+        assert "Adherencia al tratamiento" in contenido
+
+    def test_anamnesis_vacia_retorna_none(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        out = guardar_respaldo_anamnesis(
+            paciente_basico, "", backup_dir=tmp_path
+        )
+        assert out is None
+        assert list(tmp_path.iterdir()) == []
+
+    def test_anamnesis_solo_whitespace_retorna_none(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        out = guardar_respaldo_anamnesis(
+            paciente_basico, "   \n  \t  ", backup_dir=tmp_path
+        )
+        assert out is None
+        assert list(tmp_path.iterdir()) == []
+
+    def test_sobreescribe_si_existe(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        guardar_respaldo_anamnesis(
+            paciente_basico,
+            "Anamnesis vieja - debe ser sobrescrita",
+            backup_dir=tmp_path,
+        )
+        guardar_respaldo_anamnesis(
+            paciente_basico,
+            "Anamnesis nueva",
+            backup_dir=tmp_path,
+        )
+        archivos = list(tmp_path.iterdir())
+        assert len(archivos) == 1, (
+            f"Se esperaba 1 archivo, hay {len(archivos)}"
+        )
+        contenido = archivos[0].read_text(encoding="utf-8")
+        assert "Anamnesis nueva" in contenido
+        assert "Anamnesis vieja" not in contenido
+
+    def test_nombre_rayen_en_frontmatter(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        from src.tools.crear_notas_clinicas import (
+            guardar_respaldo_anamnesis,
+        )
+
+        # Si el nombre en Rayen difiere del nombre del informe
+        # (match parcial), el nombre real de Rayen aparece en
+        # paciente_rayen para que Yadira pueda matchear despues.
+        paciente_basico.nombre_rayen = "Maciel Vanessa Orellana Astudillo"
+        out = guardar_respaldo_anamnesis(
+            paciente_basico,
+            "Anamnesis de prueba",
+            backup_dir=tmp_path,
+        )
+        contenido = out.read_text(encoding="utf-8")
+        assert 'paciente_rayen: "Maciel Vanessa Orellana Astudillo"' in contenido
