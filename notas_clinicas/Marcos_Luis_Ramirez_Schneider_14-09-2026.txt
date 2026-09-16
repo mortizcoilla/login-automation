@@ -1,0 +1,330 @@
+# NOTA CLINICA — extraida de Rayen
+# Paciente: Marcos Luis Ramirez Schneider
+# Fecha atencion: 14-09-2026
+
+!!! ATENCION: panel del paciente NO CARGO en Rayen.
+!!! La nota tiene placeholders. Revisar manualmente en Rayen.
+
+======================================================================
+=== INICIO IDENTIFICACION ===
+======================================================================
+Médico de cabecera: Sin médico asignado
+RUN: 9.219.578-3
+Fecha de nacimiento: 02-05-1961 00:00
+Edad Cronológica: 65 años 4 meses 14 días
+Sexo Biológico: Hombre
+Identidad de género: Masculino
+Dirección: Pasaje jose criado reyes 873, San Bernardo - XIII Región Metropolitana - Chile
+Sector: Sector Verde
+Est. Inscripción: CESFAM Raúl Cuevas
+Previsión: Fonasa D
+Teléfono: Teléfono móvil | +56 (9) 68455252 | Otro teléfono de contacto | +22 (2) 28414785
+Estado civil: Desconocido
+Ocupaciones: Ninguno
+Actualice Ninguno por otro dato
+Número de ficha: Rayen: 92195783 código antiguo: SB48071
+======================================================================
+=== FIN IDENTIFICACION ===
+======================================================================
+
+======================================================================
+=== INICIO HISTORIAL DE ATENCIONES ===
+======================================================================
+14-09-2026 09:02 Atención no completada (1) Trastornos específicos de la personalidad- (Confirmada) 
+(2) Hipertensión esencial (primaria)- (Confirmada) 
+(3) Obesidad- (Confirmada)
+---
+10-09-2026 12:08  (1) Trastorno de ansiedad generalizada- (Confirmada) 
+(2) Consulta para repetición de receta- (Confirmada)
+---
+11-08-2026 18:47  Trastorno de ansiedad generalizada- (Confirmada)
+---
+11-08-2026 14:40  Trastornos específicos de la personalidad- (Sospecha)
+---
+14-07-2026 15:43  (1) Obesidad- (Confirmada) 
+(2) Trastorno de ansiedad generalizada- (Confirmada) 
+(3) Hipertensión esencial (primaria)- (Confirmada) 
+(4) Trastorno de la personalidad, no especificado- (Confirmada) 
+(5) Trastornos mentales y del comportamiento debidos al uso de alcohol- (Confirmada)  (Derivacion interna)
+---
+18-06-2026 11:05 NSP: Control Integral ECICEP-G2
+---
+22-04-2026 15:22  (1) Hipertensión esencial (primaria)- (Confirmada) 
+(2) Trastorno de ansiedad, no especificado- (Confirmada) 
+(3) Obesidad- (Confirmada) 
+(4) Trastorno de la personalidad, no especificado- (Confirmada)
+---
+07-04-2026 12:15  Trastorno de la personalidad, no especificado- (Confirmada)
+---
+24-03-2026 09:54 NSP: Control ECICEP
+======================================================================
+=== FIN HISTORIAL DE ATENCIONES ===
+======================================================================
+
+======================================================================
+=== INICIO NOTA CLINICA DE YADIRA ===
+======================================================================
+
+Motivo de atencion: reingreso sm
+
+Paciente masculino de 65 años de edad acude solo a re ingreso sm en dupla 
+
+ IDENTIFICACIÓN DEL ACOMPAÑANTE:
+Acude solo
+
+DIAGNÓSTICOS DE INGRESO:
+Tr. de Ansiedad  /  T. P 
+HTA
+Obesidad
+
+Fármacos de uso diario:
+Losartan Potasico 50 mg 1-0-1
+Hidroclorotiazida 50 1/2-0-0
+Atorvastatina Calcica 20 mg 0-0-1
+
+
+Escitalopram 20 mg 1-0-0 (recetado en el extrasistema , desde hace 2 años aprox ) 
+Clonazepam 2 mg: 1 comp cada 24 horas, pm, comenta que con medico anterior acuerda disminuir dosis, 
+
+automedicado: 
+Alprazolam: 3 veces a la semana aprox (1 año y 4 meses) 
+neuroval 
+
+Buena adherencia. Sin RAM
+
+
+ANAMNESIS BIOMÉDICA:
+- Antecedentes quirúrgicos: no
+- Alergias: NO
+-IAM o ACV: (-)
+- Antecedentes familiares: Madre ACV >65 años Cáncer (-)
+- Hábitos
+- Tabaco NO /Alcohol Suspendido hace 4 meses / drogas NO
+- Alimentación: Dieta baja en sodio, carbohidratos y grasas saturadas
+- Actividad Física: NO
+- Entretenimiento: ESCUCHAR MUSICA , VER TELEVISION
+- Ciclo sueño-vigilia: ALTERADO PERO SE MANTIENE CON TTO FARMACOLOGICO
+- Deposiciones/diuresis: normal
+
+
+ANTECEDENTES BIO PSICOSOCIALES
+- Ocupación: jubilado
+- Estado civil: casado
+- Escolaridad: universitaria
+- Religión o creencias: católico
+- Servicios básicos: Luz, agua, gas, electricidad: si
+- Tipo de vivienda: sólida / propia
+- Con quien vive:
+cónyuge Patricia 62a ( EPOC) ,
+hijos => Alejandro 29a ( reconstrucción lumbar + bariátrica+by pass coronario),
+Pamela 23a (psicóloga) , pareja de hija Pablo 24a.
+- Red de apoyo: familia nuclear
+- Mascotas: dos gatos , dentro de casa.
+- Tipo de calefacción: gas
+- Casa con escaleras: si
+- Caídas: no
+- Acceso, locomoción al cesfam: regular
+- Participación comunitaria: no
+
+
+TAMIZAJES:
+• EMPA / EMPAM : no vigente 
+• APE VIGENCIA: no trae 
+
+
+SÍNTOMAS ACTUALES
+Al interrogatorio dirigido evaluación por sistema: angina (-) , palpitaciones (-), síncope  (-), disnea (-), ortopnea  (-), DPN  (-), nicturia  (-) , Claudicación intermitente  (-) , edema (-) , proteinuria  (-).
+poliuria (-) , polidipsia (-) , polifagia (-)  baja de peso (-) .
+Cefalea (-) tinitus (-) mareos (-) 
+Astenia (-) Adinamia (-) Caída pelo (-) uñas quebradizas (- ) piel seca (-) intolerancia al frío(-) Alteraciones del sueño (-) 
+Tos crónica (-) disfagia (-) disfonía (-) 
+Gonalgia (-) Coxalgia (-) Rigidez AM (-) caídas (-) 
+
+
+Evaluación sm actual 14/09/2026
+
+antecedentes de sm: hermano y madre: suicidio ???
+
+comenta que su hijo tiene algunos y su hija es psicóloga mantiene tratam con neuroval y el en ocasiones la consume tamb
+Nieto de 3a con TEA (no viven con el paciente) 
+
+también comenta que el "padece de depresión" que esta bien aunque no del todo. que el seguimiento en el consultorio si la ayuda 
+explica que siente que no tiene casi deseos de vivir pero que a la vez sabe que arrastraría a todos*** 
+
+comenta que desde enero se encuentra solo estar en casa, su aseo general a disminuido "y eso no le gusta", me siento solo, 
+
+actualmente cesante, con el finiquito compra un auto el cual al parecer entrega a su hijo. 
+
+Continua con consumo de cervezas ocasional, en cada consumo son dos cervezas de las grandes, 1 botella de whisky mensual.  (lo toma en casa) explica que actualmente consume en menor cantidad, trata de que sea de buena calidad. 
+
+cigarros ???
+
+comenta que en el ultimo control medico se le explico que en esa consulta se iba a priorizar sm. ultimo exámenes 22/05/2025
+
+abandona controles de sm desde hace 6 meses. 
+
+nota: paciente en el box verborragico, habla con los ojos cerrados, le cuesta mantener un solo tema de conversación, salta de una idea a otra, en ocasiones se confunde de nombres o fechas....
+
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses: (-)
+
+EXAMEN FÍSICO
+Signos vitales: REGISTRADO EN FORMULARIO
+Antropometría: REGISTRADO EN FORMULARIO
+
+
+EXÁMENES DE LABORATORIO:  no trae / últimos 2025
+
+
+DIAGNÓSTICOS ACTUALES:
+
+TDP
+dependencia OH (AUDIT C - 6 PTOS)
+HTA
+Obesidad
+
+
+ACTUALIZACIÓN Estratificación de Riesgo: G2 FECHA 14-07-2026
+
+
+
+- Se acuerda en conjunto con paciente derivación a Gestión de casos: NO
+- Se deriva a sus exámenes de medicina preventivos: Si
+- Receta farmacológica unificada: sí
+- Generación de interconsultas: No
+
+- Fecha aproximada de próximo control:
+visita T. social  jueves 
+medico + exámenes  finales de octubre 2026
+psicóloga octubre 2026
+
+
+- Recomendación social de Activos Comunitarios, cuando corresponda.
+
+
+DATOS PARA MONITOREO A DISTANCIA
+Actualizar n° de teléfono: 968455252
+Dirección: Pasaje jose criado reyes 873
+
+
+indicac
+Aumento dosis de escitalopram 2 comp  (evaluar rotación) 
+Disminuir 1/2 clonazepam pm 
+Risperidona 1com cada 24 horas
+
+======================================================================
+=== FIN NOTA CLINICA DE YADIRA ===
+======================================================================
+
+======================================================================
+=== INICIO DIAGNOSTICOS ===
+======================================================================
+- CIE 10 [Repetida, Principal, Confirmado]: Clasificación: F60Trastornos específicos de la personalidad
+- CIE 10 [Repetida, Confirmado]: Clasificación: I10Hipertensión esencial (primaria)
+- CIE 10 [Repetida, Confirmado]: Clasificación: E66Obesidad
+======================================================================
+=== FIN DIAGNOSTICOS ===
+======================================================================
+
+======================================================================
+=== INICIO ESTRATIFICACION ECICEP ===
+======================================================================
+Grupo: G3 (Riesgo alto)
+Fecha inicio: 14 sep. 2026
+
+Diagnosticos cronicos (6):
+- Obesidad [G3]
+  CIE-10: E66
+  Descripcion: Obesidad
+  Es referido por Nutricionista
+  Fecha: 14 may. 2024
+- Trastornos mentales y del comportamiento debidos al uso de alcohol [G3, Confirmado]
+  CIE-10: F10
+  Descripcion: Trastornos mentales y del comportamiento debidos al uso de alcohol
+  Fecha: 14 jul. 2026
+- Esquizofrenia paranoide [Sospecha]
+  CIE-10: F20.0
+  Descripcion: Esquizofrenia paranoide
+  Fecha: 17 jun. 2025
+- Trastorno de ansiedad generalizada [G3, Confirmado]
+  CIE-10: F41.1
+  Descripcion: Trastorno de ansiedad generalizada
+  Fecha: 10 sep. 2026
+- Trastorno de ansiedad, no especificado [G3, Confirmado]
+  CIE-10: F41.9
+  Descripcion: Trastorno de ansiedad, no especificado
+  Fecha: 22 abr. 2026
+- Hipertensión esencial (primaria) [G3, Controlado, Confirmado]
+  CIE-10: I10
+  Descripcion: Hipertensión esencial (primaria)
+  Fecha: 26 jun. 2019
+
+Diagnosticos agudos (4):
+- Trastornos específicos de la personalidad [G3, Confirmado]
+  CIE-10: F60
+  Descripcion: Trastornos específicos de la personalidad
+  Fecha: Hace 1 día
+- Trastorno de la personalidad, no especificado [G3, Confirmado]
+  CIE-10: F60.9
+  Descripcion: Trastorno de la personalidad, no especificado
+  Fecha: Hace 63 días
+- Apnea del sueño [Sospecha]
+  CIE-10: G47.3
+  Descripcion: Apnea del sueño
+  Fecha: Hace 837 días
+- Consulta para repetición de receta [Confirmado]
+  CIE-10: Z76.0
+  Descripcion: Consulta para repetición de receta
+  Fecha: Hace 1 día
+======================================================================
+=== FIN ESTRATIFICACION ECICEP ===
+======================================================================
+
+======================================================================
+=== INICIO ACTIVIDADES ===
+======================================================================
+- 1 Controles salud mental
+======================================================================
+=== FIN ACTIVIDADES ===
+======================================================================
+
+======================================================================
+=== INICIO PROFESIONALES ===
+======================================================================
+(sin profesionales)
+======================================================================
+=== FIN PROFESIONALES ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN RECETAS ===
+======================================================================
+- [Crónica] Vigencia: 14  sep.  2027
+	- Hidroclorotiazida 50 mg comprimidos (0.5 Comprimido cada 1 Días por 4 Meses)
+	- Atorvastatina calcica 20 mg comprimidos (1 Comprimido cada 1 Días por 4 Meses | 1 comp en la noche)
+	- Losartan potasico 50 mg comprimidos (1 Comprimido cada 12 Horas por 4 Meses)
+	- Risperidona 1 mg comprimidos (1 Comprimido cada 24 Horas por 60 Días | pm)
+======================================================================
+=== FIN PLAN RECETAS ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN LABORATORIO ===
+======================================================================
+- Orden lab #1:
+	- Creatinina en sangre
+	- Electrolitos plasmaticos
+	- Microalbuminuria aislada
+	- Nitrógeno ureico y/o úrea en sangre
+	- Orina completa, (incluye cod.0309023 y 0309024)
+	- Perfil lipídico (incluye: colesterol total, hdl, ldl, vldl y triglicéridos)
+	- Tiroestimulante (tsh), hormona (adulto, niño o r.n.)
+	- Tiroxina libre (t4l)
+	- Vitamina b12 por inmunoensayo
+	- Hemograma (incluye recuentos de leucocitos y eritrocitos, hemoglobina, hematocrito, formula leucocitaria, características de los elementos figurados y velocidad de eritrosedimentacion)
+	- Perfil hepático
+	- Hemoglobina glicosilada
+	- Perfil bioquímico (determinación automatizada de 12 parámetros)
+======================================================================
+=== FIN PLAN LABORATORIO ===
+======================================================================

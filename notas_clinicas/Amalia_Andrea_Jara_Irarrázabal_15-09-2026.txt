@@ -1,0 +1,298 @@
+# NOTA CLINICA — extraida de Rayen
+# Paciente: Amalia Andrea Jara Irarrázabal
+# Fecha atencion: 15-09-2026
+
+!!! ATENCION: panel del paciente NO CARGO en Rayen.
+!!! La nota tiene placeholders. Revisar manualmente en Rayen.
+
+======================================================================
+=== INICIO IDENTIFICACION ===
+======================================================================
+Médico de cabecera: Sin médico asignado
+RUN: 22.436.324-9
+Fecha de nacimiento: 06-07-2007 00:00
+Edad Cronológica: 19 años 2 meses 10 días
+Sexo Biológico: Mujer
+Identidad de género: Femenina
+Dirección: Pasaje NEHUEL 845 572 Los Avellanos, San Bernardo - XIII Región Metropolitana - Chile
+Sector: Sector Verde
+Est. Inscripción: CESFAM Raúl Cuevas
+Previsión: Fonasa D
+Teléfono: Teléfono móvil | +56 (9) 36547611 | Teléfono fijo | +56 (9) 36547611 | Otro teléfono de contacto | +56 (9) 36547611
+Estado civil: Soltero(a)
+Ocupaciones: Desconocido
+Número de ficha: Rayen: 224363249
+======================================================================
+=== FIN IDENTIFICACION ===
+======================================================================
+
+======================================================================
+=== INICIO HISTORIAL DE ATENCIONES ===
+======================================================================
+15-09-2026 12:26 Atención no completada (1) Trastorno de la personalidad emocionalmente inestable- (Sospecha) 
+(2) Retraso mental leve- (Confirmada)
+---
+14-09-2026 12:51  Atención para la anticoncepción- (Confirmada)
+---
+14-09-2026 09:16  Atención para la anticoncepción- (Confirmada)
+---
+27-08-2026 15:09  (1) Otras consultas especificadas- (Confirmada) 
+(2) Vaginitis, vulvitis y vulvovaginitis en enfermedades infecciosas y parasitarias clasificadas en otra parte- (Sospecha)
+---
+14-08-2026 09:24  No Informado- (Sospecha)
+---
+14-08-2026 09:18  No Informado- (Sospecha)
+---
+04-08-2026 08:35  (1) Trastorno de la personalidad emocionalmente inestable- (Sospecha) 
+(2) Trastornos hipercinéticos- (Confirmada) 
+(3) Retraso mental leve- (Confirmada)
+---
+28-07-2026 08:04  (1) Trastorno de la personalidad emocionalmente inestable- (Sospecha) 
+(2) Retraso mental leve- (Confirmada) 
+(3) Trastornos hipercinéticos- (Confirmada)
+---
+21-07-2026 16:48  Otras consultas especificadas- (Confirmada)
+---
+15-07-2026 15:49  Otras colitis y gastroenteritis no infecciosas- (Sospecha)
+---
+07-07-2026 16:11 NSP: Ingreso psicologo
+---
+07-07-2026 12:11  Embarazo (aún) no confirmado- (Sospecha)
+---
+19-06-2026 11:54  (1) Retraso mental leve- (Confirmada) 
+(2) Trastorno de pánico [ansiedad paroxística episódica]- (Sospecha) CamScanner 19-06-26 15.00 informe.pdf
+---
+16-06-2026 11:21  Examen general e investigación de personas sin quejas o sin diagnostico informado- (Confirmada)
+---
+16-06-2026 10:24  Consulta para repetición de receta- (Confirmada)
+---
+13-05-2026 13:02  Atención para la anticoncepción- (Confirmada)
+---
+30-04-2026 16:06  (1) Trastorno de la personalidad emocionalmente inestable- (Sospecha) 
+(2) Retraso mental leve- (Confirmada)
+---
+27-04-2026 11:31  Impetiginización de otras dermatosis- (Sospecha)
+---
+24-04-2026 16:31  Otras infecciones viricas caracterizadas por lesiones de la piel y de las membranas mucosas, no clasificadas en otra parte- (Sospecha)
+======================================================================
+=== FIN HISTORIAL DE ATENCIONES ===
+======================================================================
+
+======================================================================
+=== INICIO NOTA CLINICA DE YADIRA ===
+======================================================================
+
+Motivo de atencion: control sm
+
+Paciente femenina de 19 años de edad acude a ingreso sm en dupla, sin ayuda técnica.
+
+
+
+IDENTIFICACIÓN DEL ACOMPAÑANTE: apoderada suplente en el colegio - sin resolución de tribunal menciona que es de mutuo acuerdo con madre de Amalia, Allen Irrazabal****
+
+Nombre: Paula Bustos Aravena
+Edad: 56
+Relación con paciente índice: Amiga de madre de usuaria
+Teléfono: 948544686
+rut: 11,524.646-1
+
+
+DIAGNÓSTICOS DE INGRESO:
+(1) Trastorno de la personalidad emocionalmente inestable- (Sospecha)
+(2) Retraso mental leve- (Confirmada)
+
+Fármacos de uso diario:
+risperidona 1mg OD
+
+ADHERENCIA 
+
+
+ANAMNESIS BIOMÉDICA:
+Antecedentes quirúrgicos: apendicectomia
+Alergias: no
+Antecedentes familiares: abuela materna Ca ??
+antecedente sm: padre TBP
+Hábitos
+Tabaco/Alcohol/ drogas: niega
+Alimentación: 3 comidas 1 colación hidratacion: menos de un litro (no me gusta el sabor
+RETIRA LECHE: no
+Actividad Física: no 
+Entretenimiento: 
+Ciclo sueño-vigilia: sin alteracion
+Deposiciones/diuresis: sin alteración  
+
+
+
+ANTECEDENTES BIO PSICOSOCIALES
+- Ocupación: Estudiante tecnico en parvulo
+- Estado civil: soltera
+- Escolaridad: Cuarto Medio
+- Religión o creencias: catolica
+- Servicios básicos: Luz, agua, gas, electricidad si
+- Tipo de vivienda: sólida
+- Con quién vive:
+. madre: aylin irarrazaal leiva 36a.
+. Hermana : Antonella Jara 17a
+
+
+
+TAMIZAJES:
+• EMPA / EMPAM VIGENCIA: No vigente
+• PAP / MAMOGRAFIA VIGENCIA: No vigente
+
+
+Evaluación sm actual: 15/09/2026
+paciente explica que el dia de ayer acude a matrona para ingreso a "control preconsecional " ?? 
+ comenta su deseo de ser madre y por eso acude con matrona, esta deriva al equipo de sm mental por posible efecto teratogenico de los fármaco, sin embargo aun 
+
+la paciente comenta que solo esta cumpliendo el tratam con ácido folico, la cuidadora comenta que si esta cumpliendo la mitad de la risperidona 
+
+en consulta se produce un inconveniente entre la cuidadora, la paciente y la madre por teléfono. 
+
+en el colegio la paciente expresa que ha mejorado la convivencia de predominio en actividades extra como realizar completos. la cuidadora expresa que no es asi.
+
+aun no inicia practica dual. al parecer es por decisión de la paciente para aumentar nota. si lograra terminar el 4to medio pero sin mención luego puede retomar las pract. 
+
+No se realiza exámenes solicitados. 
+
+ha mejorado la asistencia y la responsabilidad para terminar las tareas asignadas aun con apoyo del pie
+
+** asiste a psicóloga sin embargo no solicita la hora para el siguiente control 
+
+
+*** TDAH ?? no tienen ningun antecedentes***
+
+nota trae recetas anteriores, certificados de psiquiatra. 
+
+
+actualmente mantiene relación con Fabian Tisano 20a, trabaja en construcción , ex estudiante del colegio.
+comenta que tienen planes de casarse tener familia y ser madre. 
+
+en su tiempo libre solo sale con su pareja y expresa evitar a su madre la cual considera "es mi enemiga" me deja sola, nunca esta en ocasiones es mi abuela
+termina toda la consulta en expresar este rechazo hacia la madre, la falta de confianza, comenta que esto es de larga data ***
+
+acude al box muy comunicativa, con al higiene corporal, interrumpe y solo expresa el deseo de ser madre y su pareja. **
+
+
+animo y energia: estable??? / aunque después explica que ha tenido altos y bajos, me siento triste y despues muy alegre
+irritabilidad: ++
+perdida de control niega
+sueño: sin alteración
+apetito sin alteración
+memoria y concentración
+autolesiones: no
+idea o planificación suicida: niega
+suicidio: niega
+
+======================================================================
+=== FIN NOTA CLINICA DE YADIRA ===
+======================================================================
+
+======================================================================
+=== INICIO DIAGNOSTICOS ===
+======================================================================
+- CIE 10 [Repetida, Principal, Sospecha]: Clasificación: F60.3Trastorno de la personalidad emocionalmente inestable
+- CIE 10 [Repetida, Confirmado]: Clasificación: F70Retraso mental leve
+======================================================================
+=== FIN DIAGNOSTICOS ===
+======================================================================
+
+======================================================================
+=== INICIO ESTRATIFICACION ECICEP ===
+======================================================================
+Grupo: G2 (Riesgo moderado)
+Fecha inicio: 15 sep. 2026
+
+Diagnosticos cronicos (8):
+- Trastorno afectivo bipolar [Sospecha]
+  CIE-10: F31
+  Descripcion: Trastorno afectivo bipolar
+  Fecha: 24 abr. 2025
+- Trastorno de personalidad
+  CIE-10: F41.0
+  Descripcion: Trastorno de pánico [ansiedad paroxística episódica]
+  Es referido por Trabajador(a) Social
+  Fecha: 19 jun. 2026
+- Retraso mental leve [G2, Confirmado]
+  CIE-10: F70
+  Descripcion: Retraso mental leve
+  Fecha: 15 sep. 2026
+- Trastornos hipercinéticos
+  CIE-10: F90
+  Descripcion: Trastornos hipercinéticos
+  Es referido por Psicólogo(a)
+  Fecha: 31 ago. 2026
+- Caries dental [Confirmado]
+  CIE-10: K02
+  Descripcion: Caries dental
+  Fecha: 12 jul. 2024
+- 3.6 distal [Confirmado]
+  CIE-10: K02.1
+  Descripcion: Caries de la dentina
+  Fecha: 4 oct. 2024
+- Otras colitis y gastroenteritis no infecciosas [Sospecha]
+  CIE-10: K52
+  Descripcion: Otras colitis y gastroenteritis no infecciosas
+  Fecha: 15 jul. 2026
+- 4.6 tratamiento previamente iniciado [Confirmado]
+  CIE-10: K02.2
+  Descripcion: Caries dentinaria penetrante
+  Fecha: 5 nov. 2024
+
+Diagnosticos agudos (5):
+- Trastorno de la personalidad emocionalmente inestable [Sospecha]
+  CIE-10: F60.3
+  Descripcion: Trastorno de la personalidad emocionalmente inestable
+  Fecha: Hoy
+- Vaginitis, vulvitis y vulvovaginitis en enfermedades infecciosas y parasitarias clasificadas en otra parte [Sospecha]
+  CIE-10: N77.1
+  Descripcion: Vaginitis, vulvitis y vulvovaginitis en enfermedades infecciosas y parasitarias clasificadas en otra parte
+  Fecha: Hace 19 días
+- Atención para la anticoncepción
+  CIE-10: Z30
+  Descripcion: Atención para la anticoncepción
+  Es referido por Técnico Paramédico
+  Fecha: Hace 1 día
+- Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte [G2, Confirmado]
+  CIE-10: Z71
+  Descripcion: Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte
+  Fecha: Hace 494 días
+- Otras consultas especificadas [Confirmado]
+  CIE-10: Z71.8
+  Descripcion: Otras consultas especificadas
+  Fecha: Hace 19 días
+======================================================================
+=== FIN ESTRATIFICACION ECICEP ===
+======================================================================
+
+======================================================================
+=== INICIO ACTIVIDADES ===
+======================================================================
+- 1 Controles salud mental
+======================================================================
+=== FIN ACTIVIDADES ===
+======================================================================
+
+======================================================================
+=== INICIO PROFESIONALES ===
+======================================================================
+(sin profesionales)
+======================================================================
+=== FIN PROFESIONALES ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN RECETAS ===
+======================================================================
+(sin recetas)
+======================================================================
+=== FIN PLAN RECETAS ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN LABORATORIO ===
+======================================================================
+(sin ordenes de laboratorio)
+======================================================================
+=== FIN PLAN LABORATORIO ===
+======================================================================

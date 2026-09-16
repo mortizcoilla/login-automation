@@ -1,0 +1,313 @@
+# NOTA CLINICA — extraida de Rayen
+# Paciente: Maciel Vanessa Orellana Astudill
+# Paciente (Rayen): Maciel Vanessa Orellana Astudillo
+# Fecha atencion: 15-09-2026
+
+!!! ATENCION: panel del paciente NO CARGO en Rayen.
+!!! La nota tiene placeholders. Revisar manualmente en Rayen.
+
+======================================================================
+=== INICIO IDENTIFICACION ===
+======================================================================
+Médico de cabecera: Sin médico asignado
+RUN: 15.918.179-0
+Fecha de nacimiento: 05-11-1984 00:00
+Edad Cronológica: 41 años 10 meses 11 días
+Sexo Biológico: Mujer
+Identidad de género: Femenina
+Dirección: Calle 18 septiembre 714 //939337545 714, San Bernardo - XIII Región Metropolitana - Chile
+Sector: Sector Verde
+Est. Inscripción: CESFAM Raúl Cuevas
+Previsión: Fonasa A
+Teléfono: Teléfono móvil | +56 (9) 27086746
+Estado civil: Soltero(a)
+Ocupaciones: Remunerado Independiente
+Actualice Remunerado Independiente por otro dato
+Número de ficha: Rayen: 159181790
+======================================================================
+=== FIN IDENTIFICACION ===
+======================================================================
+
+======================================================================
+=== INICIO HISTORIAL DE ATENCIONES ===
+======================================================================
+15-09-2026 14:52 Atención no completada (1) Hipotiroidismo- (Confirmada) (AUGE) 
+(2) Obesidad- (Confirmada) 
+(3) Hipertensión esencial (primaria)- (Confirmada) 
+(4) Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE) 
+(5) Hiperlipidemia mixta- (Confirmada)
+---
+07-09-2026 14:21  Examen general e investigación de personas sin quejas o sin diagnostico informado- (Confirmada)
+---
+02-07-2026 11:22  (1) Hipotiroidismo- (Confirmada) (AUGE) 
+(2) Obesidad- (Confirmada) 
+(3) Hipertensión esencial (primaria)- (Confirmada)
+---
+26-04-2026 10:37  Rinofaringitis aguda (resfriado común)- (Confirmada)
+---
+25-04-2026 09:54  Rinofaringitis aguda (resfriado común)- (Sospecha)
+---
+20-04-2026 09:40  (1) Hipertensión esencial (primaria)- (Confirmada) 
+(2) Obesidad- (Confirmada) 
+(3) Hipotiroidismo- (Confirmada) (AUGE)
+---
+18-04-2026 10:27 NSP: Prótesis
+---
+11-04-2026 09:19  Atrofia del reborde alveolar desdentado- (Confirmada)
+---
+31-03-2026 19:20  Atrofia del reborde alveolar desdentado- (Confirmada)
+---
+27-03-2026 19:42  Atrofia del reborde alveolar desdentado- (Confirmada)
+---
+21-03-2026 09:10  Atrofia del reborde alveolar desdentado- (Confirmada)
+======================================================================
+=== FIN HISTORIAL DE ATENCIONES ===
+======================================================================
+
+======================================================================
+=== INICIO NOTA CLINICA DE YADIRA ===
+======================================================================
+
+Motivo de atencion: control integral g3
+
+paciente femenina de 41 años de edad acude a control integral g3  
+
+fecha de ingreso ecicep 02/04/2024 SIN PAUTA CORRESPONDIENTE 
+
+
+
+
+IDENTIFICACIÓN DEL ACOMPAÑANTE:
+acude sola 
+
+DIAGNÓSTICOS DE INGRESO: 
+HTA 
+HIPOTIROIDISMO 
+OBESIDAD 
+DSLP 
+
+
+Fármacos de uso diario: 
+Losartan Potasico 50 mg Comprimidos : 1 Comprimido cada 24 horas 
+Atorvastatina Calcica 20 mg Comprimidos : 1 Comprimido cada 24 horas 
+Metformina Clorhidrato 1000 mg Comprimidos de Liberacion Prolongada : 1 Comprimido cada 24 horas 
+
+ADHERENCIA: mala no cumple desde mayo 2026 al parecer por no ser despachada 
+
+ANAMNESIS BIOMÉDICA:
+Antecedentes quirúrgicos colecistectomia 
+Alergias:  no 
+Antecedentes familiares: abuela materna ca gástrico  / padre + iam
+Hábitos
+Tabaco: ++ 2 cigarros por día desde hace 15 años aprox  /Alcohol: no/ drogas:  no
+Alimentación:  3 comidas, 1 colación  hidratacion 1 litro de agua aprox al día  
+RETIRA LECHE no 
+Actividad Física: no 
+Entretenimiento: ver tv jugando con el nieto 
+Ciclo sueño-vigilia: sin alteración 
+Deposiciones/diuresis: sin alteraciones 
+
+ANTECEDENTES BIO PSICOSOCIALES
+Ocupación: dueña de casa 
+Estado civil: soletra 
+Estructura Familiar:  Hijos (2.  19a  23a)  Hermanos (5. relación: sin comunicación, distante )
+Escolaridad: 2do medio
+Religión o creencias: catolica 
+Servicios básicos: Luz, agua, gas, electricidad si 
+Tipo de vivienda:  ligero
+Con quién vive: 2 hijas, nieto, pareja 
+Red de apoyo: pareja 
+Participación comunitaria: no 
+
+TAMIZAJES:
+EMPA / EMPAM VIGENCIA: 27/01/2027
+PAP 01/01/2027 / MAMOGRAFIA VIGENCIA:
+
+
+SÍNTOMAS ACTUALES
+Al interrogatorio dirigido evaluación por sistema: angina (-) , palpitaciones (-), síncope  (-), disnea (-), ortopnea  (-), DPN  (-), nicturia  (-) , Claudicación intermitente  (-) , edema (-) , proteinuria  (-).
+poliuria (-) , polidipsia (-) , polifagia (-)  baja de peso (-) .
+Cefalea (-) tinitus (-) mareos (-) 
+Astenia (-) Adinamia (-) Caída pelo (-) uñas quebradizas (- ) piel seca (-) intolerancia al frío(-) Alteraciones del sueño (-) 
+Tos crónica (-) disfagia (-) disfonía (-) 
+Gonalgia (-) Coxalgia (-) Rigidez AM (-) caídas (-) 
+
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses: niega 
+
+
+EXAMEN FÍSICO 
+Signos vitales: REGISTRADO EN FORMULARIO
+Antropometría: REGISTRADO EN FORMULARIO
+
+EXÁMENES DE LABORATORIO: REGISTRADO EN FORMULARIO
+OTROS:  no trae 
+Registro de parametros clinicos atingentes a lo abordado en el control.
+
+
+DIAGNÓSTICOS ACTUALES: 
+hta compensada 
+dslp descompensada 
+hipotiroidimo descompensada 
+
+Nuevos diagnósticos: 
+DM NIR  ( cumple dos criterios segun ADA, confirmado en dos oportunidades) 
+
+ACTUALIZACIÓN Estratificación de Riesgo: FECHA g3 15/09/2026
+
+Registro de Vivencia / Dolencia: (Sentimientos, Ideas, Función y Expectativas)
+¿Qué es lo que más le preocupa actualmente respecto a su salud? 
+¿Por qué cree que le está pasando esto?
+¿Cómo le afecta esto en su diario vivir? 
+¿Qué espera de nosotros para que le ayudemos a mejorar esta condición?
+
+LISTADO DE PROBLEMAS PRINCIPALES DEL PACIENTE: 
+• Problemas priorizados consensuados con la persona y/o su familia:
+
+• Problemas observados no consensuados entre clínicos y paciente: 
+   Etapa del cambio respecto al problema: 
+
+PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS 
+1. Objetivo: 
+2. Opciones:
+3. Acuerdos (actividades): 
+4. Responsable:
+5. Plazo:
+
+- Se acuerda en conjunto con paciente derivación a Gestión de casos:  SI / NO ¿Por qué?
+- Se deriva a sus exámenes de medicina preventivos: ¿Cuáles?
+- Receta farmacológica unificada
+- Generación de interconsultas:
+- Fecha aproximada de próximo control: 
+- Recomendación social de Activos Comunitarios, cuando corresponda.
+
+DATOS PARA MONITOREO A DISTANCIA	
+Actualizar n° de teléfono:
+Dirección:
+Uso de Whatsapp:
+Mecanismo de comunicación a distancia acordado:
+
+======================================================================
+=== FIN NOTA CLINICA DE YADIRA ===
+======================================================================
+
+======================================================================
+=== INICIO DIAGNOSTICOS ===
+======================================================================
+- CIE 10 [Repetida, Principal, GES, Confirmado]: Clasificación: E03Hipotiroidismo
+- CIE 10 [Repetida, Confirmado]: Clasificación: E66Obesidad
+- CIE 10 [Repetida, Confirmado]: Clasificación: I10Hipertensión esencial (primaria)
+- CIE 10 [Nueva, GES, Confirmado]: Clasificación: E11Diabetes mellitus no insulinodependiente
+- CIE 10 [Nueva, Confirmado]: Clasificación: E78.2Hiperlipidemia mixta
+======================================================================
+=== FIN DIAGNOSTICOS ===
+======================================================================
+
+======================================================================
+=== INICIO ESTRATIFICACION ECICEP ===
+======================================================================
+Grupo: G3 (Riesgo alto)
+Fecha inicio: 15 sep. 2026
+
+Diagnosticos cronicos (10):
+- Hipotiroidismo [G3, GES, No Controlado, Confirmado]
+  Problema: Hipotiroidismo en personas de 15 años y más
+  Fecha: 15 sep. 2026
+- Diabetes mellitus no insulinodependiente [G3, GES, Controlado, Confirmado]
+  Problema: Diabetes mellitus tipo 2
+  Fecha: 15 sep. 2026
+- Obesidad [G3, Confirmado]
+  CIE-10: E66
+  Descripcion: Obesidad
+  Fecha: 15 sep. 2026
+- Hiperlipidemia mixta [G3, Confirmado]
+  CIE-10: E78.2
+  Descripcion: Hiperlipidemia mixta
+  Fecha: 15 sep. 2026
+- Hipermetropía
+  CIE-10: H52.0
+  Descripcion: Hipermetropía
+  Es referido por Tecnólogo Medico
+  Fecha: 3 dic. 2020
+- Trastorno de la refracción, no especificado [Confirmado]
+  CIE-10: H52.7
+  Descripcion: Trastorno de la refracción, no especificado
+  Fecha: 3 mar. 2026
+- Disminución de la agudeza visual, sin especificación [G3, Confirmado]
+  CIE-10: H54.7
+  Descripcion: Disminución de la agudeza visual, sin especificación
+  Fecha: 23 may. 2023
+- Hipertensión esencial (primaria) [G3, Controlado, Confirmado]
+  CIE-10: I10
+  Descripcion: Hipertensión esencial (primaria)
+  Fecha: 15 sep. 2026
+- Caries dental [Confirmado]
+  CIE-10: K02
+  Descripcion: Caries dental
+  Fecha: 28 ene. 2026
+- Caries dentinaria penetrante [Confirmado]
+  CIE-10: K02.2
+  Descripcion: Caries dentinaria penetrante
+  Fecha: 25 oct. 2021
+
+Diagnosticos agudos (3):
+- Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte [G3, Confirmado]
+  CIE-10: Z71
+  Descripcion: Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte
+  Fecha: Hace 1904 días
+- Hipertrigliceridemia [G3, Confirmado]
+  CIE-10: E78.1
+  Descripcion: Hipertrigliceridemia
+  Fecha: Hace 1539 días
+- Examen general e investigación de personas sin quejas o sin diagnostico informado
+  CIE-10: Z00
+  Descripcion: Examen general e investigación de personas sin quejas o sin diagnostico informado
+  Es referido por Técnico Paramédico
+  Fecha: Hace 8 días
+======================================================================
+=== FIN ESTRATIFICACION ECICEP ===
+======================================================================
+
+======================================================================
+=== INICIO ACTIVIDADES ===
+======================================================================
+- 1 Control de salud cardiovascular
+- 1 Control integral con riesgo alto (g3)
+- 1 Control otros problemas de salud
+======================================================================
+=== FIN ACTIVIDADES ===
+======================================================================
+
+======================================================================
+=== INICIO PROFESIONALES ===
+======================================================================
+(sin profesionales)
+======================================================================
+=== FIN PROFESIONALES ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN RECETAS ===
+======================================================================
+- [Crónica] Vigencia: 15  sep.  2027
+	- Losartan potasico 50 mg comprimidos (1 Comprimido cada 24 Horas por 6 Meses)
+	- Amlodipino besilato 5 mg comprimidos (1 Comprimido cada 24 Horas por 6 Meses)
+	- Metformina clorhidrato 1000 mg comprimidos de liberacion prolongada (1 Comprimido cada 12 Horas por 6 Meses)
+	- Levotiroxina sodico 50 mcg comprimidos (0.5 Comprimido cada 24 Horas por 6 Meses)
+	- Atorvastatina calcica 20 mg comprimidos (1.5 Comprimidos cada 24 Horas por 6 Meses)
+======================================================================
+=== FIN PLAN RECETAS ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN LABORATORIO ===
+======================================================================
+- Orden lab #1:
+	- Glicemia en ayuna
+	- Hemoglobina glicosilada
+	- Perfil lipídico (incluye: colesterol total, hdl, ldl, vldl y triglicéridos)
+	- Tiroestimulante (tsh), hormona (adulto, niño o r.n.)
+	- Tiroxina libre (t4l)
+======================================================================
+=== FIN PLAN LABORATORIO ===
+======================================================================

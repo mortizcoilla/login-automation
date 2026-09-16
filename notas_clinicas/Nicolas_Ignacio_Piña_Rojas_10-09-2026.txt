@@ -1,0 +1,278 @@
+# NOTA CLINICA — extraida de Rayen
+# Paciente: Nicolas Ignacio Piña Rojas
+# Fecha atencion: 10-09-2026
+
+!!! ATENCION: panel del paciente NO CARGO en Rayen.
+!!! La nota tiene placeholders. Revisar manualmente en Rayen.
+
+======================================================================
+=== INICIO IDENTIFICACION ===
+======================================================================
+Médico de cabecera: Sin médico asignado
+RUN: 23.012.222-9
+Fecha de nacimiento: 04-05-2009 00:00
+Edad Cronológica: 17 años 4 meses 12 días
+Sexo Biológico: Hombre
+Identidad de género: Masculino
+Dirección: Calle picazo 1935, San Bernardo - XIII Región Metropolitana - Chile
+Sector: Sector Verde
+Est. Inscripción: CESFAM Raúl Cuevas
+Previsión: Fonasa A
+Teléfono: Teléfono móvil | +56 (9) 966247264
+Estado civil: Desconocido
+Ocupaciones: Ninguno
+Actualice Ninguno por otro dato
+Número de ficha: Rayen: 230122229 código antiguo: 104859828047
+======================================================================
+=== FIN IDENTIFICACION ===
+======================================================================
+
+======================================================================
+=== INICIO HISTORIAL DE ATENCIONES ===
+======================================================================
+11-09-2026 08:10 NSP: Consulta
+---
+10-09-2026 15:01 Atención no completada Episodio depresivo moderado- (Confirmada)
+---
+13-08-2026 08:47  (1) Trastornos del sueño- (Confirmada) 
+(2) Episodio depresivo moderado- (Confirmada) 
+(3) Estado Nutricional Normal- (Confirmada)
+---
+05-08-2026 12:03  Episodio depresivo moderado- (Confirmada) Carta de renuncia garantia ges Nicolas Piña.pdf
+---
+29-07-2026 12:28  Otras consultas especificadas- (Confirmada)
+---
+29-07-2026 10:58  Episodio depresivo moderado- (Confirmada)
+---
+21-07-2026 16:42  Otras consultas especificadas- (Confirmada)
+---
+10-07-2026 12:13 NSP: Control Integral ECICEP-G3
+---
+10-07-2026 10:56 NSP: Control ECICEP
+---
+12-06-2026 10:58 NSP: Control ECICEP
+---
+10-06-2026 08:37 NSP: Control Integral ECICEP-G2
+---
+20-05-2026 11:44 NSP: Control ECICEP
+---
+17-04-2026 13:30  Episodio depresivo moderado- (Confirmada)
+---
+28-03-2026 15:45 NSP: Control Crónico
+---
+20-03-2026 09:55 NSP: Control ECICEP
+======================================================================
+=== FIN HISTORIAL DE ATENCIONES ===
+======================================================================
+
+======================================================================
+=== INICIO NOTA CLINICA DE YADIRA ===
+======================================================================
+
+Motivo de atencion: control sm
+
+Paciente masculino de 17 años de edad 
+
+nota: paciente que se atendía en el sector rojo, sin embargo madre refiere que solicitan cambio por 1. la psicóloga solo atiende hasta los 13a  2. el paciente" esta cansado de asistir a controles, madre explica que sus dos hijos mantiene  diag de sm y que su otro hijo esta  mas complicado
+en el colegio reprueba 1ero medio, y actualmente esta cursando un 2x1 aun en espera de la fecha para ir a presentar los primeros exámenes (la señora de las nieves) 
+madre comenta en múltiples oportunidades el no esta bien, pero en su relato termina desviando toda la conversación sobre el otro hijo... 
+
+
+Historial de la enfermedad: IDENTIFICACIÓN DEL ACOMPAÑANTE:
+Nombre: Ruby Rojas
+Edad: 49 años
+Relación con paciente índice: madre
+Teléfono: 966247274
+
+DIAGNÓSTICOS:
+Episodio depresivo moderado ( en aps 2024) 
+
+antecedentes en múltiples ocasiones de ingreso al PSM, sin alta medica. 
+antecedentes de sm en familia : abuela materna depresión / tia paterna depresión / tio materno T. consumo de sustancia autolisis / hermano depresión, autolesiones 
+
+sin antecedentes de hospitalizaciones previa.
+
+
+ANAMNESIS BIOMÉDICA:
+- Antecedentes quirúrgicos : niega
+- Alergias: niega
+
+- Fármacos de uso diario:
+Venlafaxina 75 mg 2-0-0
+Zopiclona 7.5 mg 0-0-1 ***
+
+mas de 6 meses con este esquema /  hasta el mes 12/2025 cumplió quetiapina 50mg 
+
+
+- Antecedentes familiares: DM: (+ ) abuelos maternos, padre, y abuelo paterno, tío
+y tía paterno HTA: abuela materna DLP: niega IAM: abuelo paterno, abuelo
+materno AVE: (+) abuela materna IRC: (-) CA: (-)
+- Hábitos
+- Tabaco/Alcohol/ drogas: niega
+- Alimentación: ha ido mejorando , en control con nutricionista , pauta alimentaria
+- Actividad Física: juega a la pelota , ejercicios físico , juega con su perro
+- Entretenimiento: ver celular , series
+- Ciclo sueño-vigilia: estable
+- Deposiciones/diuresis: normal
+
+ANTECEDENTES BIO PSICOSOCIALES
+- Ocupación: estudiante
+- Estado civil:
+- Escolaridad: Cursando 1ero Medio en el Liceo Comercial
+- Religión o creencias: dios
+- Servicios básicos: Luz, agua, gas, electricidad: SI
+- Tipo de vivienda: sólida
+- Con quién vive:- Madre: Rubi Rojas, 49 años, 5to básico, dueña de casa y se dedica a la venta de bebidas y huevos.
+- Hermana: Javiera Valentina Piña Rojas, 26 años, 4to medio, inspectora de patio en un colegio.
+- Cuñado: Marcelino Erazo, 35 años, 4to medio, trabaja en el área de despacho en la empresa Soprole.
+- Hermano: Benjamín Piña Rojas, 17 años,
+- Red de apoyo: padre
+- Participación comunitaria: no
+
+TAMIZAJES:
+- CLAP : no vigente
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses: no
+
+SÍNTOMAS:
+* Ánimo inestable 
+ * Energía estable 
+* Irritabilidad + mal manejo de frustración
+* Perdida de control  solo gritos, pero refiere que trata de controlarse 
+* Anhedonia (-)
+* Insomnio: aun se mantiene el insomnio de conciliación con tratam 
+* Trastorno del Apetito: disminuido 
+* Inhibición psicomotora (-)
+* Bradipsiquia (-) / Alteración de Concentración (-)
+* Ideas de Muerte (-) / Ideación Suicida (-)/ Planificación Suicida (-) / Intento Suicida (-) * autolesiones: no actualmente, la ultima hace 3 meses (corte en el abdomen) 
+Agorafobia (-)
+* Alucinaciones auditivas y olfatorias (-) / Ilusiones (-)
+
+TA 105/76 mm/hg  FC 84X´
+
+DIAGNÓSTICOS:
+Episodio depresivo moderado
+obs hipertiroidismo (NO SE CONSIGUE LA JUSTIFICACION DE ESTA SOSPECHA) 
+
+
+- Se acuerda con paciente y su familia derivación a Gestión de Casos en su sector: No
+
+- Fecha aproximada de próximo control: 
+
+nota: en rayen se consigue un documento con firma del paciente donde acepta cierre de GES, madre explica que es así, y que ellos solo quieren es la entrega de medicamentos acudir las menos veces posible, no psicólogo ni T. social, no visitas. ( agosto 2026)
+
+ultimo control medico febrero 2026
+
+DATOS PARA MONITOREO A DISTANCIA
+? Actualizar n° de teléfono:(9) 66247264
+? Dirección: Calle Picasso 1935
+? Uso de Whatsapp:
+? Mecanismo de comunicación a distancia acordado : llamado
+
+======================================================================
+=== FIN NOTA CLINICA DE YADIRA ===
+======================================================================
+
+======================================================================
+=== INICIO DIAGNOSTICOS ===
+======================================================================
+- CIE 10 [Repetida, Principal, Confirmado]: Clasificación: F32.1Episodio depresivo moderado
+======================================================================
+=== FIN DIAGNOSTICOS ===
+======================================================================
+
+======================================================================
+=== INICIO ESTRATIFICACION ECICEP ===
+======================================================================
+Grupo: G2 (Riesgo moderado)
+Fecha inicio: 13 ago. 2026
+
+Diagnosticos cronicos (5):
+- Episodio depresivo moderado [Confirmado]
+  CIE-10: F32.1
+  Descripcion: Episodio depresivo moderado
+  Fecha: 10 sep. 2026
+- Trastorno de ansiedad,
+lumbago mecanico [Sospecha]
+  CIE-10: F41
+  Descripcion: Otros trastornos de ansiedad
+  Fecha: 16 abr. 2024
+- Trastorno de ansiedad generalizada [Sospecha]
+  CIE-10: F41.1
+  Descripcion: Trastorno de ansiedad generalizada
+  Fecha: 14 dic. 2025
+- Duelo por término de relación de pareja? v/s episodio depresivo [Sospecha]
+  CIE-10: F43.2
+  Descripcion: Trastornos de adaptación
+  Fecha: 19 ago. 2024
+- Caries dental [Confirmado]
+  CIE-10: K02
+  Descripcion: Caries dental
+  Fecha: 7 feb. 2025
+
+Diagnosticos agudos (4):
+- Trastornos del sueño [G2]
+  CIE-10: G47
+  Descripcion: Trastornos del sueño
+  Es referido por Nutricionista
+  Fecha: Hace 33 días
+- Colitis y gastroenteritis no infecciosas, no especificadas [Sospecha]
+  CIE-10: K52.9
+  Descripcion: Colitis y gastroenteritis no infecciosas, no especificadas
+  Fecha: Hace 299 días
+- Otros problemas relacionados con el grupo primario de apoyo, inclusive circunstancias familiares [G2]
+  CIE-10: Z63
+  Descripcion: Otros problemas relacionados con el grupo primario de apoyo, inclusive circunstancias familiares
+  Es referido por Trabajador(a) Social
+  Fecha: Hace 566 días
+- Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte [G2, Confirmado]
+  CIE-10: Z71
+  Descripcion: Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte
+  Fecha: Hace 753 días
+======================================================================
+=== FIN ESTRATIFICACION ECICEP ===
+======================================================================
+
+======================================================================
+=== INICIO ACTIVIDADES ===
+======================================================================
+- 1 Controles salud mental
+======================================================================
+=== FIN ACTIVIDADES ===
+======================================================================
+
+======================================================================
+=== INICIO PROFESIONALES ===
+======================================================================
+(sin profesionales)
+======================================================================
+=== FIN PROFESIONALES ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN RECETAS ===
+======================================================================
+- [Crónica] Vigencia: 10  sep.  2027
+	- Venlafaxina  75 mg capsulas de liberacion prolongada (2 Cápsulas cada 24 Horas por 60 Días)
+	- Risperidona 1 mg comprimidos (1 Comprimido cada 24 Horas por 60 Días)
+======================================================================
+=== FIN PLAN RECETAS ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN LABORATORIO ===
+======================================================================
+- Orden lab #1:
+	- Creatinina en sangre
+	- Hemograma (incluye recuentos de leucocitos y eritrocitos, hemoglobina, hematocrito, formula leucocitaria, características de los elementos figurados y velocidad de eritrosedimentacion)
+	- Perfil hepático
+	- Glicemia en ayuna
+	- Hemoglobina glicosilada
+	- Tiroestimulante (tsh), hormona (adulto, niño o r.n.)
+	- Tiroxina libre (t4l)
+	- Perfil bioquímico (determinación automatizada de 12 parámetros)
+	- Perfil lipídico (incluye: colesterol total, hdl, ldl, vldl y triglicéridos)
+	- Vitamina b12 por inmunoensayo
+======================================================================
+=== FIN PLAN LABORATORIO ===
+======================================================================

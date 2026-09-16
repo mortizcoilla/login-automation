@@ -1,0 +1,418 @@
+# NOTA CLINICA — extraida de Rayen
+# Paciente: Margarita Del Rosario Velasquez
+# Paciente (Rayen): Margarita Del Rosario Velasquez Velasquez
+# Fecha atencion: 15-09-2026
+
+!!! ATENCION: panel del paciente NO CARGO en Rayen.
+!!! La nota tiene placeholders. Revisar manualmente en Rayen.
+
+======================================================================
+=== INICIO IDENTIFICACION ===
+======================================================================
+Médico de cabecera: Sin médico asignado
+RUN: 9.895.857-6
+Fecha de nacimiento: 06-12-1963 00:00
+Edad Cronológica: 62 años 9 meses 10 días
+Sexo Biológico: Mujer
+Identidad de género: Femenina
+Dirección: Pasaje POZO AL MONTE 437 VILLA OBISPOS DE CHUILE, Freirina - III Región Atacama - Chile
+Sector: Sector Verde
+Est. Inscripción: CESFAM Raúl Cuevas
+Previsión: Fonasa B
+Teléfono: Teléfono móvil | +56 (9) 95769008 | Otro teléfono de contacto | +56 (9) 57690081
+Estado civil: Soltero(a)
+Ocupaciones: Desconocido
+Número de ficha: Rayen: 98958576
+======================================================================
+=== FIN IDENTIFICACION ===
+======================================================================
+
+======================================================================
+=== INICIO HISTORIAL DE ATENCIONES ===
+======================================================================
+15-09-2026 10:41 Atención no completada (1) Infección de vías urinarias, sitio no especificado- (Confirmada) 
+(2) Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE) 
+(3) Obesidad- (Confirmada) 
+(4) Trastorno mixto de ansiedad y depresión- (Confirmada) 
+(5) Otra hiperlipidemia- (Confirmada)
+---
+14-09-2026 11:27  Trastorno mixto de ansiedad y depresión- (Sospecha)
+---
+10-09-2026 11:07  Examen general e investigación de personas sin quejas o sin diagnostico informado- (Confirmada)
+---
+01-09-2026 12:24  Otros exámenes generales- (Confirmada)
+---
+01-09-2026 11:57  Otras consultas especificadas- (Confirmada)
+---
+26-08-2026 08:05 NSP: Control Crónico Ingreso
+---
+03-07-2026 10:33  Otros exámenes generales- (Sospecha)
+---
+19-06-2026 11:26  Otros exámenes generales- (Sospecha)
+---
+29-05-2026 18:39  Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE)
+---
+17-04-2026 08:31 NSP: Consulta Kinésica
+---
+13-04-2026 08:03  Mycoplasma pneumoniae [m. Pneumoniae] como causa de enfermedades clasificadas en otros capítulos- (Sospecha)
+---
+10-04-2026 08:00  Mycoplasma pneumoniae [m. Pneumoniae] como causa de enfermedades clasificadas en otros capítulos- (Sospecha)
+---
+07-04-2026 10:59  Mycoplasma pneumoniae [m. Pneumoniae] como causa de enfermedades clasificadas en otros capítulos- (Sospecha)
+---
+06-04-2026 09:47  Mycoplasma pneumoniae [m. Pneumoniae] como causa de enfermedades clasificadas en otros capítulos- (Sospecha)
+======================================================================
+=== FIN HISTORIAL DE ATENCIONES ===
+======================================================================
+
+======================================================================
+=== INICIO NOTA CLINICA DE YADIRA ===
+======================================================================
+
+Motivo de atencion: ingreso integral g2 en dupla
+
+paciente femenina de 63 años de edad acude a ingreso integral en dupla 
+
+Se explica brevemente a paciente sobre ECICEP, se pregunta sobre dudas y apreciaciones respecto a la atención, paciente refiere comprender.
+
+IDENTIFICACIÓN DEL ACOMPAÑANTE:
+acude sola. 
+
+DIAGNÓSTICOS DE INGRESO: 
+
+DM NIR 
+
+Fármacos de uso diario: 
+(-) abandona hace mas de un año
+
+
+ADHERENCIA: muy mala 
+
+ANAMNESIS BIOMÉDICA:
+Antecedentes quirúrgicos : cesarea
+Alergias: no 
+Antecedentes familiares: no los conoce 
+Hábitos
+Tabaco: abandonado hace 5 años, era ocasional /Alcohol: ocasional, en año nuevo / drogas: no 
+Alimentación:   3 comidas, 1 colación  hidratacion 1 litro de agua al día aprox 
+RETIRA LECHE si 
+Actividad Física: bicicleta estática 2 veces por semana 
+Entretenimiento: tv, celular 
+Ciclo sueño-vigilia: sin alteración 
+Deposiciones/diuresis: sin alteración 
+
+ANTECEDENTES BIO PSICOSOCIALES
+- Ocupación: Dueña de casa
+- Estado civil: Soltera
+- Escolaridad: Media completa
+- Religión o creencias: Evangélica
+- Servicios básicos: Luz, agua, gas, electricidad: si posee
+- Tipo de vivienda: sólida
+- Con quién vive:
+. Hija : Ana luisa Melo Velásquez 43a, Inspectora de colegio
+. Yerno : Cristian flores 45a, HBLT, Chofer
+. Nietos : Laura Flores 14a
+. Nieto ; Bruno Flores 12a
+
+- Red de apoyo: Hija
+- Participación comunitaria: no
+
+TAMIZAJES:
+• EMPA / EMPAM VIGENCIA:  01/09/2027
+• PAP / MAMOGRAFIA VIGENCIA: RECHAZA DERIVACIÓN, SE INFORMA A MATRONA DE SECTOR.
+
+
+SÍNTOMAS ACTUALES
+Al interrogatorio dirigido evaluación por sistema: angina (-) , palpitaciones (-), síncope  (-), disnea (-), ortopnea  (-), DPN  (-), nicturia  (-) , Claudicación intermitente  (-) , edema (-) , proteinuria  (-).
+poliuria (-) , polidipsia (-) , polifagia (-)  baja de peso (-) .
+Cefalea (-) tinitus (-) mareos (-) 
+Astenia (-) Adinamia (-) Caída pelo (-) uñas quebradizas (- ) piel seca (-) intolerancia al frío(-) Alteraciones del sueño (-) 
+Tos crónica (-) disfagia (-) disfonía (-) 
+Gonalgia (-) Coxalgia (-) Rigidez AM (-) caídas (-) 
+
+Evaluación salud mental actual:  15/09/2026
+comenta que del empa cuando se abordo tema de sm sintió que si necesitaba la ayuda. 
+
+gatillante: estar mal de DM.  se descuido y se descompenso. sentimiento de ser insensible, mala experiencia de conocidos por la enfermedad, le frustra que cuida su alimentaron de larga data y estos son los resultados. 
+
+actualmente vive en casa de su hija, la cual solo colabora solo en la cocina.
+
+hasta hace  1 año,  trabaja en la feria, y en casas como domestica. administrativa en la paes 
+
+tiene 5 hijos, comenta buena relación en termino general. 
+
+hace 3 meses se separa de su pareja la cual vivían en el norte por 7 años. expresa no quiero volver a pesar de mantener comunic
+
+
+nota: paciente que llora en toda la consulta pero se expresa de forma escueta 
+
+SINTOMAS
+* Ánimo: inestable, menciona desgano constante
+* Energia: muy baja. 
+* Sueño: sin alteración, duerme un aprox de 7a 8 horas, reparador 
+* Irritabilidad: niega
+* Perdida de control:  niega 
+* Apetito: estable, trata de cumplir las orientaciones de la nutric 
+* Inhibición psicomotora (-)
+* Bradipsiquia (-)
+* Alteración de Concentración (+)
+* autolesiones: no
+* Ideas de Muerte (++) constante, indica indiferencia si muero hoy o mañana pero explica que no hara nada, que el suicidio para ella es mal visto
+* Ideación Suicida (-) niega
+* Planificación Suicida (-) Niega
+* Intento Suicida (-) * Niega
+
+* Alucinaciones auditivas y olfatorias (-) / Ilusiones (-) Niega
+
+CUESTIONARIO GLODBERG 6PTS  15/09/2026
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses: 
+niega 
+
+EXAMEN FÍSICO 
+Signos vitales: REGISTRADO EN FORMULARIO
+Antropometría: REGISTRADO EN FORMULARIO
+
+
+
+EXÁMENES DE LABORATORIO: REGISTRADO EN FORMULARIO
+OTROS: 
+11/09/2026
+oc: gluc 500 / leuc ++ /
+urocultivo E coli ++ / resistencia : gentamicina y sulfatrimetropim
+
+
+Registro de parametros clinicos atingentes a lo abordado en el control.
+
+
+DIAGNÓSTICOS ACTUALES: 
+DM  descompensada 
+
+Nuevos diagnósticos: 
+ITUS 
+Hipertrigliceridemia 
+T. ansiedad y depresión 
+
+ACTUALIZACIÓN Estratificación de Riesgo: FECHA g2 31/05/2026
+
+
+Registro de Vivencia / Dolencia: (Sentimientos, Ideas, Función y Expectativas)
+¿Qué es lo que más le preocupa actualmente respecto a su salud? 
+¿Por qué cree que le está pasando esto?
+¿Cómo le afecta esto en su diario vivir? 
+¿Qué espera de nosotros para que le ayudemos a mejorar esta condición?
+
+LISTADO DE PROBLEMAS PRINCIPALES DEL PACIENTE: 
+• Problemas priorizados consensuados con la persona y/o su familia:
+
+• Problemas observados no consensuados entre clínicos y paciente: 
+   
+
+Etapa del cambio respecto al problema: 
+
+PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS 
+1. Objetivo: 
+2. Opciones:
+3. Acuerdos (actividades): 
+4. Responsable:
+5. Plazo:
+
+- Se acuerda en conjunto con paciente derivación a Gestión de casos:   no 
+- Se deriva a sus exámenes de medicina preventivos: no 
+- Receta farmacológica unificada: si 
+- Generación de interconsultas: no 
+- Fecha aproximada de próximo control: 
+
+
+
+- Recomendación social de Activos Comunitarios, cuando corresponda.
+
+
+
+
+Historial de la enfermedad: DERIVADA DE EMPA
+Soltera, cinco hijos, Elice Barbot 44a. Ana Melo 43, Elizabeth Melo 41a, Aron Melo 39a, Isacc Melo 37a. Hija mayor fue entregada en adopción cuando su hija tenía 1 año.
+mantuvo una relacion por 15 años con progenitor de sus hijos, la cual fue conflictiva progenitor mantenía consumo problemático de drogas THC + OH.
+Luego usuaria mantuvo una nueva relacion con Darwin, pero el vivía en atacama, lo conoció por Facebook, indica que fue hace 6 años, la relacion termino por la distancia entre ellos, usuaria estuvo un tiempo viviendo con el, pero extrañaba a sus hijos. llega en junio 2026 a vivir a casa de su hija, debido a quiebre de relacion, indica que la relacion con su hija es buena.
+SE REALIZA CONTENCION EMOCIONAL
+
+Usuaria indica que hace 3 años que se encuentra desmotivada sin energía, animo bajo, indica que hace 43a intento atentar contra su vida y la de su hija, indica que desde esa vez no ha presentado nuevo episodio, menciona que los pensamientos de muerte son constantes, que no tiene nada más que hacer con su vida, no ha tenido planificación.
+Sus hijos Isacc y Aron tienen consumo problemático de drogas, sin problemas delictuales.
+. Usuaria no conoce a sus progenitores, siempre estuvo en casa nacional del niño y luego en la adolescencia en casa de guardadores, antecedentes de ASI en Infancia y adolescencia. a los 15 años sale de la casa de sus guardadores y comienza a trabajar puerta adentro auxiliar de aseo. luego conoció al padre de su primera hija, la cual al informar que se encontraba embarazada en la abandona.
+. En el 2010 se reencuentra con su hija la cual está viviendo en Paris, usuaria viajo a visitarla.
+
+
+
+
+
+
+
+DATOS PARA MONITOREO A DISTANCIA:
+- Actualizar n° de teléfono: 957690081
+
+======================================================================
+=== FIN NOTA CLINICA DE YADIRA ===
+======================================================================
+
+======================================================================
+=== INICIO DIAGNOSTICOS ===
+======================================================================
+- CIE 10 [Nueva, Principal, Confirmado]: Clasificación: N39.0Infección de vías urinarias, sitio no especificado
+- CIE 10 [Repetida, GES, Confirmado]: Clasificación: E11Diabetes mellitus no insulinodependiente
+- CIE 10 [Repetida, Confirmado]: Clasificación: E66Obesidad
+- Trastorno mixto de ansiedad y depresión [Repetida, Confirmado]: Clasificación: F41.2Trastorno mixto de ansiedad y depresión
+- CIE 10 [Nueva, Confirmado]: Clasificación: E78.4Otra hiperlipidemia
+======================================================================
+=== FIN DIAGNOSTICOS ===
+======================================================================
+
+======================================================================
+=== INICIO ESTRATIFICACION ECICEP ===
+======================================================================
+Grupo: G3 (Riesgo alto)
+Fecha inicio: 15 sep. 2026
+
+Diagnosticos cronicos (13):
+- Diabetes mellitus no insulinodependiente [G3, GES, No Controlado, Confirmado]
+  Problema: Diabetes mellitus tipo 2
+  Fecha: 15 sep. 2026
+- Obesidad [G3, Confirmado]
+  CIE-10: E66
+  Descripcion: Obesidad
+  Fecha: 15 sep. 2026
+- Episodio depresivo leve
+  CIE-10: F32.0
+  Descripcion: Episodio depresivo leve
+  Es referido por Enfermero(a)
+  Fecha: 26 jul. 2023
+- Trastorno mixto de ansiedad y depresión [G3, Confirmado]
+  CIE-10: F41.2
+  Descripcion: Trastorno mixto de ansiedad y depresión
+  Fecha: 15 sep. 2026
+- Hipermetropía [Confirmado]
+  CIE-10: H52.0
+  Descripcion: Hipermetropía
+  Fecha: 22 nov. 2025
+- Presbicia [Confirmado]
+  CIE-10: H52.4
+  Descripcion: Presbicia
+  Fecha: 22 nov. 2025
+- Trastorno de la refracción, no especificado [Confirmado]
+  CIE-10: H52.7
+  Descripcion: Trastorno de la refracción, no especificado
+  Fecha: 5 ago. 2024
+- Caries dental [Confirmado]
+  CIE-10: K02
+  Descripcion: Caries dental
+  Fecha: 2 mar. 2023
+- Gastroenteritis [Sospecha]
+  CIE-10: K52
+  Descripcion: Otras colitis y gastroenteritis no infecciosas
+  Fecha: 12 dic. 2024
+- Colelitiasis [Confirmado]
+  CIE-10: K80
+  Descripcion: Colelitiasis
+  Fecha: 21 ago. 2024
+- Obs colangitis [Confirmado]
+  CIE-10: K80.3
+  Descripcion: Cálculo de conducto biliar con colangitis
+  Fecha: 6 ago. 2024
+- Dermatitis alergica [Sospecha]
+  CIE-10: L23
+  Descripcion: Dermatitis alérgica de contacto
+  Fecha: 2 ene. 2025
+- Dlp [G3, No Controlado, Confirmado]
+  CIE-10: E78
+  Descripcion: Dislipidemia
+  Fecha: 6 ago. 2024
+
+Diagnosticos agudos (6):
+- Otra hiperlipidemia [G3, Confirmado]
+  CIE-10: E78.4
+  Descripcion: Otra hiperlipidemia
+  Fecha: Hoy
+- Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte
+  CIE-10: Z71
+  Descripcion: Personas en contacto con los servicios de salud por otras consultas y consejos médicos, no clasificados en otra parte
+  Es referido por Trabajador(a) Social
+  Fecha: Hace 1743 días
+- Otras consultas especificadas [Confirmado]
+  CIE-10: Z71.8
+  Descripcion: Otras consultas especificadas
+  Fecha: Hace 14 días
+- Empa 2026
+  CIE-10: Z00.8
+  Descripcion: Otros exámenes generales
+  Es referido por Técnico Paramédico
+  Fecha: Hace 14 días
+- Examen general e investigación de personas sin quejas o sin diagnostico informado
+  CIE-10: Z00
+  Descripcion: Examen general e investigación de personas sin quejas o sin diagnostico informado
+  Es referido por Técnico Paramédico
+  Fecha: Hace 5 días
+- Infección de vías urinarias, sitio no especificado [Confirmado]
+  CIE-10: N39.0
+  Descripcion: Infección de vías urinarias, sitio no especificado
+  Fecha: Hoy
+======================================================================
+=== FIN ESTRATIFICACION ECICEP ===
+======================================================================
+
+======================================================================
+=== INICIO ACTIVIDADES ===
+======================================================================
+- 1 Ingreso integral - riesgo moderado (g2)
+- 1 Plan de cuidado elaborado - riesgo moderado (g2)
+- 1 Control de salud cardiovascular
+- 1 Controles salud mental
+- 1 Nivel de riesgo en salud mental - riesgo moderado (n2)
+======================================================================
+=== FIN ACTIVIDADES ===
+======================================================================
+
+======================================================================
+=== INICIO PROFESIONALES ===
+======================================================================
+(sin profesionales)
+======================================================================
+=== FIN PROFESIONALES ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN RECETAS ===
+======================================================================
+- [Morbilidad] Vigencia: 29  sep.  2026
+	- Nitrofurantoina 100 mg comprimidos (1 Comprimido cada 8 Horas por 7 Días)
+	- Metformina clorhidrato 1000 mg comprimidos de liberacion prolongada (1 Comprimido cada 12 Horas por 4 Meses)
+	- Atorvastatina calcica 20 mg comprimidos (1 Comprimido cada 24 Horas por 4 Meses)
+- [Morbilidad] Vigencia: 29  sep.  2026
+	- Nitrofurantoina 100 mg comprimidos (1 Comprimido cada 8 Horas por 7 Días)
+	- Metformina clorhidrato 1000 mg comprimidos de liberacion prolongada (1 Comprimido cada 12 Horas por 4 Meses)
+	- Atorvastatina calcica 20 mg comprimidos (1 Comprimido cada 24 Horas por 4 Meses)
+======================================================================
+=== FIN PLAN RECETAS ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN LABORATORIO ===
+======================================================================
+- Orden lab #1:
+	- Orina completa, (incluye cod.0309023 y 0309024)
+	- Urocultivo
+- Orden lab #2:
+	- Creatinina en sangre
+	- Electrolitos plasmaticos
+	- Microalbuminuria aislada
+	- Orina completa, (incluye cod.0309023 y 0309024)
+	- Perfil lipídico (incluye: colesterol total, hdl, ldl, vldl y triglicéridos)
+	- Nitrógeno ureico y/o úrea en sangre
+	- Hemoglobina glicosilada
+	- Hemograma (incluye recuentos de leucocitos y eritrocitos, hemoglobina, hematocrito, formula leucocitaria, características de los elementos figurados y velocidad de eritrosedimentacion)
+	- Perfil hepático
+	- Vitamina b12 por inmunoensayo
+	- Tiroestimulante (tsh), hormona (adulto, niño o r.n.)
+	- Tiroxina libre (t4l)
+	- Perfil bioquímico (determinación automatizada de 12 parámetros)
+======================================================================
+=== FIN PLAN LABORATORIO ===
+======================================================================

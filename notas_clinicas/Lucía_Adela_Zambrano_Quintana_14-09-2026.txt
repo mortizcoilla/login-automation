@@ -1,0 +1,396 @@
+# NOTA CLINICA — extraida de Rayen
+# Paciente: Lucía Adela Zambrano Quintana
+# Fecha atencion: 14-09-2026
+
+!!! ATENCION: panel del paciente NO CARGO en Rayen.
+!!! La nota tiene placeholders. Revisar manualmente en Rayen.
+
+======================================================================
+=== INICIO IDENTIFICACION ===
+======================================================================
+Médico de cabecera: Sin médico asignado
+RUN: 8.753.939-3
+Fecha de nacimiento: 01-12-1958 00:00
+Edad Cronológica: 67 años 9 meses 15 días
+Sexo Biológico: Mujer
+Identidad de género: Femenina
+Dirección: Avenida arturo dagnino CEL*976468876 272, San Bernardo - XIII Región Metropolitana - Chile
+Sector: Sector Verde
+Est. Inscripción: CESFAM Raúl Cuevas
+Previsión: Fonasa A
+Teléfono: Teléfono móvil | +56 (9) 76468876 | Otro teléfono de contacto | +56 (9) 76468876 | Tipo otro teléfono de contacto | +56 (9) 76468876
+Estado civil: Casado(a)
+Ocupaciones: Dueña de casa
+Actualice Dueña de casa por otro dato
+Número de ficha: Rayen: 87539393 código antiguo: 105733228047
+======================================================================
+=== FIN IDENTIFICACION ===
+======================================================================
+
+======================================================================
+=== INICIO HISTORIAL DE ATENCIONES ===
+======================================================================
+15-09-2026 14:49  Examen general e investigación de personas sin quejas o sin diagnostico informado- (Confirmada)
+---
+14-09-2026 14:08 Atención no completada (1) Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE) 
+(2) Obesidad- (Confirmada) 
+(3) Coxartrosis (artrosis de la cadera) , (artrosis)- (Confirmada) (AUGE) 
+(4) Trastorno sinovial y tendinoso, no especificado- (Confirmada)
+---
+02-09-2026 09:02  Diabetes mellitus, no especificada- (Confirmada)
+---
+01-09-2026 15:51  Control general de salud de rutina de subpoblaciones definidas- (Confirmada)
+---
+25-08-2026 09:00  Caries dental- (Confirmada)
+---
+21-08-2026 11:06  Pterigion- (Sospecha)
+---
+04-08-2026 15:58  (1) Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE) 
+(2) Trastorno de ansiedad, no especificado- (Confirmada) 
+(3) Obesidad- (Confirmada) 
+(4) Coxartrosis (artrosis de la cadera) , (artrosis)- (Confirmada) (AUGE) 
+(5) Enfermedad hepática alcohólica, no especificada- (Sospecha)
+---
+04-08-2026 07:45  (1) Otros trastornos del ojo y sus anexos- (Confirmada) 
+(2) Pterigion- (Confirmada) 
+(3) Dislipidemia- (Confirmada) 
+(4) Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE) 
+(5) Coxartrosis (artrosis de la cadera) , (artrosis)- (Confirmada) (AUGE)
+---
+20-07-2026 11:51  (1) Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE) 
+(2) Coxartrosis (artrosis de la cadera) , (artrosis)- (Confirmada) (AUGE)
+---
+24-06-2026 18:10 NSP: Consulta
+---
+04-06-2026 13:24  Caries dental- (Confirmada)
+---
+02-06-2026 09:11  Trastorno de la refracción, no especificado- (Confirmada) (AUGE)
+---
+02-06-2026 08:08  Caries dental- (Confirmada)
+---
+26-05-2026 16:20  Otros problemas especificados relacionados con circunstancias psicosociales- (Sospecha)
+---
+19-05-2026 09:58  Examen general e investigación de personas sin quejas o sin diagnostico informado- (Confirmada)
+---
+19-05-2026 09:25  Caries dental- (Confirmada)
+---
+19-05-2026 09:04  Trastorno de la refracción, no especificado- (Sospecha) (AUGE)
+---
+14-05-2026 10:28 NSP: Morbilidad Dental 10 a 19 años
+---
+13-05-2026 15:41  Examen ginecológico (general) (de rutina)- (Confirmada)
+---
+13-05-2026 13:05  Diabetes mellitus no insulinodependiente- (Confirmada) (AUGE)
+---
+30-04-2026 15:52  Obesidad- (Confirmada)  (Derivacion interna)
+---
+30-04-2026 08:09  Otras caries dentales- (Confirmada)
+---
+15-04-2026 09:49  Nausea y vomito- (Confirmada)
+---
+08-04-2026 09:05  Caries dental- (Confirmada)
+---
+07-04-2026 15:05 NSP: Morbilidad Telefónica
+---
+07-04-2026 08:06  Caries dental- (Confirmada)
+======================================================================
+=== FIN HISTORIAL DE ATENCIONES ===
+======================================================================
+
+======================================================================
+=== INICIO NOTA CLINICA DE YADIRA ===
+======================================================================
+
+Motivo de atencion: control integral g3
+
+Paciente femenina de 67 años de edad acude a control integral g3 sola sin ayuda técnica .
+
+IDENTIFICACIÓN DEL ACOMPAÑANTE:
+acude sola
+
+DIAGNÓSTICOS DE INGRESO:
+
+DIABETES MELLITUS TIPO 2 NO INSULINOREQUIRIENTE
+OBESIDAD
+
+Fármacos de uso diario: BUENA ADHERENCIA A TTO MEDICO
+Metformina Clorhidrato 1000 mg cada 24  horas 
+Paracetamol 500 mg sos
+Celecoxib 200 mg SOS
+Omeprazol 20 mg 1-0-0
+Zopiclona 7,5 mg 0-0-1 ****
+Empagliflozina 10 mg 1-0-0 
+
+vilzermet (vildagliptina/metformina) 50 mg/1000 mg cada 24 horas (en ocasiones no la toma) 
+
+ANAMNESIS BIOMÉDICA:
+- Antecedentes quirúrgicos: embarazo ectopico
+- Alergias: no refiere
+- Antecedentes familiares: DM2 (hermana), hta (madre)
+- Hábitos
+- Tabaco: 5 cigarrillos suspendido hace 3 años/Alcohol: no/ drogas: no
+- Alimentación: 3 comidas sin colaciones, buena en cantidad y calidad.
+- Actividad Física: si, natación
+- Entretenimiento: ninguna
+- Ciclo sueño-vigilia: normal
+- Deposiciones/diuresis: normal
+
+ANTECEDENTES BIO PSICOSOCIALES
+- Ocupación: Ama de casa
+- Estado civil: casada
+- Estructura Familiar: nuclear
+- Escolaridad: sexto básico
+
+- Religión o creencias: católica
+- Servicios básicos: Luz, agua, gas, electricidad: si 
+- Tipo de vivienda: sólida
+- Con quién vive: Esposo
+- Red de apoyo: Esposo y los hijos
+- Participación comunitaria: no
+
+TAMIZAJES:
+? EMPA / EMPAM VIGENCIA: 01/09/2026
+
+
+
+SÍNTOMAS ACTUALES
+Al interrogatorio dirigido evaluación por sistema: angina (-) , palpitaciones (-), síncope  (-), disnea (-), ortopnea  (-), DPN  (-), nicturia  (-) , Claudicación intermitente  (-) , edema (-) , proteinuria  (-).
+poliuria (-) , polidipsia (-) , polifagia (-)  baja de peso (-) .
+Cefalea (-) tinitus (-) mareos (-) 
+Astenia (-) Adinamia (-) Caída pelo (-) uñas quebradizas (- ) piel seca (-) intolerancia al frío(-) Alteraciones del sueño (-) 
+Tos crónica (-) disfagia (-) disfonía (-) 
+Gonalgia (-) Coxalgia (-) Rigidez AM (-) caídas (-) 
+
+
+Hospitalizaciones y consultas a Servicio de urgencia últimos 12 meses: no refiere
+
+
+EXAMEN FÍSICO
+Signos vitales: REGISTRADO EN FORMULARIO
+Antropometría: REGISTRADO EN FORMULARIO
+
+
+EXÁMENES DE LABORATORIO: REGISTRADO EN FORMULARIO
+Otros: EKG 14/09/2026
+
+
+RADIOGRAFÍA DE COLUMNA TOTAL AP-L  0/09/2026
+Osteopenia difusa.
+Discreta incurvación dorso-lumbar levo convexa, no supera los 5º medido por método de Cobb entre la plataforma superior de T8 y la inferior de L2, sin rotación significativa de vértebras.
+No hay evidencias de listesis.
+Los cuerpos vertebrales presentan altura aparentemente normal.
+Signos de espondiloartrosis multinivel.
+No se aprecian lesiones óseas destructivas.
+Desnivel pelviano de 8mm. por elevación de la cadera derecha
+
+Rx de hombro 08/09/2026
+ECOTOMOGRAFIA PARTES BLANDAS HOMBRO DERECHO:
+
+Piel y tejido celular subcutáneo sin alteraciones.
+No se observan imágenes sólidas ni quísticas en los planos estudiados.
+El tendón supraespinoso se observa engrosado e hipoecogénico, sin signos de ruptura.
+Tendones del infraespinoso y subescapular de aspecto adecuado.
+Músculos supra e infraespinoso, subescapular, trapecio y deltoides, sin alteraciones.
+Articulación acromioclavicular sin alteraciones.
+Bursa subdeltoídea de aspecto adecuado.
+Porciones larga y corta del bíceps sin alteraciones.
+Corredera bicipital y tendón correspondiente, dentro de límites normales.
+
+CONCLUSIÓN:
+Tendinosis del supraespinoso.
+
+
+*** acude hace dos meses aprox a cardiologo extrasistema  por EKG anterior alterado, solicita holter de arritmia y test de esfuerzo que fue no concluyente 
+indica tratamiento pero la paciente no lo recuerda y solo expresa que es la mitad del comprimido 
+
+
+DIAGNÓSTICOS ACTUALES:
+DM NIR  descompensada 
+OBESIDAD
+COXARTROSIS
+
+
+ACTUALIZACIÓN Estratificación de Riesgo: G3 FECHA 02/09/2026
+
+PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS (anterior)
+1. Objetivo: mejorar adherencia a tto medico y controles.
+2. Opciones: MAntener dieta, y tto farmacologico y no farmacologico.
+3. Acuerdos (actividades): dieta hiposodica, tomar 2 litros de agua (6-8 vasos de agua diarios), caminatas de 20 minutos 3 veces por semana.
+4. Responsable: medico, enfermera, psicoterapia y nutricionista
+5. Plazo: 6 meses
+6. Seguimiento: no cumple 
+
+
+Registro de Vivencia / Dolencia: (Sentimientos, Ideas, Función y Expectativas)
+¿Qué es lo que más le preocupa actualmente respecto a su salud? el dolor del hombro, y la alteración del electrocardiograma
+¿Por qué cree que le está pasando esto? no lo sabe 
+¿Cómo le afecta esto en su diario vivir? limitación leve al realizar AVD
+¿Qué espera de nosotros para que le ayudemos a mejorar esta condición? 
+tratam y control 
+
+LISTADO DE PROBLEMAS PRINCIPALES DEL PACIENTE: 
+• Problemas priorizados consensuados con la persona y/o su familia:
+niega 
+• Problemas observados no consensuados entre clínicos y paciente: 
+  mala adherencia a tratamiento 
+
+ Etapa del cambio respecto al problema: contemplativa 
+
+PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS 
+1. Objetivo: disminuir a lo menos el 5% del peso corporal / control de cifras de glicemia / tratam para alivio del dolor e ingreso a sala RBC 
+2. Opciones: control medico+nutric+enfermera+podologa / tratam farmacológico / alimentación saludable/ activ de autocuidado / personal de sala RBC
+3. Acuerdos (actividades): se acuerda acudir a controles indicados  / se acuerda cumplir pauta de alimentación entregada y tratamiento farmacológico con ajuste (manejara pastillero semanal con receta impresa a la vista,) / organizará la agenda diaria para tomar a lo menos 30min para autocuidado (ej. leer, caminatas en contacto con la naturaleza, ejerc de estiramiento, tiempo de ocio) / se deriva a sala RBC para inicio de terapias. 
+4. Responsable: equipo multidisciplinario + paciente
+5. Plazo: 6 meses
+
+
+
+- Se acuerda en conjunto con paciente derivación a Gestión de casos: NO
+- Se deriva a sus exámenes de medicina preventivos: NO
+- Receta farmacológica unificada
+- Generación de interconsultas: NO
+- Fecha aproximada de próximo control: 
+
+
+nota: se solicita exam de orina completa + cultivo por síntomas referido por la paciente, tambien se le solicita ecocardiograma, se le sugiere traerlos por morbilidad 
+
+- Recomendación social de Activos Comunitarios, cuando corresponda.
+
+DATOS PARA MONITOREO A DISTANCIA: 
+Actualizar n° de teléfono: 976468876
+Dirección: arturo dacnino 272 S.B 
+Uso de Whatsapp: si 
+Mecanismo de comunicación a distancia acordado:
+
+======================================================================
+=== FIN NOTA CLINICA DE YADIRA ===
+======================================================================
+
+======================================================================
+=== INICIO DIAGNOSTICOS ===
+======================================================================
+- CIE 10 [Repetida, Principal, GES, Confirmado]: Clasificación: E11Diabetes mellitus no insulinodependiente
+- CIE 10 [Repetida, Confirmado]: Clasificación: E66Obesidad
+- CIE 10 [Repetida, GES, Confirmado]: Clasificación: M16Coxartrosis (artrosis de la cadera) , (artrosis)
+- Tendinosis del supraespinoso [Nueva, Confirmado]: Clasificación: M67.9Trastorno sinovial y tendinoso, no especificado
+======================================================================
+=== FIN DIAGNOSTICOS ===
+======================================================================
+
+======================================================================
+=== INICIO ESTRATIFICACION ECICEP ===
+======================================================================
+Grupo: G3 (Riesgo alto)
+Fecha inicio: 14 sep. 2026
+
+Diagnosticos cronicos (10):
+- Diabetes mellitus no insulinodependiente [G3, GES, No Controlado, Confirmado]
+  Problema: Diabetes mellitus tipo 2
+  Fecha: 14 sep. 2026
+- Diabetes mellitus, no especificada [G3]
+  CIE-10: E14
+  Descripcion: Diabetes mellitus, no especificada
+  Es referido por Enfermero(a)
+  Fecha: 2 sep. 2026
+- Obesidad [G3, Confirmado]
+  CIE-10: E66
+  Descripcion: Obesidad
+  Fecha: 14 sep. 2026
+- Trastorno de ansiedad, no especificado [G3, Confirmado]
+  CIE-10: F41.9
+  Descripcion: Trastorno de ansiedad, no especificado
+  Fecha: 4 ago. 2026
+- Trastorno de la refracción, no especificado [GES, Confirmado]
+  Problema: Vicios de refracción en personas de 65 años y más
+  Fecha: 2 jun. 2026
+- Caries dental [Confirmado]
+  CIE-10: K02
+  Descripcion: Caries dental
+  Fecha: 25 ago. 2026
+- Desalojo de restauración [Confirmado]
+  CIE-10: K02.8
+  Descripcion: Otras caries dentales
+  Fecha: 30 abr. 2026
+- Enfermedad hepática alcohólica, no especificada [Sospecha]
+  CIE-10: K70.9
+  Descripcion: Enfermedad hepática alcohólica, no especificada
+  Fecha: 4 ago. 2026
+- Coxartrosis (artrosis de la cadera) , (artrosis) [G3, GES, Confirmado]
+  Problema: Tratamiento médico en personas de 55 años y más con artrosis de cadera y/o rodilla, leve o moderada
+  Fecha: 14 sep. 2026
+- Dislipidemia [G3, No Controlado, Confirmado]
+  CIE-10: E78
+  Descripcion: Dislipidemia
+  Fecha: 4 ago. 2026
+
+Diagnosticos agudos (5):
+- Pterigion
+  CIE-10: H11.0
+  Descripcion: Pterigion
+  Es referido por Tecnólogo Medico
+  Fecha: Hace 25 días
+- Tendinosis del supraespinoso [Confirmado]
+  CIE-10: M67.9
+  Descripcion: Trastorno sinovial y tendinoso, no especificado
+  Fecha: Hace 1 día
+- Examen general e investigación de personas sin quejas o sin diagnostico informado
+  CIE-10: Z00
+  Descripcion: Examen general e investigación de personas sin quejas o sin diagnostico informado
+  Es referido por Técnico Paramédico
+  Fecha: Hoy
+- Am autovaente, dm2nir, artrosis, obesidad
+  CIE-10: Z10
+  Descripcion: Control general de salud de rutina de subpoblaciones definidas
+  Es referido por Enfermero(a)
+  Fecha: Hace 14 días
+- Otros problemas especificados relacionados con circunstancias psicosociales
+  CIE-10: Z65.8
+  Descripcion: Otros problemas especificados relacionados con circunstancias psicosociales
+  Es referido por Trabajador(a) Social
+  Fecha: Hace 112 días
+======================================================================
+=== FIN ESTRATIFICACION ECICEP ===
+======================================================================
+
+======================================================================
+=== INICIO ACTIVIDADES ===
+======================================================================
+- 1 Control de salud cardiovascular
+- 1 Control otros problemas de salud
+======================================================================
+=== FIN ACTIVIDADES ===
+======================================================================
+
+======================================================================
+=== INICIO PROFESIONALES ===
+======================================================================
+(sin profesionales)
+======================================================================
+=== FIN PROFESIONALES ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN RECETAS ===
+======================================================================
+- [Crónica] Vigencia: 14  sep.  2027
+	- Metformina clorhidrato 1000 mg comprimidos de liberacion prolongada (1 Comprimido cada 12 Horas por 6 Meses)
+	- Celecoxib 200 mg capsulas (8 Cápsulas cada 1 Meses por 6 Meses | sos)
+	- Omeprazol 20 mg capsulas (1 Cápsula cada 24 Horas por 6 Meses)
+	- Zopiclona 7,5 mg comprimidos (1 Comprimido cada 24 Horas por 6 Meses | 1 comprimido en la noche)
+	- Carvedilol 6,25 mg comprimidos (0.5 Comprimido cada 24 Horas por 6 Meses | indicacion cardiologo)
+	- Atorvastatina calcica 20 mg comprimidos (0.5 Comprimido cada 24 Horas por 3 Meses)
+	- Paracetamol 500 mg comprimidos (1 Comprimido cada 12 Horas por 6 Meses)
+======================================================================
+=== FIN PLAN RECETAS ===
+======================================================================
+
+======================================================================
+=== INICIO PLAN LABORATORIO ===
+======================================================================
+- Orden lab #1:
+	- Vitamina b12 por inmunoensayo
+	- Urocultivo
+	- Orina completa, (incluye cod.0309023 y 0309024)
+======================================================================
+=== FIN PLAN LABORATORIO ===
+======================================================================
