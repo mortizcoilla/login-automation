@@ -2211,8 +2211,10 @@ def guardar_respaldo_anamnesis(
     """
     if not (anamnesis or "").strip():
         return None
+    # Sesion 2026-09-16 18:45: prefijo "anam_" para distinguir el
+    # respaldo de anamnesis de la nota clinica y del info_paciente.
     nombre_archivo = (
-        f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
+        f"anam_{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
     )
     out_path = backup_dir / nombre_archivo
 
@@ -2630,8 +2632,11 @@ def guardar_info_paciente(
     md.append("")
 
     # ---- Escritura ----
+    # Sesion 2026-09-16 18:45: prefijo "info_" para distinguir el
+    # doc complementario de la nota clinica completa y del respaldo
+    # de anamnesis. Asi Yadira puede cruzar los 3 archivos por nombre.
     nombre_archivo = (
-        f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
+        f"info_{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
     )
     out_path = info_paciente_dir / nombre_archivo
 

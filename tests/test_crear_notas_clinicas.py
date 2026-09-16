@@ -719,8 +719,9 @@ class TestGuardarRespaldoAnamnesis:
         )
         assert out is not None
         assert out.exists()
-        # Nombre: <safe>_<fecha>.md, mismo patron que notas clinicas.
-        assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
+        # Sesion 2026-09-16 18:45: prefijo "anam_" para distinguir el
+        # respaldo de anamnesis de la nota clinica y del info_paciente.
+        assert out.name == "anam_Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
 
     def test_archivo_contiene_anamnesis_y_frontmatter(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
@@ -904,15 +905,14 @@ class TestGuardarInfoPaciente:
     def test_nombre_archivo_seguido_de_nota_y_anamnesis(
         self, info_paciente_kwargs: dict, paciente_basico: PacienteObjetivo
     ) -> None:
-        """Misma convencion que notas_clinicas y anamnesis para matching."""
+        """Sesion 2026-09-16 18:45: prefijo 'info_' distingue del resto."""
         out = guardar_info_paciente(**info_paciente_kwargs)
-        # Nicolas_Ignacio_Piña_Rojas_10-09-2026.md
-        assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
-        # Comparar con notas_clinicas y anamnesis para verificar consistencia
-        nombre_esperado = (
-            f"{_safe_filename(paciente_basico.nombre)}_{paciente_basico.fecha}.md"
-        )
-        assert out.name == nombre_esperado
+        # info_Nicolas_Ignacio_Piña_Rojas_10-09-2026.md
+        assert out.name == "info_Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
+        # El prefijo 'info_' debe estar presente
+        assert out.name.startswith("info_")
+        # Y NO debe estar el formato viejo (sin prefijo)
+        assert not out.name.startswith("info_info_")  # doble check: no recursivo
 
     def test_no_incluye_seccion_anamnesis(
         self, info_paciente_kwargs: dict
