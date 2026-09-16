@@ -403,6 +403,96 @@ class TestGuardarNotaClinicaNoSobrescribe:
         out2 = guardar_nota_clinica(**kwargs_minimos)
         assert out2 is None
 
+    def test_sobreescribe_archivo_extraccion_rota(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        # Regla dura Yadira 2026-09-16: si el archivo existente es de
+        # extraccion rota (panel_cargo=false), SE SOBREESCRIBE con la
+        # extraccion nueva (que tiene anamnesis). Esto permite que el
+        # pipeline regenere las 6 fichas rotas sin tener que borrarlas
+        # a mano.
+        target = tmp_path / "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
+        # Simular archivo de extraccion rota (sin anamnesis, con warning).
+        target.write_text(
+            "---\n"
+            'paciente: "Nicolas Ignacio Piña Rojas"\n'
+            'title: "Nota clinica - Nicolas Ignacio Piña Rojas"\n'
+            'fecha_atencion: "10-09-2026"\n'
+            'panel_cargo: "false"\n'
+            "---\n\n"
+            "> ⚠️ **ATENCION: panel del paciente NO CARGO en Rayen.**\n\n"
+            "## Identificacion\n\n_(vacio)_\n\n"
+            "## Nota clinica de Yadira\n\n"
+            "_(bloque a completar por el LLM)_\n\n",
+            encoding="utf-8",
+        )
+
+        out = guardar_nota_clinica(
+            paciente=paciente_basico,
+            identificacion={"RUN": "23.012.222-9", "Edad": "17 años"},
+            historial="2024-03-15: control previo sin novedades",
+            anamnesis="Paciente consulta por control de su patologia cronica.",
+            diagnosticos=["I10X Hipertension esencial"],
+            actividades=["Control de presion arterial"],
+            profesionales=["Dr. Lopez"],
+            pautas=[],
+            notas_dir=tmp_path,
+        )
+        # Ahora SÍ escribio.
+        assert out is not None
+        contenido = out.read_text(encoding="utf-8")
+        # Frontmatter nuevo (panel_cargo=true por default).
+        assert 'panel_cargo: "true"' in contenido
+        # Aviso de panel no cargo eliminado.
+        assert "panel del paciente NO CARGO" not in contenido
+        # Estructura nueva presente.
+        assert "Paciente consulta por control" not in contenido
+        assert "bloque a completar por el LLM" in contenido
+
+    def test_no_sobreescribe_archivo_extraccion_valida(
+        self, paciente_basico: PacienteObjetivo, tmp_path: Path
+    ) -> None:
+        # Si el archivo existente es de extraccion valida (panel_cargo=true,
+        # posiblemente con edicion manual de Yadira), NO se sobrescribe.
+        target = tmp_path / "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
+        target.write_text(
+            "---\n"
+            'paciente: "Nicolas Ignacio Piña Rojas"\n'
+            'title: "Nota clinica - Nicolas Ignacio Piña Rojas"\n'
+            'fecha_atencion: "10-09-2026"\n'
+            'panel_cargo: "true"\n'
+            "---\n\n"
+            "## Nota clinica de Yadira\n\n"
+            "CONTENIDO EDITADO POR YADIRA\n\n",
+            encoding="utf-8",
+        )
+
+        out = guardar_nota_clinica(
+            paciente=paciente_basico,
+            identificacion={"RUN": "23.012.222-9"},
+            historial="",
+            anamnesis="Nueva anamnesis.",
+            diagnosticos=[],
+            actividades=[],
+            profesionales=[],
+            pautas=[],
+            notas_dir=tmp_path,
+        )
+        # NO escribio (devuelve None).
+        assert out is None
+        # Contenido original intacto.
+        assert (
+            target.read_text(encoding="utf-8")
+            == "---\n"
+            'paciente: "Nicolas Ignacio Piña Rojas"\n'
+            'title: "Nota clinica - Nicolas Ignacio Piña Rojas"\n'
+            'fecha_atencion: "10-09-2026"\n'
+            'panel_cargo: "true"\n'
+            "---\n\n"
+            "## Nota clinica de Yadira\n\n"
+            "CONTENIDO EDITADO POR YADIRA\n\n"
+        )
+
 
 # ---------------------------------------------------------------------------
 # guardar_nota_clinica: nombre real de Rayen (match parcial)
