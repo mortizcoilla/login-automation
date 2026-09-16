@@ -70,33 +70,85 @@ from src.mortadelo.trigger import TRIGGER_RE
 # Bloque Yadira: desde === INICIO NOTA CLINICA DE YADIRA === hasta
 # === FIN NOTA CLINICA DE YADIRA === (o fin de archivo si no cierra).
 # DOTALL para que . matchee newlines.
-YADIRA_BLOCK_RE = re.compile(
-    r"={3,}\s*\n\s*=== INICIO NOTA CLINICA DE YADIRA ===\s*\n=+\s*\n(.*?)(?:=+\s*\n\s*=== FIN NOTA CLINICA DE YADIRA ===|\Z)",
-    re.DOTALL,
-)
+# Sesion 2026-09-16: ya NO se usa. Las notas son .md sin estos
+# marcadores. Se conserva como referencia historica.
+# YADIRA_BLOCK_RE = re.compile(
+#     r"={3,}\s*\n\s*=== INICIO NOTA CLINICA DE YADIRA ===\s*\n=+\s*\n(.*?)(?:=+\s*\n\s*=== FIN NOTA CLINICA DE YADIRA ===|\Z)",
+#     re.DOTALL,
+# )
 
 # Bloque Identificacion: desde === INICIO IDENTIFICACION === hasta
 # === FIN IDENTIFICACION ===.
-IDENTIFICACION_BLOCK_RE = re.compile(
-    r"={3,}\s*\n\s*=== INICIO IDENTIFICACION ===\s*\n=+\s*\n(.*?)(?:=+\s*\n\s*=== FIN IDENTIFICACION ===|\Z)",
-    re.DOTALL,
-)
+# Sesion 2026-09-16: ya NO se usa. Las notas son .md sin estos
+# marcadores. Se conserva como referencia historica.
+# IDENTIFICACION_BLOCK_RE = re.compile(
+#     r"={3,}\s*\n\s*=== INICIO IDENTIFICACION ===\s*\n=+\s*\n(.*?)(?:=+\s*\n\s*=== FIN IDENTIFICACION ===|\Z)",
+#     re.DOTALL,
+# )
 
-# Primera linea `Motivo de atencion: <valor>` dentro del bloque Yadira.
-# MULTILINE para que ^/$ matcheen lineas. Acepta tambien el formato .md
-# con blockquote `> **Motivo de atencion:**`.
+# Primera linea `Motivo de atencion: <valor>` en el texto de la nota.
+# Sesion 2026-09-16: busqueda whole-file (no en bloque parseado) porque
+# las notas .md no usan marcadores `=== INICIO/FIN ===`.
+#
+# Formatos aceptados (cualquier combinacion):
+# - `- **Motivo de atencion:** <valor>` (.md bullet + bold)
+# - `> **Motivo de atencion:** <valor>` (.md blockquote, dentro de Yadira)
+# - `- Motivo de atencion: <valor>` (.md bullet sin bold)
+# - `Motivo de atencion: <valor>` (.txt legacy, linea plana)
+#
+# El prefijo (bullet / blockquote + opcional bold) se consume con el
+# non-capturing group al inicio. El valor se captura greedy hasta fin
+# de linea; luego _limpiar_valor_campo() le quita `**` y espacios
+# (porque Yadira puede envolver el valor en `**` para bold).
 MOTIVO_RE = re.compile(
-    r"(?:^|>\s*\*\*\s*)Motivo de atenci[oó]n:\s*(.+?)\s*$",
+    r"(?:^|>\s*\*{0,2}\s*|-\s*\*{0,2}\s*)Motivo de atenci[oó]n:\s*(.+?)\s*$",
     re.MULTILINE,
 )
 
-# Primera linea `Edad Cronologica: <valor>` dentro del bloque
-# Identificacion. Acepta tilde y sin tilde para tolerar OCR/encoding
-# inconsistente. Tambien acepta el formato .md `- **Edad Cronologica:**`.
+# Primera linea `Edad Cronologica: <valor>` en el texto de la nota.
+# Misma logica que MOTIVO_RE (whole-file, multi-formato).
+#
+# Formatos aceptados:
+# - `- **Edad Cronologica:** <valor>` (.md bullet + bold)
+# - `- Edad Cronologica: <valor>` (.md bullet sin bold)
+# - `Edad Cronologica: <valor>` (.txt legacy)
 EDAD_RE = re.compile(
-    r"(?:^|-\s*\*\*\s*)Edad Cronol[oó]gica:\*?\*?\s*(.+?)\s*$",
+    r"(?:^|-\s*\*{0,2}\s*)Edad Cronol[oó]gica:\s*(.+?)\s*$",
     re.MULTILINE,
 )
+
+
+def _limpiar_valor_campo(raw: str) -> str:
+    """Limpia un valor capturado de MOTIVO_RE / EDAD_RE.
+
+    Sesion 2026-09-16: Yadira puede envolver el valor en uno o mas
+    pares de `**` (bold de markdown anidado). El regex consume el
+    prefijo (bullet + bold del label) pero NO los `**` dentro del
+    valor. Asi que aqui strip iterativo:
+    - Strip leading/trailing whitespace
+    - Mientras empiece con `** ` o termine con ` **`, los quitamos
+    - Esto maneja `** ** value`, `** ** value **`, etc.
+    """
+    s = raw.strip()
+    changed = True
+    while changed:
+        changed = False
+        # Patron: "** value" -> "value"
+        if s.startswith("** "):
+            s = s[3:].strip()
+            changed = True
+        # Patron: "value **" -> "value"
+        elif s.endswith(" **"):
+            s = s[:-3].strip()
+            changed = True
+        # Patron: "**value" (sin espacio) -> "value"
+        elif s.startswith("**"):
+            s = s[2:].strip()
+            changed = True
+        elif s.endswith("**"):
+            s = s[:-2].strip()
+            changed = True
+    return s
 
 # Keywords de requerimientos Yadira->Mortadelo (sesion 2026-09-16).
 # Se buscan en el texto que sigue a cada trigger `** mortadelo`.
@@ -177,10 +229,19 @@ def _safe_filename(nombre: str) -> str:
 
 
 def _extraer_motivo(nota_path: Path) -> Optional[str]:
-    """Extrae 'Motivo de atencion:' del bloque Yadira de la nota.
+    """Extrae 'Motivo de atencion:' del texto de la nota.
+
+    Sesion 2026-09-16: cambio a busqueda format-agnostic (whole-file)
+    porque las notas son .md con frontmatter y NO usan los marcadores
+    `=== INICIO/FIN ===` del formato .txt legacy.
+
+    Formatos soportados:
+    - `.md` (actual): `- **Motivo de atencion:**` (bullet + bold) o
+      `> **Motivo de atencion:**` (blockquote en bloque Yadira)
+    - `.txt` (legacy): `Motivo de atencion:` (linea plana)
 
     Devuelve:
-        str  -> el motivo encontrado
+        str  -> el motivo encontrado (trimmed)
         None -> la nota no existe, no se puede leer, o no tiene el campo
     La distincion entre None y string vacio es util para diagnosticar
     'nota sin el campo' vs 'nota no existe'.
@@ -191,27 +252,34 @@ def _extraer_motivo(nota_path: Path) -> Optional[str]:
         text = nota_path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
-
-    m = YADIRA_BLOCK_RE.search(text)
-    if not m:
+    if not text:
         return None
-    bloque = m.group(1)
 
-    m2 = MOTIVO_RE.search(bloque)
-    if m2:
-        return m2.group(1).strip()
+    # Sesion 2026-09-16: buscar en el texto completo (no en bloques
+    # parseados). El .md actual pone el motivo como blockquote dentro
+    # del bloque Yadira, fuera de cualquier marcador.
+    m = MOTIVO_RE.search(text)
+    if m:
+        return _limpiar_valor_campo(m.group(1))
     return None
 
 
 def _extraer_edad(nota_path: Path) -> Optional[str]:
-    """Extrae 'Edad Cronologica:' del bloque Identificacion de la nota.
+    """Extrae 'Edad Cronologica:' del texto de la nota.
+
+    Sesion 2026-09-16: cambio a busqueda format-agnostic (whole-file)
+    por la misma razon que _extraer_motivo().
+
+    Formatos soportados:
+    - `.md` (actual): `- **Edad Cronologica:**` (bullet + bold)
+    - `.txt` (legacy): `Edad Cronologica:` (linea plana)
+
+    Acepta tildes y sin tildes en el label (el OCR/encoding de Rayen
+    a veces las pierde; ver la regex EDAD_RE).
 
     Devuelve:
         str  -> la edad encontrada (ej '40 anios 2 meses 30 dias')
         None -> la nota no existe, no se puede leer, o no tiene el campo
-
-    Acepta tildes y sin tildes en el label (el OCR/encoding de Rayen
-    a veces las pierde; ver la regex EDAD_RE).
     """
     if not nota_path.exists():
         return None
@@ -219,15 +287,13 @@ def _extraer_edad(nota_path: Path) -> Optional[str]:
         text = nota_path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
-
-    m = IDENTIFICACION_BLOCK_RE.search(text)
-    if not m:
+    if not text:
         return None
-    bloque = m.group(1)
 
-    m2 = EDAD_RE.search(bloque)
-    if m2:
-        return m2.group(1).strip()
+    # Sesion 2026-09-16: whole-file search (mismo approach que motivo)
+    m = EDAD_RE.search(text)
+    if m:
+        return _limpiar_valor_campo(m.group(1))
     return None
 
 
