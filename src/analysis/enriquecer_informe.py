@@ -224,25 +224,25 @@ KEYWORDS_REQUERIMIENTOS = {
 def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
     """Lee el informe (basico o enriquecido) y devuelve lista de filas.
 
-    Sesion 2026-09-16: acepta 6, 8 o 9 columnas.
-    - 6: informe basico (sin enriquecer). Las 3 nuevas (decimal edad,
-      examenes_adjuntos, crear_interconsulta) quedan vacias.
-    - 8: enriquecido sin decimal edad (version 2026-09-16 16:30).
-      El decimal se calcula de la edad en el main().
-    - 9: enriquecido completo (sesion 2026-09-16 17:26). El decimal
-      ya esta persistido en parts[3].
+    Sesion 2026-09-16 17:35: simplificado — Edad SIEMPRE se re-deriva
+    de la nota clinica en el main() (no se lee del informe). El
+    parser solo extrae los campos que NO dependen de la nota.
 
-    Orden 9 cols (sesion 2026-09-16 17:26, pedido por Yadira):
-        Fecha | Nombre | Edad | Edad (decimal) | Tipo | Motivo | Plantilla
+    Acepta 6, 8 o 9 columnas para back-compat con informes generados
+    por versiones anteriores del script (que SI incluian la Edad en
+    formato verbose). Las columnas de Edad en posiciones 2 y 3 se
+    IGNORAN — siempre se re-deriva el decimal desde la nota.
+
+    Orden 8 cols (sesion 2026-09-16 17:35, formato de salida actual):
+        Fecha | Nombre | Edad (decimal) | Tipo | Motivo | Plantilla
         | Examenes adjuntos | Crear interconsulta
 
-    Orden 8 cols (sesion 2026-09-16 16:30):
+    Orden 6 cols (basico):
         Fecha | Nombre | Edad | Tipo | Motivo | Plantilla
-        | Examenes adjuntos | Crear interconsulta
-    (SIN columna Edad decimal. Se calcula al enriquecer.)
 
-    Orden 6 cols (informe basico):
-        Fecha | Nombre | Edad | Tipo | Motivo | Plantilla
+    Orden 9 cols (sesion 2026-09-16 17:26, deprecada):
+        Fecha | Nombre | Edad | Edad_decimal | Tipo | Motivo | Plantilla
+        | Examenes adjuntos | Crear interconsulta
 
     Ignora headers, separadores `---`, la seccion de Distribucion, y
     lineas con cantidad de columnas != 6, != 8 y != 9.
@@ -256,30 +256,28 @@ def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
             continue
         if not re.match(r"^\d{2}-\d{2}-\d{4}$", parts[0]):
             continue
-        # Extraer campos segun la cantidad de cols
+        # Extraer campos segun la cantidad de cols.
+        # Edad NO se lee del informe: siempre se re-deriva de la nota
+        # en main(). Solo nos importa la posicion del resto.
         fecha = parts[0]
         nombre = parts[1]
         if len(parts) == 9:
-            # Formato nuevo: hay Edad decimal en parts[3]
-            edad = parts[2]
-            edad_decimal = parts[3]
+            # Version 17:26 (deprecada): Edad verbose en parts[2],
+            # Edad_decimal en parts[3]. Ambos IGNORADOS.
             tipo_atencion = parts[4]
             motivo = parts[5]
             plantilla = parts[6]
             examenes_adjuntos = parts[7]
             crear_interconsulta = parts[8]
         elif len(parts) == 8:
-            # Formato intermedio: SIN decimal
-            edad = parts[2]
-            edad_decimal = None
+            # Version 16:30 o 17:35: Edad en parts[2] (ignorada)
             tipo_atencion = parts[3]
             motivo = parts[4]
             plantilla = parts[5]
             examenes_adjuntos = parts[6]
             crear_interconsulta = parts[7]
         else:  # 6 cols
-            edad = parts[2]
-            edad_decimal = None
+            # Basico o sesion 17:35: Edad en parts[2] (ignorada)
             tipo_atencion = parts[3]
             motivo = parts[4]
             plantilla = parts[5]
@@ -288,21 +286,18 @@ def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
         fila = {
             "fecha": fecha,
             "nombre": nombre,
-            "edad": edad,
-            "edad_decimal": edad_decimal,
             "tipo_atencion": tipo_atencion,
             "motivo": motivo,
             "plantilla": plantilla,
             "examenes_adjuntos": examenes_adjuntos,
             "crear_interconsulta": crear_interconsulta,
+            # Edad SIEMPRE None al inicio: el main() la re-deriva de la nota.
+            "edad": None,
         }
         filas.append(fila)
     return filas
 
 
-# ---------------------------------------------------------------------------
-# Extraccion del motivo desde la nota clinica
-# ---------------------------------------------------------------------------
 
 def _safe_filename(nombre: str) -> str:
     """Convierte 'Eduardo Alfonso Serrano Carmona' a 'Eduardo_Alfonso_Serrano_Carmona'.
@@ -450,20 +445,19 @@ def _extraer_requerimientos(nota_path: Path) -> dict[str, bool]:
 # Render del informe enriquecido
 # ---------------------------------------------------------------------------
 
-# Anchos de columna (sesion 2026-09-16 17:26, incluye Edad decimal).
+# Anchos de columna (sesion 2026-09-16 17:35, sesion 2026-09-16 17:26 -
+# se simplifico: solo Edad en decimal, no en formato verbose).
 # _ANCHO_TOTAL es el ancho del borde '===', aproximado a la suma de
-# columnas + separadores. Se redondea hacia arriba para que el border
-# cubra la fila mas larga.
+# columnas + separadores.
 _ANCHO_FECHA = 12
 _ANCHO_NOMBRE = 32
-_ANCHO_EDAD = 24
-_ANCHO_EDAD_DECIMAL = 12
+_ANCHO_EDAD = 12
 _ANCHO_TIPO = 32
 _ANCHO_MOTIVO = 24
 _ANCHO_PLANTILLA = 40
 _ANCHO_EXAMENES_ADJUNTOS = 18
 _ANCHO_CREAR_INTERCONSULTA = 20
-_ANCHO_TOTAL = 234
+_ANCHO_TOTAL = 210
 
 
 def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
@@ -482,21 +476,21 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
         out.write("=" * _ANCHO_TOTAL + "\n")
         return out.getvalue()
 
-    # Orden de columnas (sesion 2026-09-16 17:26, pedido por Yadira):
-    #   Fecha | Nombre | Edad | Edad (anios) | Tipo | Motivo | Plantilla
+    # Orden de columnas (sesion 2026-09-16 17:35, simplificado por Yadira):
+    #   Fecha | Nombre | Edad | Tipo | Motivo | Plantilla
     #   | Examenes adjuntos | Crear interconsulta
+    # Edad se imprime como DECIMAL (ej "19,19"). El formato verbose
+    # ("19 anos 2 meses 10 dias") ya no se muestra — Yadira prefiere
+    # ver el decimal para lectura rapida.
     # Edad se imprime ANTES de Tipo (entre Nombre y Tipo) para que la
     # info clinica del paciente (quien es, que edad) aparezca junta y
     # la metadata de tramite (tipo, motivo, plantilla) despues.
-    # Edad (anios) es la misma edad en decimal (ej "19,19") para
-    # lectura rapida / comparacion entre pacientes.
     # Las 2 ultimas columnas son requerimientos que Yadira deja a
     # Mortadelo en el bloque ** mortadelo de la anamnesis.
     header = "  ".join([
         f"{'Fecha':<{_ANCHO_FECHA}}",
         f"{'Nombre':<{_ANCHO_NOMBRE}}",
         f"{'Edad':<{_ANCHO_EDAD}}",
-        f"{'Edad (anios)':<{_ANCHO_EDAD_DECIMAL}}",
         f"{'Tipo de atencion':<{_ANCHO_TIPO}}",
         f"{'Motivo de la atencion':<{_ANCHO_MOTIVO}}",
         f"{'Plantilla':<{_ANCHO_PLANTILLA}}",
@@ -510,7 +504,6 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
         # '(-)' = dato faltante (nota no existe, o no tiene el campo).
         # Si el dict no tiene la clave, tambien cae a '(-)'.
         edad = f.get("edad") or "(-)"
-        edad_decimal = f.get("edad_decimal") or "(-)"
         motivo = f.get("motivo") or "(-)"
         examenes = "si" if f.get("examenes_adjuntos") else "no"
         ic = "si" if f.get("crear_interconsulta") else "no"
@@ -518,7 +511,6 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
             f"{f.get('fecha', '-'):<{_ANCHO_FECHA}}",
             f"{f.get('nombre', '-')[:_ANCHO_NOMBRE]:<{_ANCHO_NOMBRE}}",
             f"{edad[:_ANCHO_EDAD]:<{_ANCHO_EDAD}}",
-            f"{edad_decimal[:_ANCHO_EDAD_DECIMAL]:<{_ANCHO_EDAD_DECIMAL}}",
             f"{f.get('tipo_atencion', '-')[:_ANCHO_TIPO]:<{_ANCHO_TIPO}}",
             f"{motivo[:_ANCHO_MOTIVO]:<{_ANCHO_MOTIVO}}",
             f"{f.get('plantilla', '-')[:_ANCHO_PLANTILLA]:<{_ANCHO_PLANTILLA}}",
@@ -616,12 +608,12 @@ def main() -> int:
     # Enriquecer cada fila con motivo, edad y requerimientos Yadira
     enriched_motivo = 0
     enriched_edad = 0
-    enriched_edad_decimal = 0
     enriched_examenes = 0
     enriched_ic = 0
     missing_nota = 0
     missing_motivo = 0
     missing_edad = 0
+    enriched_edad_total = 0
     for fila in filas:
         fname = f"{_safe_filename(fila['nombre'])}_{fila['fecha']}.md"
         nota_path = NOTAS_DIR / fname
@@ -646,8 +638,10 @@ def main() -> int:
                 missing_edad += 1
             fila["edad"] = "(-)"
         else:
+            # Guardamos el verbose para que _edad_a_decimal() lo use.
+            # El main() lo sobrescribe con el decimal al final del loop.
             fila["edad"] = edad
-            enriched_edad += 1
+            enriched_edad_total += 1
 
         # Requerimientos Yadira -> Mortadelo (sesion 2026-09-16)
         reqs = _extraer_requerimientos(nota_path)
@@ -658,14 +652,14 @@ def main() -> int:
         if reqs["crear_interconsulta"]:
             enriched_ic += 1
 
-        # Edad decimal (sesion 2026-09-16 17:26, pedido por Yadira).
-        # Si el informe ya traia decimal (9 cols), se respeta. Si no,
-        # se calcula desde la edad.
-        if not fila.get("edad_decimal") or fila["edad_decimal"] == "(-)":
-            decimal = _edad_a_decimal(fila.get("edad", ""))
-            fila["edad_decimal"] = decimal if decimal else "(-)"
-            if decimal:
-                enriched_edad_decimal += 1
+        # Edad (sesion 2026-09-16 17:35, pedido por Yadira):
+        # SIEMPRE se re-deriva de la nota en formato decimal (ej "19,19").
+        # El parser no la lee del informe (puede estar desactualizada);
+        # siempre se calcula fresh.
+        decimal = _edad_a_decimal(fila.get("edad") or "")
+        fila["edad"] = decimal if decimal else "(-)"
+        if decimal:
+            enriched_edad += 1
 
         marker = []
         if not nota_path.exists():
@@ -676,8 +670,7 @@ def main() -> int:
             marker.append("sin Edad")
         suffix = f"  [{', '.join(marker)}]" if marker else ""
         print(
-            f"  {fila['nombre']:<40s} edad={fila['edad']:<25s} "
-            f"decimal={fila['edad_decimal']!r:<10s} "
+            f"  {fila['nombre']:<40s} edad={fila['edad']!r:<10s} "
             f"motivo={fila['motivo']!r}{suffix} "
             f"examenes={('si' if reqs['examenes_adjuntos'] else 'no')} "
             f"ic={('si' if reqs['crear_interconsulta'] else 'no')}"
@@ -687,7 +680,7 @@ def main() -> int:
     print(
         f"  motivo:    {enriched_motivo} ok, {missing_motivo} sin campo, {missing_nota} sin nota\n"
         f"  edad:      {enriched_edad} ok, {missing_edad} sin campo, {missing_nota} sin nota\n"
-        f"  decimal:   {enriched_edad_decimal} ok, {enriched_edad - enriched_edad_decimal} no computable\n"
+        f"  decimal:   {enriched_edad} ok, {enriched_edad_total - enriched_edad} no computable\n"
         f"  examenes:  {enriched_examenes} con requerimiento, {len(filas) - enriched_examenes} sin\n"
         f"  IC:        {enriched_ic} con requerimiento, {len(filas) - enriched_ic} sin"
     )

@@ -176,12 +176,13 @@ def test_parser_acepta_6_columnas(tmp_path: Path):
     assert len(filas) == 1
     assert filas[0]["fecha"] == "10-09-2026"
     assert filas[0]["nombre"] == "Juan Perez"
-    # Sesion 2026-09-16 17:26: el parser siempre setea las keys (con None
-    # si no estan en el formato viejo), para que el main loop pueda
-    # detectar que faltan y enriquecer.
+    # Sesion 2026-09-16 17:35: el parser NO lee Edad del informe (siempre
+    # se re-deriva de la nota en main()). Tampoco trackea edad_decimal.
+    assert filas[0]["edad"] is None
+    assert "edad_decimal" not in filas[0]
+    # Los reqs SI se setean con None cuando no estan (para back-compat)
     assert filas[0]["examenes_adjuntos"] is None
     assert filas[0]["crear_interconsulta"] is None
-    assert filas[0]["edad_decimal"] is None
 
 
 def test_parser_acepta_8_columnas(tmp_path: Path):
@@ -545,7 +546,11 @@ def test_edad_a_decimal_precision_2_decimales():
 # ---------------------------------------------------------------------------
 
 def test_parser_acepta_9_columnas_con_decimal(tmp_path: Path):
-    """Informe nuevo (9 cols) parsea edad_decimal correctamente."""
+    """Informe version 17:26 (9 cols, deprecada). Edad NO se lee del informe.
+
+    Sesion 17:35: el parser ignora parts[2] (Edad verbose) y parts[3]
+    (Edad decimal) — siempre se re-deriva de la nota.
+    """
     informe = tmp_path / "informe.txt"
     informe.write_text(
         "10-09-2026    Juan Perez    40 anos 2 meses 10 dias    40,19    Control    control sm    CONTROL    no    no\n",
@@ -553,14 +558,18 @@ def test_parser_acepta_9_columnas_con_decimal(tmp_path: Path):
     )
     filas = _parsear_informe_basico(informe)
     assert len(filas) == 1
-    assert filas[0]["edad"] == "40 anos 2 meses 10 dias"
-    assert filas[0]["edad_decimal"] == "40,19"
+    # Sesion 17:35: edad SIEMPRE None al parsear — se re-deriva de la nota
+    assert filas[0]["edad"] is None
     assert filas[0]["examenes_adjuntos"] == "no"
     assert filas[0]["crear_interconsulta"] == "no"
+    # Los demas campos se parsean correctamente
+    assert filas[0]["tipo_atencion"] == "Control"
+    assert filas[0]["motivo"] == "control sm"
+    assert filas[0]["plantilla"] == "CONTROL"
 
 
 def test_parser_acepta_8_columnas_sin_decimal(tmp_path: Path):
-    """Informe intermedio (8 cols, version 16:30) sin decimal."""
+    """Informe intermedio (8 cols, version 16:30 o 17:35) sin decimal."""
     informe = tmp_path / "informe.txt"
     informe.write_text(
         "10-09-2026    Juan Perez    40 anos    Control    control sm    CONTROL    no    no\n",
@@ -568,21 +577,26 @@ def test_parser_acepta_8_columnas_sin_decimal(tmp_path: Path):
     )
     filas = _parsear_informe_basico(informe)
     assert len(filas) == 1
-    assert filas[0]["edad"] == "40 anos"
-    assert filas[0]["edad_decimal"] is None  # se calcula despues
+    # Sesion 17:35: edad SIEMPRE None — se re-deriva de la nota
+    assert filas[0]["edad"] is None
+    assert filas[0]["examenes_adjuntos"] == "no"
+    assert filas[0]["crear_interconsulta"] == "no"
 
 
 def test_formatear_incluye_columna_edad_decimal():
-    """_formatear_tabla debe incluir la nueva columna 'Edad (anios)'."""
+    """_formatear_tabla usa 'Edad' como header (unica columna de edad)."""
     filas = [
         {
             "fecha": "10-09-2026", "nombre": "Juan",
-            "edad": "19 anos 2 meses 10 dias", "edad_decimal": "19,19",
+            "edad": "19,19",  # sesion 17:35: edad ES el decimal
             "tipo_atencion": "Control", "motivo": "control sm",
             "plantilla": "CONTROL",
             "examenes_adjuntos": True, "crear_interconsulta": False,
         },
     ]
     out = _formatear_tabla(filas, "09-2026")
-    assert "Edad (anios)" in out
+    # Sesion 17:35: el header es "Edad" (unico)
+    assert "Edad" in out
     assert "19,19" in out
+    # NO debe aparecer el formato verbose en la salida
+    assert "19 anos 2 meses" not in out
