@@ -42,6 +42,13 @@ plantillas/*.bak
 # Manuales MINSAL (190 MB, referenciados por path — no se commitean al repo)
 manuales/
 
+# Notas clinicas de pacientes (contienen RUN, nombre, direccion, telefono,
+# datos clinicos). NO se commitean al repo publico. Vivir en disco local
+# para revision Yadira; nunca al remoto.
+notas_clinicas/*.txt
+notas_clinicas/*/*.md
+notas_clinicas/*/_chrome_dl/
+
 # Trash / backups locales
 .trash/
 **/.trash/
