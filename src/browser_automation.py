@@ -38,7 +38,11 @@ ByType = str
 # contaminaban el proyecto. Ahora van a logs/screenshots/ (gitignored).
 # Al final de una corrida exitosa + tests OK, el script
 # `src.tools.limpiar_screenshots` borra los archivos.
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+# Sesion 2026-09-17 01:35: fix bug de path resolution. El proyecto esta
+# en C:\Workspace\Login-Automation\, asi que el ROOT_DIR se calcula con
+# 2 niveles arriba (.parent.parent), no 3. El bug previo escribia screenshots
+# en C:\Workspace\data\ en lugar de C:\Workspace\Login-Automation\data\.
+ROOT_DIR = Path(__file__).resolve().parent.parent
 SCREENSHOTS_DIR = ROOT_DIR / "data" / "logs" / "screenshots"
 
 

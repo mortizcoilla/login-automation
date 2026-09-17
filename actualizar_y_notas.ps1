@@ -1,16 +1,18 @@
 # ============================================================================
 # actualizar_y_notas.ps1
 # ----------------------------------------------------------------------------
-# Pipeline mensual "actualizar mes + informe + notas clinicas".
-# NO procesa con LLM. Llega hasta la construccion de notas clinicas en
-# notas_clinicas/ y se detiene ahi.
+# Pipeline mensual "actualizar mes + informe + notas clinicas + enriquecer".
+# NO procesa con LLM. Llega hasta tener notas clinicas + anamnesis +
+# info_paciente + informe enriquecido, todo listo para que el LLM (Mortadelo)
+# llene las fichas.
 #
 # Uso (desde la raiz del repo):
 #   .\actualizar_y_notas.ps1
 #   # o equivalentemente:
 #   python -m src.analysis.actualizar_mes_actual yadira ; `
 #   python -m src.analysis.informe_fichas_abiertas ; `
-#   python -m src.tools.crear_notas_clinicas --todos
+#   python -m src.tools.crear_notas_clinicas --todos ; `
+#   python -m src.analysis.enriquecer_informe
 #
 # Prereqs:
 #   - venv activado (.\venv\Scripts\Activate.ps1) o python en PATH
@@ -30,8 +32,18 @@
 #
 #   3. crear_notas_clinicas --todos
 #       Para cada paciente del informe: login en Rayen, abre la ficha, extrae
-#       la nota clinica + adjuntos, y guarda en notas_clinicas/<paciente>_<fecha>.txt.
+#       la nota clinica + adjuntos, y guarda:
+#         - data/notas_clinicas/<paciente>_<fecha>.md
+#         - data/anamnesis/anam_<paciente>_<fecha>.md
+#         - data/info_paciente/info_<paciente>_<fecha>.md
 #       Tiempo: ~10-30 s por paciente (10-30 min si son ~30 pacientes).
+#
+#   3.5. enriquecer_informe
+#       Lee las notas clinicas (.md) y agrega al informe del mes:
+#         - Motivo de atencion
+#         - Edad (decimal, ej "19,19")
+#         - Requerimientos Yadira->Mortadelo (examenes adjuntos, IC)
+#       Reescribe el informe en su lugar. Sin red, ~5s.
 #
 #   4. pytest tests/
 #       Corre la suite de tests como guardrail. Solo limpia screenshots si
@@ -46,6 +58,14 @@
 #   - NO genera fichas en fichas_clinicas/.
 #   - NO envia a Yadira por Telegram.
 #   Esos pasos viven en scripts separados del flujo LLM (zona a corregir).
+#
+# Resultado al terminar (si todo OK):
+#   - data/analysis/fichas_completo.db                 <- actualizada
+#   - data/analysis/informe_fichas_abiertas_<MM>.txt   <- enriquecido
+#   - data/notas_clinicas/<paciente>_<fecha>.md        <- notas completas
+#   - data/anamnesis/anam_<paciente>_<fecha>.md         <- solo anamnesis
+#   - data/info_paciente/info_<paciente>_<fecha>.md     <- sin anamnesis
+#   Listo para que el LLM (Mortadelo) lea y rellene fichas_clinicas/.
 # ============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -62,7 +82,7 @@ Write-Host "====================================================================
 Write-Host ""
 
 # --- Paso 1/3: actualizar mes en curso --------------------------------------
-Write-Host "[1/3] actualizar_mes_actual yadira" -ForegroundColor Yellow
+Write-Host "[1/5] actualizar_mes_actual yadira" -ForegroundColor Yellow
 Write-Host "      Recorriendo Rayen APS para regenerar la DB del mes actual..."
 Write-Host ""
 python -m src.analysis.actualizar_mes_actual yadira
@@ -73,11 +93,11 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 Write-Host ""
-Write-Host "[1/3] OK" -ForegroundColor Green
+Write-Host "[1/5] OK" -ForegroundColor Green
 Write-Host ""
 
 # --- Paso 2/3: informe de fichas abiertas del mes ---------------------------
-Write-Host "[2/3] informe_fichas_abiertas" -ForegroundColor Yellow
+Write-Host "[2/5] informe_fichas_abiertas" -ForegroundColor Yellow
 Write-Host "      Generando informe del mes en curso desde la DB local..."
 Write-Host ""
 python -m src.analysis.informe_fichas_abiertas
@@ -88,12 +108,13 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 Write-Host ""
-Write-Host "[2/3] OK" -ForegroundColor Green
+Write-Host "[2/5] OK" -ForegroundColor Green
 Write-Host ""
 
 # --- Paso 3/3: extraer notas clinicas ---------------------------------------
-Write-Host "[3/3] crear_notas_clinicas --todos" -ForegroundColor Yellow
+Write-Host "[3/5] crear_notas_clinicas --todos" -ForegroundColor Yellow
 Write-Host "      Abriendo cada ficha del informe y guardando la nota clinica..."
+Write-Host "      Genera: notas_clinicas/<p>_<f>.md, anamnesis/anam_<p>_<f>.md, info_paciente/info_<p>_<f>.md"
 Write-Host ""
 python -m src.tools.crear_notas_clinicas --todos
 if ($LASTEXITCODE -ne 0) {
@@ -104,18 +125,45 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 Write-Host ""
-Write-Host "[3/3] OK" -ForegroundColor Green
+Write-Host "[3/5] OK" -ForegroundColor Green
+Write-Host ""
+
+# --- Paso 3.5/5: enriquecer informe (motivo, edad decimal, reqs Yadira) -----
+Write-Host "[3.5/5] enriquecer_informe" -ForegroundColor Yellow
+Write-Host "      Enriqueciendo informe con motivo, edad (decimal) y requerimientos Yadira..."
+Write-Host ""
+python -m src.analysis.enriquecer_informe
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "[ERROR] enriquecer_informe fallo con codigo $LASTEXITCODE" -ForegroundColor Red
+    Write-Host "         El informe basico quedo en disco. Se puede reintentar." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+Write-Host ""
+Write-Host "[3.5/5] OK" -ForegroundColor Green
 Write-Host ""
 
 # --- Resumen ---------------------------------------------------------------
 Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  Pipeline completo." -ForegroundColor Cyan
+Write-Host "  Pipeline completo. Estado al cierre:" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  DB regenerada:        data/analysis/fichas_completo.db" -ForegroundColor Gray
-Write-Host "  Informe del mes:      data/analysis/informe_fichas_abiertas_$(Get-Date -Format 'MM-yyyy').txt" -ForegroundColor Gray
+$InformePath = Join-Path $RepoRoot "data\analysis\informe_fichas_abiertas_$(Get-Date -Format 'MM-yyyy').txt"
+if (Test-Path $InformePath) {
+    Write-Host "  Informe del mes:      data\analysis\$(Split-Path $InformePath -Leaf) (enriquecido)" -ForegroundColor Gray
+}
 $NotasDir = Join-Path $RepoRoot "data\notas_clinicas"
-$CountNotas = (Get-ChildItem -Path $NotasDir -Filter "*.txt" -ErrorAction SilentlyContinue | Measure-Object).Count
-Write-Host "  Notas clinicas (.txt): $CountNotas archivos en notas_clinicas/" -ForegroundColor Gray
+$AnamDir = Join-Path $RepoRoot "data\anamnesis"
+$InfoDir = Join-Path $RepoRoot "data\info_paciente"
+$CountNotas = (Get-ChildItem -Path $NotasDir -Filter "*.md" -ErrorAction SilentlyContinue | Measure-Object).Count
+$CountAnam = (Get-ChildItem -Path $AnamDir -Filter "*.md" -ErrorAction SilentlyContinue | Measure-Object).Count
+$CountInfo = (Get-ChildItem -Path $InfoDir -Filter "*.md" -ErrorAction SilentlyContinue | Measure-Object).Count
+Write-Host "  Notas clinicas:       $CountNotas archivos en data\notas_clinicas\" -ForegroundColor Gray
+Write-Host "  Anamnesis (anam_):    $CountAnam archivos en data\anamnesis\" -ForegroundColor Gray
+Write-Host "  Info paciente:        $CountInfo archivos en data\info_paciente\" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  Estado: LISTO para que el LLM (Mortadelo) lea y genere fichas." -ForegroundColor Green
+Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # --- Paso 4/5: tests como guardrail ----------------------------------------
