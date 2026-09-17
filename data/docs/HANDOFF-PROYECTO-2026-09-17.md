@@ -112,6 +112,59 @@ data/
 └── test_cases/                 ← fixtures de tests
 ```
 
+### 3.5 Corpus de manuales clínicos (MINSAL)
+
+**34 manuales `.md`** en `data/manuales_md/` (~15 MB), con **2,168 chunks
+RAG** pre-calculados en `data/chunks/`.
+
+**Estructura de cada manual:**
+- `data/manuales_md/<nombre>/<nombre>.md`
+- Frontmatter YAML: `title`, `source`, `source_url`, `pages`, `year`,
+  `language`, `audience`, `encoding`, `chunked`, `topics`
+- Marcadores `<!-- p.NN -->` por página (citas precisas)
+- Algunos largos tienen TOC autogenerada
+
+**Chunks RAG:**
+- ~8,000 caracteres cada uno (~2,000 tokens)
+- Metadata: `chunk_id`, `manual`, `manual_title`, `section`,
+  `page_start/end`, `topics`
+- Embeddings pre-calculados en `data/chunks/embeddings.npy` con
+  modelo `paraphrase-multilingual-MiniLM-L12-v2`
+
+**CLI de consulta (`src/mavis_app.py`):**
+```
+python -m src.mavis_app status      # estado del corpus
+python -m src.mavis_app ask "Q"    # RAG (top-k default)
+python -m src.mavis_app eval        # calidad
+python -m src.mavis_app convert     # PDF -> md
+python -m src.mavis_app clean      # limpieza
+python -m src.mavis_app ocr --manual X
+python -m src.mavis_app tables      # extraer tablas
+python -m src.mavis_app chunks      # chunking
+python -m src.mavis_app embed      # embeddings
+python -m src.mavis_app summary     # resumen
+```
+
+**Guía para LLM:** `data/LLM_GUIDE.md` documenta reglas duras y patrones
+de uso. Resumen:
+- ✅ SIEMPRE citar manual + página
+- ❌ NUNCA inventar info, asumir año si no está en frontmatter, mezclar
+  manuales sin marcar fuente
+- Si la consulta es sobre enfermedad específica → buscar GPC de esa
+  enfermedad
+- Si es codificación CIE-10 → usar manuales CIE-10 directamente
+- Mojibake en los archivos es **intencional** (viene del PDF fuente);
+  NO arreglar el encoding
+
+**Categorías de manuales:**
+- CIE-10 (codificación): VOL1 (lista tabular), VOL2 (instrucciones), VOL3 (índice)
+- GPC (manejo clínico): depresión, ansiedad, alcohol, EPOC, HTA, diabetes
+- Programas MINSAL: salud mental, prevención suicidio, inmunizaciones
+- Atención Primaria: ECICEP, modelo integral, supervisión infantil
+- Enfermedades específicas: EPOC GOLD 2026, Diabetes Mellitus tipo 2
+- Salud mental
+- Leyes y regulación: Ley 21.331 (Buen Trato)
+
 ### 3.4 Naming convention (sesión 18:45)
 
 Para cada paciente, el pipeline genera 3 archivos:
