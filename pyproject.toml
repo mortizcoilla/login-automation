@@ -28,6 +28,25 @@ markers = [
     "integration: tests that require a real browser",
 ]
 
+# Gate de verificabilidad (Fase 4c): coverage obligatorio sobre los
+# paquetes con logica de negocio. rayen/* es glue Selenium (se ejercita
+# con drivers mockeados en los tests de extraccion) y queda fuera del
+# gate; crear_notas/main requiere login real.
+[tool.coverage.run]
+source = ["src/core", "src/notas", "src/informes", "src/examenes"]
+omit = [
+    # Orquestacion Selenium con login real (como rayen/*): su logica
+    # deterministica vive en core/informes y si tiene tests.
+    "src/informes/mes.py",
+]
+
+[tool.coverage.report]
+# Ratchet (Fase 4c): arranca en el valor medido (74) para bloquear
+# regresiones; objetivo 80 cuando main() de base/enriquecer tengan
+# tests de integracion offline.
+fail_under = 74
+show_missing = true
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
