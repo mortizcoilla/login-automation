@@ -11,6 +11,7 @@ Estos helpers son la unica fuente de verdad para construir paths de
 informes. Cualquier codigo que necesite apuntar a un informe mensual
 o anual DEBE usar estas funciones (no hardcodear paths).
 """
+
 from __future__ import annotations
 
 from datetime import date

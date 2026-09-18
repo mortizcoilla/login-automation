@@ -26,12 +26,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 
 class EstadoFicha(str, Enum):
@@ -102,6 +103,7 @@ class Token:
 
 
 # === Conexión y schema ===
+
 
 @contextmanager
 def get_connection(db_path: str | Path) -> Iterator[sqlite3.Connection]:
@@ -175,6 +177,7 @@ def inicializar_db(db_path: str | Path) -> None:
 
 # === Helpers ===
 
+
 def _row_to_ficha(row: sqlite3.Row) -> Ficha:
     return Ficha(
         id=row["id"],
@@ -206,6 +209,7 @@ def _now() -> str:
 
 
 # === Operaciones de fichas ===
+
 
 def crear_ficha(
     db_path: str | Path,
@@ -418,6 +422,7 @@ def listar_fichas_hoy(db_path: str | Path, fecha: str | None = None) -> list[Fic
 
 # === Tokens de aprobación (capa de DB) ===
 
+
 def generar_token(
     db_path: str | Path,
     ficha_id: int,
@@ -441,6 +446,7 @@ def generar_token(
             (ficha_id, hash_cont, expira.isoformat(timespec="seconds")),
         )
         token_id = cur.lastrowid
+    assert token_id is not None, "INSERT sin lastrowid"
     return Token(
         id=token_id,
         ficha_id=ficha_id,
@@ -483,13 +489,12 @@ def validar_y_consumir_token(
 
 # === Métricas ===
 
-def obtener_metricas_dia(db_path: str | Path, fecha: str | None = None) -> dict[str, int]:
+
+def obtener_metricas_dia(db_path: str | Path, fecha: str | None = None) -> dict[str, Any]:
     if fecha is None:
         fecha = datetime.now().strftime("%d-%m-%Y")
     with get_connection(db_path) as conn:
-        row = conn.execute(
-            "SELECT * FROM metricas_diarias WHERE fecha = ?", (fecha,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM metricas_diarias WHERE fecha = ?", (fecha,)).fetchone()
     if row is None:
         return {
             "fecha": fecha,

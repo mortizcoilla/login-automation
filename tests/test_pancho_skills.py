@@ -56,12 +56,14 @@ def test_login_rayen_delega_a_browser_automation(fake_creds, logger) -> None:
 
 
 def test_login_rayen_propaga_errores(fake_creds, logger) -> None:
-    with patch(
-        "src.pancho_skills.login.run_login",
-        side_effect=WebDriverException("chrome died"),
+    with (
+        patch(
+            "src.pancho_skills.login.run_login",
+            side_effect=WebDriverException("chrome died"),
+        ),
+        pytest.raises(WebDriverException, match="chrome died"),
     ):
-        with pytest.raises(WebDriverException, match="chrome died"):
-            pancho_skills.login_rayen(fake_creds, logger)
+        pancho_skills.login_rayen(fake_creds, logger)
 
 
 def test_listar_iniciados_retorna_dataclasses(logger) -> None:
@@ -140,12 +142,20 @@ def test_listar_iniciados_salta_fila_mala(logger) -> None:
         ),
         patch(
             "src.pancho_skills.listar_iniciados.extraer_datos_fila",
-            side_effect=[ValueError("fila con 3 celdas"), {
-                "hora": "11:00", "estado": "Iniciado", "nombre": "OK",
-                "tipo_cupo": "Normal", "llegada": "", "llamada": "",
-                "razon": "Consulta", "tipo_atencion": "Morbilidad",
-                "adjunto": "",
-            }],
+            side_effect=[
+                ValueError("fila con 3 celdas"),
+                {
+                    "hora": "11:00",
+                    "estado": "Iniciado",
+                    "nombre": "OK",
+                    "tipo_cupo": "Normal",
+                    "llegada": "",
+                    "llamada": "",
+                    "razon": "Consulta",
+                    "tipo_atencion": "Morbilidad",
+                    "adjunto": "",
+                },
+            ],
         ),
     ):
         result = listar_iniciados(fake_driver, logger, fecha="23-07-2026")
@@ -155,9 +165,15 @@ def test_listar_iniciados_salta_fila_mala(logger) -> None:
 
 def test_leer_ficha_devuelve_ficha_detalle(logger) -> None:
     paciente = PacienteIniciado(
-        hora="10:00", estado="Iniciado", nombre="Test",
-        tipo_cupo="Normal", llegada="", llamada="",
-        razon="Control", tipo_atencion_raw="ME, Control", tipo_atencion="Control",
+        hora="10:00",
+        estado="Iniciado",
+        nombre="Test",
+        tipo_cupo="Normal",
+        llegada="",
+        llamada="",
+        razon="Control",
+        tipo_atencion_raw="ME, Control",
+        tipo_atencion="Control",
         adjunto="",
     )
     ficha = leer_ficha(paciente, logger)

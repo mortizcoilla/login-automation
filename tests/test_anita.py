@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from src import queue_store
-from src.anita import format_telegram, report_generator
 from src.anita.format_telegram import formatear_telegram
 from src.anita.report_generator import generar_reporte
 from src.queue_store import (
@@ -30,7 +29,7 @@ def _simular_dia_completo(db_path: Path) -> None:
     f2 = crear_ficha(db_path, "B", "Control Crónico", "23-07-2026")
     f3 = crear_ficha(db_path, "C", "Morbilidad", "23-07-2026")
     f4 = crear_ficha(db_path, "D", "ECICEP-G1", "23-07-2026")
-    f5 = crear_ficha(db_path, "E", "Morbilidad", "23-07-2026")
+    crear_ficha(db_path, "E", "Morbilidad", "23-07-2026")
     # Flujo de f1: completa (enviada)
     queue_store.avanzar_estado(db_path, f1.id, EstadoFicha.EN_REVISION_USER, "s", "M")
     queue_store.avanzar_estado(db_path, f1.id, EstadoFicha.APROBADO_PENDIENTE_ENVIO, "u", "A")
@@ -46,6 +45,7 @@ def _simular_dia_completo(db_path: Path) -> None:
 
 
 # === Generador de reporte ===
+
 
 def test_reporte_vacio(db_path: Path) -> None:
     r = generar_reporte(str(db_path), "23-07-2026")
@@ -83,6 +83,7 @@ def test_reporte_con_fichas(db_path: Path) -> None:
 def test_reporte_default_hoy(db_path: Path) -> None:
     """Si no se pasa fecha, usa hoy."""
     from datetime import datetime
+
     hoy = datetime.now().strftime("%d-%m-%Y")
     crear_ficha(db_path, "A", "Control", hoy)
     r = generar_reporte(str(db_path))  # sin fecha
@@ -91,6 +92,7 @@ def test_reporte_default_hoy(db_path: Path) -> None:
 
 
 # === Formateo para Telegram ===
+
 
 def test_formato_telegram_sin_fichas(db_path: Path) -> None:
     r = generar_reporte(str(db_path), "23-07-2026")
@@ -158,8 +160,10 @@ def test_formato_telegram_pluraliza_correctamente(db_path: Path) -> None:
 
 # === CLI del cron ===
 
+
 def test_cron_runner_sin_db_existe_falla(tmp_path: Path, capsys) -> None:
     from src.anita.cron_runner import main
+
     rc = main(["--db", str(tmp_path / "nope.db")])
     assert rc == 1
     err = capsys.readouterr().err
@@ -168,6 +172,7 @@ def test_cron_runner_sin_db_existe_falla(tmp_path: Path, capsys) -> None:
 
 def test_cron_runner_dry_run_sin_db_es_ok(tmp_path: Path, capsys) -> None:
     from src.anita.cron_runner import main
+
     rc = main(["--db", str(tmp_path / "nope.db"), "--dry-run"])
     assert rc == 0
     out = capsys.readouterr().out
@@ -176,6 +181,7 @@ def test_cron_runner_dry_run_sin_db_es_ok(tmp_path: Path, capsys) -> None:
 
 def test_cron_runner_formato_telegram(db_path: Path, capsys) -> None:
     from src.anita.cron_runner import main
+
     _simular_dia_completo(db_path)
     rc = main(["--db", str(db_path), "--fecha", "23-07-2026", "--formato", "telegram"])
     assert rc == 0
@@ -185,7 +191,9 @@ def test_cron_runner_formato_telegram(db_path: Path, capsys) -> None:
 
 def test_cron_runner_formato_json(db_path: Path, capsys) -> None:
     import json
+
     from src.anita.cron_runner import main
+
     _simular_dia_completo(db_path)
     rc = main(["--db", str(db_path), "--fecha", "23-07-2026", "--formato", "json"])
     assert rc == 0

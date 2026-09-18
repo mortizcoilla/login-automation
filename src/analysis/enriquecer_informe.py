@@ -40,21 +40,22 @@ Uso:
     python -m src.analysis.enriquecer_informe                                # mes en curso
     python -m src.analysis.enriquecer_informe --informe path/al/informe.txt  # explicito
 """
+
 from __future__ import annotations
 
 import argparse
+import contextlib
 import io
 import re
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 NOTAS_DIR = BASE_DIR / "data" / "notas_clinicas"
 
 from src.analysis.informe_paths import informe_mes_actual_path
-
 
 # Regex del trigger `** Mortadelo` que Yadira deja en la nota clinica.
 # Sesion 2026-09-18: Mortadelo fue eliminado del flujo (paso 7 sera
@@ -182,7 +183,7 @@ EDAD_DECIMAL_RE = re.compile(
 )
 
 
-def _edad_a_decimal(edad_str: str) -> Optional[str]:
+def _edad_a_decimal(edad_str: str) -> str | None:
     """Convierte 'X anos Y meses Z dias' -> 'X,YZ' (2 decimales).
 
     Sesion 2026-09-16 (Yadira): ademas de la edad exacta '19 anos 2 meses
@@ -215,6 +216,7 @@ def _edad_a_decimal(edad_str: str) -> Optional[str]:
     # errores de coma flotante (ej 19.190000000000001).
     return f"{decimal:.2f}".replace(".", ",")
 
+
 # Keywords de requerimientos Yadira (en el trigger `** mortadelo` de la nota).
 # Case-insensitive, tolerante a tildes y typos comunes.
 KEYWORDS_REQUERIMIENTOS = {
@@ -237,7 +239,8 @@ KEYWORDS_REQUERIMIENTOS = {
 # Parser del informe basico
 # ---------------------------------------------------------------------------
 
-def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
+
+def _parsear_informe_basico(ruta: Path) -> list[dict[str, Any]]:
     """Lee el informe (basico o enriquecido) y devuelve lista de filas.
 
     Sesion 2026-09-16 17:35: simplificado — Edad SIEMPRE se re-deriva
@@ -265,7 +268,7 @@ def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
     """
     if not ruta.exists():
         return []
-    filas: list[dict[str, str]] = []
+    filas: list[dict[str, Any]] = []
     for line in ruta.read_text(encoding="utf-8").splitlines():
         parts = re.split(r"\s{2,}", line.rstrip())
         if len(parts) not in (5, 7, 8):
@@ -308,7 +311,6 @@ def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
     return filas
 
 
-
 def _safe_filename(nombre: str) -> str:
     """Convierte 'Eduardo Alfonso Serrano Carmona' a 'Eduardo_Alfonso_Serrano_Carmona'.
 
@@ -322,7 +324,7 @@ def _safe_filename(nombre: str) -> str:
     return out
 
 
-def _extraer_motivo(nota_path: Path) -> Optional[str]:
+def _extraer_motivo(nota_path: Path) -> str | None:
     """Extrae 'Motivo de atencion:' del texto de la nota.
 
     Sesion 2026-09-16: cambio a busqueda format-agnostic (whole-file)
@@ -358,7 +360,7 @@ def _extraer_motivo(nota_path: Path) -> Optional[str]:
     return None
 
 
-def _extraer_edad(nota_path: Path) -> Optional[str]:
+def _extraer_edad(nota_path: Path) -> str | None:
     """Extrae 'Edad Cronologica:' del texto de la nota.
 
     Sesion 2026-09-16: cambio a busqueda format-agnostic (whole-file)
@@ -500,16 +502,18 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
     # la metadata de tramite (tipo, motivo) despues.
     # Las 2 ultimas columnas son requerimientos que Yadira deja a
     # Mortadelo en el bloque ** mortadelo de la anamnesis.
-    header = "  ".join([
-        f"{'Fecha':<{_ANCHO_FECHA}}",
-        f"{'Nombre':<{_ANCHO_NOMBRE}}",
-        f"{'Edad':<{_ANCHO_EDAD}}",
-        f"{'Tipo de atencion':<{_ANCHO_TIPO}}",
-        f"{'Motivo de la atencion':<{_ANCHO_MOTIVO}}",
-        f"{'Examenes':<{_ANCHO_EXAMENES_ADJUNTOS}}",
-        f"{'Interconsulta':<{_ANCHO_CREAR_INTERCONSULTA}}",
-        f"{'Indicaciones':<{_ANCHO_INDICACIONES}}",
-    ])
+    header = "  ".join(
+        [
+            f"{'Fecha':<{_ANCHO_FECHA}}",
+            f"{'Nombre':<{_ANCHO_NOMBRE}}",
+            f"{'Edad':<{_ANCHO_EDAD}}",
+            f"{'Tipo de atencion':<{_ANCHO_TIPO}}",
+            f"{'Motivo de la atencion':<{_ANCHO_MOTIVO}}",
+            f"{'Examenes':<{_ANCHO_EXAMENES_ADJUNTOS}}",
+            f"{'Interconsulta':<{_ANCHO_CREAR_INTERCONSULTA}}",
+            f"{'Indicaciones':<{_ANCHO_INDICACIONES}}",
+        ]
+    )
     out.write(header + "\n")
     out.write("-" * len(header) + "\n")
 
@@ -521,16 +525,18 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
         examenes = "si" if f.get("examenes") else "no"
         ic = "si" if f.get("interconsulta") else "no"
         indicaciones = "si" if f.get("indicaciones") else "no"
-        cells = "  ".join([
-            f"{f.get('fecha', '-'):<{_ANCHO_FECHA}}",
-            f"{f.get('nombre', '-')[:_ANCHO_NOMBRE]:<{_ANCHO_NOMBRE}}",
-            f"{edad[:_ANCHO_EDAD]:<{_ANCHO_EDAD}}",
-            f"{f.get('tipo_atencion', '-')[:_ANCHO_TIPO]:<{_ANCHO_TIPO}}",
-            f"{motivo[:_ANCHO_MOTIVO]:<{_ANCHO_MOTIVO}}",
-            f"{examenes:<{_ANCHO_EXAMENES_ADJUNTOS}}",
-            f"{ic:<{_ANCHO_CREAR_INTERCONSULTA}}",
-            f"{indicaciones:<{_ANCHO_INDICACIONES}}",
-        ])
+        cells = "  ".join(
+            [
+                f"{f.get('fecha', '-'):<{_ANCHO_FECHA}}",
+                f"{f.get('nombre', '-')[:_ANCHO_NOMBRE]:<{_ANCHO_NOMBRE}}",
+                f"{edad[:_ANCHO_EDAD]:<{_ANCHO_EDAD}}",
+                f"{f.get('tipo_atencion', '-')[:_ANCHO_TIPO]:<{_ANCHO_TIPO}}",
+                f"{motivo[:_ANCHO_MOTIVO]:<{_ANCHO_MOTIVO}}",
+                f"{examenes:<{_ANCHO_EXAMENES_ADJUNTOS}}",
+                f"{ic:<{_ANCHO_CREAR_INTERCONSULTA}}",
+                f"{indicaciones:<{_ANCHO_INDICACIONES}}",
+            ]
+        )
         out.write(cells + "\n")
     out.write("=" * _ANCHO_TOTAL + "\n")
 
@@ -560,6 +566,7 @@ def _extraer_periodo_desde_nombre(nombre: str) -> str:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
@@ -583,10 +590,8 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except (AttributeError, OSError):
-        pass
+    with contextlib.suppress(AttributeError, OSError):
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
     args = _parse_args()
     informe_path = args.informe or informe_mes_actual_path()
@@ -711,9 +716,7 @@ def main() -> int:
 
     try:
         informe_path.write_text(contenido, encoding="utf-8")
-        print(
-            f"[output completo guardado en: {informe_path.relative_to(BASE_DIR)}]"
-        )
+        print(f"[output completo guardado en: {informe_path.relative_to(BASE_DIR)}]")
     except OSError as e:
         print(f"WARN: no se pudo guardar: {e}", file=sys.stderr)
         return 1

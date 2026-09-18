@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Abre la ficha de UN paciente en Rayen.
 
 Hace exactamente:
@@ -17,34 +16,36 @@ Reglas:
 - Login con ventana visible para que el operador valide.
 - No modifica nada fuera de este script.
 """
+
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import re
-import shutil
 import sys
 import time
 import unicodedata
 from dataclasses import dataclass
-from datetime import date as _date, datetime
+from datetime import date as _date
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import (
+    expected_conditions as EC,  # noqa: N812 (alias estandar de Selenium)
+)
 from selenium.webdriver.support.ui import WebDriverWait
 
 # Forzar UTF-8 en consola Windows
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-except (AttributeError, OSError):
-    pass
+with contextlib.suppress(AttributeError, OSError):
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
@@ -72,6 +73,7 @@ def _informe_mes_actual_path() -> Path:
     source of truth, sesion 2026-09-09).
     """
     from src.analysis.informe_paths import informe_mes_actual_path
+
     return informe_mes_actual_path()
 
 
@@ -81,9 +83,11 @@ USERS_CONFIG = ROOT / "config" / "users.json"
 
 # ---- Estructura del paciente objetivo ----
 
+
 @dataclass
 class PacienteObjetivo:
     """Un paciente del informe de fichas abiertas a procesar."""
+
     fecha: str
     nombre: str
     tipo_atencion: str
@@ -92,7 +96,7 @@ class PacienteObjetivo:
     # informe (caso de match parcial por truncamiento). El nombre del
     # informe sigue siendo el canonico para el filename; este campo
     # es solo metadato para que Mortadelo pueda matchear.
-    nombre_rayen: Optional[str] = None
+    nombre_rayen: str | None = None
     # Sesion 2026-09-16: flag que paso_4_1_abrir_ficha setea segun si
     # el panel del paciente cargo o no. Si False, guardar_nota_clinica()
     # escribe una nota con placeholder + "REVISION MANUAL" para que
@@ -102,6 +106,7 @@ class PacienteObjetivo:
 
 # ---- Carga de credenciales (reutiliza patron de main.py) ----
 
+
 def load_credentials(user_id: str) -> dict[str, str]:
     """Carga credenciales desde config/users.json."""
     if not USERS_CONFIG.exists():
@@ -110,7 +115,8 @@ def load_credentials(user_id: str) -> dict[str, str]:
     users = data.get("users", {})
     if user_id not in users:
         raise ValueError(f"Usuario '{user_id}' no esta en {USERS_CONFIG}")
-    return users[user_id]
+    credenciales: dict[str, str] = users[user_id]
+    return credenciales
 
 
 def list_known_users() -> list[str]:
@@ -121,6 +127,7 @@ def list_known_users() -> list[str]:
 
 
 # ---- Parser del informe de fichas abiertas ----
+
 
 def parsear_informe(ruta: Path) -> list[PacienteObjetivo]:
     """Lee el informe y devuelve la lista de pacientes objetivo.
@@ -181,11 +188,12 @@ def parsear_informe(ruta: Path) -> list[PacienteObjetivo]:
 
 # ---- Paso 4.1: filtrar por fecha, buscar nombre, doble click ----
 
+
 def _buscar_paciente_en_tabla(
     driver: WebDriver,
     logger: logging.Logger,
     nombre_objetivo: str,
-) -> Optional[tuple[object, Optional[str]]]:
+) -> tuple[WebElement, str | None] | None:
     """Busca la fila del paciente por nombre en la tabla del dia.
 
     Devuelve una tupla (WebElement de la fila, nombre_real_rayen) si
@@ -218,7 +226,7 @@ def _buscar_paciente_en_tabla(
             return (row, None)
 
     # 2) Match parcial.
-    candidatos: list[tuple[object, str]] = []
+    candidatos: list[tuple[WebElement, str]] = []
     for row in rows:
         try:
             datos = extraer_datos_fila(row)
@@ -231,10 +239,7 @@ def _buscar_paciente_en_tabla(
             candidatos.append((row, nombre_row))
 
     if len(candidatos) == 1:
-        logger.info(
-            f"[crear_notas] Match parcial: '{nombre_objetivo}' ~ "
-            f"'{candidatos[0][1]}'"
-        )
+        logger.info(f"[crear_notas] Match parcial: '{nombre_objetivo}' ~ '{candidatos[0][1]}'")
         return (candidatos[0][0], candidatos[0][1])
     if len(candidatos) > 1:
         nombres = [c[1] for c in candidatos]
@@ -250,7 +255,7 @@ def _buscar_paciente_en_tabla(
 def _doble_click_en_paciente(
     driver: WebDriver,
     logger: logging.Logger,
-    row,
+    row: WebElement,
     nombre_objetivo: str | None = None,
 ) -> None:
     """Hace doble click en la fila del paciente para abrir la ficha.
@@ -268,25 +273,20 @@ def _doble_click_en_paciente(
     except StaleElementReferenceException:
         if not nombre_objetivo:
             # Sin nombre no podemos re-find. Propagamos el error original.
-            logger.warning(
-                "[crear_notas] Fila stale pero no se paso nombre para re-find"
-            )
+            logger.warning("[crear_notas] Fila stale pero no se paso nombre para re-find")
             raise
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] No se pudo doble-click en fila: {e}")
         raise
 
     # Stale + tenemos nombre: re-buscar y re-intentar una sola vez.
     logger.warning(
-        "[crear_notas] Fila stale tras esperar panel (15-30s). "
-        "Re-buscando por nombre..."
+        "[crear_notas] Fila stale tras esperar panel (15-30s). Re-buscando por nombre..."
     )
     time.sleep(1)
     resultado = _buscar_paciente_en_tabla(driver, logger, nombre_objetivo)
     if resultado is None:
-        raise RuntimeError(
-            f"No se encontro '{nombre_objetivo}' tras stale element"
-        )
+        raise RuntimeError(f"No se encontro '{nombre_objetivo}' tras stale element")
     row_fresh, _ = resultado
     ActionChains(driver).double_click(row_fresh).perform()
     logger.info("[crear_notas] Doble click (re-find) OK")
@@ -294,9 +294,8 @@ def _doble_click_en_paciente(
 
 # ---- Navegacion: volver a la lista de Pacientes citados ----
 
-def volver_a_pacientes_citados(
-    driver: WebDriver, logger: logging.Logger
-) -> bool:
+
+def volver_a_pacientes_citados(driver: WebDriver, logger: logging.Logger) -> bool:
     """Hace click en el link 'Pacientes citados' del sidebar para volver
     a la lista. Sin esto, el script se queda pegado en la ficha del paciente.
     """
@@ -305,18 +304,16 @@ def volver_a_pacientes_citados(
             By.XPATH,
             "//a[contains(@href, '/main') and normalize-space(text())='Pacientes citados']",
         )
-        driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});", link
-        )
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
         time.sleep(0.3)
         try:
             link.click()
-        except Exception:  # noqa: BLE001
+        except Exception:
             driver.execute_script("arguments[0].click();", link)
         time.sleep(1.5)
         logger.info("[crear_notas] Vuelta a 'Pacientes citados' OK")
         return True
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] No se pudo volver a 'Pacientes citados': {e}")
         return False
 
@@ -345,7 +342,7 @@ def _normalizar_fecha(fecha_str: str) -> str:
     # Quitar hora si la tiene
     fecha_str = fecha_str.strip().split()[0] if fecha_str else ""
     # Si viene como yyyy-mm-dd, convertir
-    for sep_in, sep_out in [("/", "-"), ("-", "-")]:
+    for sep_in, _sep_out in [("/", "-"), ("-", "-")]:
         if sep_in in fecha_str:
             partes = fecha_str.split(sep_in)
             if len(partes) == 3:
@@ -363,6 +360,7 @@ def _fecha_meses_atras(fecha: _date, meses: int) -> _date:
     new_month += 1
     # Clamping del dia
     import calendar as _cal
+
     max_day = _cal.monthrange(new_year, new_month)[1]
     new_day = min(fecha.day, max_day)
     return _date(new_year, new_month, new_day)
@@ -410,7 +408,7 @@ def filtrar_historial_ultimos_6_meses(
 
     fecha_corte = _fecha_meses_atras(fecha_obj, 6)
 
-    lineas = [l.strip() for l in historial.split("\n---\n") if l.strip()]
+    lineas = [linea.strip() for linea in historial.split("\n---\n") if linea.strip()]
     out: list[str] = []
     descartadas = 0
 
@@ -503,12 +501,12 @@ def detectar_adjuntos_en_historial(
             logger.info(f"[crear_notas] DEBUG adjuntos: {dbg.replace('__DEBUG__', '')}")
             try:
                 result = json.loads(payload)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 result = []
         elif "__DEBUG__" in raw:
             logger.info(f"[crear_notas] DEBUG adjuntos: {raw.replace('__DEBUG__', '')}")
             result = []
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error buscando adjuntos: {e}")
         return []
 
@@ -543,7 +541,7 @@ def descargar_adjunto(
     logger: logging.Logger,
     adjunto: dict[str, str],
     fecha_objetivo: str,
-) -> Optional[Path]:
+) -> Path | None:
     """Descarga un adjunto detectando la nueva pestaña que abre Rayen.
 
     En Rayen, hacer click en un .attachment-wrapper ABRE el archivo en
@@ -590,14 +588,12 @@ def descargar_adjunto(
             """,
             nombre,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error marcando wrapper de {nombre}: {e}")
         return None
 
     if not marcado:
-        logger.warning(
-            f"[crear_notas] No encontre el wrapper de {nombre} para hacer click"
-        )
+        logger.warning(f"[crear_notas] No encontre el wrapper de {nombre} para hacer click")
         return None
 
     main_window = driver.current_window_handle
@@ -612,31 +608,25 @@ def descargar_adjunto(
         )
         ActionChains(driver).move_to_element(wrapper).pause(0.2).click().perform()
         logger.info(f"[crear_notas] Click ActionChains sobre WRAPPER de {nombre}")
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            f"[crear_notas] Error haciendo click sobre {nombre}: {e}"
-        )
-        try:
+    except Exception as e:
+        logger.warning(f"[crear_notas] Error haciendo click sobre {nombre}: {e}")
+        with contextlib.suppress(Exception):
             driver.execute_script(
                 "document.querySelectorAll('[data-mortadelo-target]')"
                 ".forEach(e => e.removeAttribute('data-mortadelo-target'));"
             )
-        except Exception:  # noqa: BLE001
-            pass
         return None
 
     # Limpiar data-attribute (no esperamos al finally porque podemos
     # necesitar saltar a otra pestana).
-    try:
+    with contextlib.suppress(Exception):
         driver.execute_script(
             "document.querySelectorAll('[data-mortadelo-target]')"
             ".forEach(e => e.removeAttribute('data-mortadelo-target'));"
         )
-    except Exception:  # noqa: BLE001
-        pass
 
     # 3) Esperar a que se abra una nueva pestana.
-    new_window: Optional[str] = None
+    new_window: str | None = None
     deadline = time.time() + 15
     while time.time() < deadline:
         nuevas = set(driver.window_handles) - windows_before
@@ -659,8 +649,10 @@ def descargar_adjunto(
 
     # Si la URL no es directamente el archivo (ej. un visor HTML),
     # buscar el <img src> o el contenido del <iframe>.
-    if not file_url.lower().split("?")[0].endswith(
-        (".jpg", ".jpeg", ".png", ".pdf", ".gif", ".bmp", ".webp")
+    if (
+        not file_url.lower()
+        .split("?")[0]
+        .endswith((".jpg", ".jpeg", ".png", ".pdf", ".gif", ".bmp", ".webp"))
     ):
         try:
             img_src = driver.execute_script(
@@ -675,7 +667,7 @@ def descargar_adjunto(
             if img_src:
                 file_url = img_src
                 logger.info(f"[crear_notas] URL extraida del DOM: {file_url}")
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
     # 5) Bajar el archivo via requests con cookies del WebDriver.
@@ -690,18 +682,15 @@ def descargar_adjunto(
         resp.raise_for_status()
         out_path.write_bytes(resp.content)
         logger.info(
-            f"[crear_notas] Adjunto descargado: {out_path.name} "
-            f"({out_path.stat().st_size} bytes)"
+            f"[crear_notas] Adjunto descargado: {out_path.name} ({out_path.stat().st_size} bytes)"
         )
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            f"[crear_notas] No se pudo descargar {nombre} desde {file_url}: {e}"
-        )
+    except Exception as e:
+        logger.warning(f"[crear_notas] No se pudo descargar {nombre} desde {file_url}: {e}")
         # Cerrar la nueva pestana igual y volver a la principal.
         try:
             driver.close()
             driver.switch_to.window(main_window)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         return None
 
@@ -709,7 +698,7 @@ def descargar_adjunto(
     try:
         driver.close()
         driver.switch_to.window(main_window)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error cerrando nueva pestana: {e}")
 
     return out_path
@@ -733,7 +722,6 @@ def procesar_adjuntos(
     stacktraces). Esos detalles van SOLO al log tecnico.
     """
     from src.mortadelo.skills.examenes import (
-        detectar_tipo_examen,
         interpretar_audiometria,
         leer_examen,
     )
@@ -760,8 +748,7 @@ def procesar_adjuntos(
                     # Error tecnico: no lo mostramos en la ficha.
                     # Va al log tecnico para debugging futuro.
                     logger.warning(
-                        f"[crear_notas] OCR fallo para {adj.get('nombre')}: "
-                        f"{datos['error']}"
+                        f"[crear_notas] OCR fallo para {adj.get('nombre')}: {datos['error']}"
                     )
                     lineas.append("")
                     lineas.append(
@@ -786,15 +773,12 @@ def procesar_adjuntos(
                             "El analisis automatico (OCR) no extrajo texto. "
                             "Ver imagen original adjunta."
                         )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 # Error tecnico: log + mensaje neutro en la ficha
-                logger.warning(
-                    f"[crear_notas] Excepcion al analizar {adj.get('nombre')}: {e}"
-                )
+                logger.warning(f"[crear_notas] Excepcion al analizar {adj.get('nombre')}: {e}")
                 lineas.append("")
                 lineas.append(
-                    "El analisis automatico (OCR) no pudo procesarlo. "
-                    "Ver imagen original adjunta."
+                    "El analisis automatico (OCR) no pudo procesarlo. Ver imagen original adjunta."
                 )
         else:
             lineas.append("Archivo local: (no se pudo descargar)")
@@ -804,7 +788,8 @@ def procesar_adjuntos(
 
 # ---- Paso 4.2: extraer informacion de la ficha abierta ----
 
-def _wait_visible(driver: WebDriver, selector: str, timeout: int = 10) -> Optional[WebElement]:
+
+def _wait_visible(driver: WebDriver, selector: str, timeout: int = 10) -> WebElement | None:
     """Espera a que un elemento sea visible. Devuelve None si no aparece.
 
     Acepta selectores CSS o xpath. Se detecta por el prefijo: si
@@ -817,11 +802,11 @@ def _wait_visible(driver: WebDriver, selector: str, timeout: int = 10) -> Option
     try:
         wait = WebDriverWait(driver, timeout)
         return wait.until(EC.visibility_of_element_located((by, val)))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
-def _safe_text(el: Optional[WebElement]) -> str:
+def _safe_text(el: WebElement | None) -> str:
     """Devuelve el texto de un WebElement, o string vacio si es None."""
     if el is None:
         return ""
@@ -860,8 +845,7 @@ def extraer_identificacion(driver: WebDriver, logger: logging.Logger) -> dict[st
         if tables_con_th:
             table = tables_con_th[0]
             logger.info(
-                f"[crear_notas] Tabla encontrada por <tbody><th> "
-                f"({len(tables_con_th)} match)"
+                f"[crear_notas] Tabla encontrada por <tbody><th> ({len(tables_con_th)} match)"
             )
 
         # Paso 2: tabla dentro de div.side-nav-margin.
@@ -873,8 +857,7 @@ def extraer_identificacion(driver: WebDriver, logger: logging.Logger) -> dict[st
             if tables_side:
                 table = tables_side[0]
                 logger.info(
-                    f"[crear_notas] Tabla encontrada por side-nav-margin "
-                    f"({len(tables_side)} match)"
+                    f"[crear_notas] Tabla encontrada por side-nav-margin ({len(tables_side)} match)"
                 )
 
         # Paso 3: primera tabla.table de la pagina.
@@ -932,29 +915,20 @@ def extraer_identificacion(driver: WebDriver, logger: logging.Logger) -> dict[st
         prev_telefono_value: str | None = None
         for label, valor in pares:
             es_tel = bool(patron_telefono.search(label))
-            if (
-                es_tel
-                and prev_telefono_value is not None
-                and valor.strip() == prev_telefono_value
-            ):
+            if es_tel and prev_telefono_value is not None and valor.strip() == prev_telefono_value:
                 continue
             filtrados.append((label, valor))
-            if es_tel:
-                prev_telefono_value = valor.strip()
-            else:
-                prev_telefono_value = None
+            prev_telefono_value = valor.strip() if es_tel else None
 
         for label, valor in filtrados:
             out[label] = valor
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo identificacion: {e}")
     logger.info(f"[crear_notas] Identificacion: {len(out)} campos")
     return out
 
 
-def extraer_historial(
-    driver: WebDriver, logger: logging.Logger
-) -> str:
+def extraer_historial(driver: WebDriver, logger: logging.Logger) -> str:
     """Extrae el contenido de la seccion 'Historial de atenciones'.
 
     Solo queremos el contenido de las entradas (las filas del arbol),
@@ -1052,8 +1026,7 @@ def extraer_historial(
     try:
         result = driver.execute_script(js) or ""
         logger.info(
-            f"[crear_notas] historial JS retorno: len={len(result)} "
-            f"preview={result[:200]!r}"
+            f"[crear_notas] historial JS retorno: len={len(result)} preview={result[:200]!r}"
         )
         if "__DEBUG__" in result:
             partes = result.split("__DEBUG__", 2)
@@ -1075,7 +1048,7 @@ def extraer_historial(
         else:
             logger.info(f"[crear_notas] Historial extraido: {len(texto)} chars")
         return texto
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo historial: {e}")
         return ""
 
@@ -1094,22 +1067,16 @@ def click_atencion_actual(driver: WebDriver, logger: logging.Logger) -> bool:
             "//li[contains(@class, 'verticalnav-tab')]"
             "[.//div[normalize-space(text())='Atención actual']]",
         )
-        driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});", li
-        )
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", li)
         time.sleep(0.3)
         try:
             li.click()
-        except Exception:  # noqa: BLE001
+        except Exception:
             driver.execute_script("arguments[0].click();", li)
         WebDriverWait(driver, 8).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "li#anamnesis")
-            )
+            EC.presence_of_element_located((By.CSS_SELECTOR, "li#anamnesis"))
         )
-        logger.info(
-            "[crear_notas] Click OK en 'Atencion actual', li#anamnesis presente"
-        )
+        logger.info("[crear_notas] Click OK en 'Atencion actual', li#anamnesis presente")
         return True
     except TimeoutException:
         logger.warning(
@@ -1117,7 +1084,7 @@ def click_atencion_actual(driver: WebDriver, logger: logging.Logger) -> bool:
             "del paciente esta disponible en Rayen para revision manual."
         )
         return False
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] No se encontro 'Atencion actual': {e}")
         return False
 
@@ -1154,9 +1121,7 @@ def extraer_motivo_consulta(driver: WebDriver, logger: logging.Logger) -> str:
     try:
         texto = driver.execute_script(js) or ""
         if texto == "__NO_LI__":
-            logger.warning(
-                "[crear_notas] Motivo: li#anamnesis no existe en el DOM"
-            )
+            logger.warning("[crear_notas] Motivo: li#anamnesis no existe en el DOM")
             return ""
         if texto == "__NO_CANDIDATOS__":
             logger.warning(
@@ -1165,11 +1130,9 @@ def extraer_motivo_consulta(driver: WebDriver, logger: logging.Logger) -> str:
             )
             return ""
         texto = texto.strip()
-        logger.info(
-            f"[crear_notas] Motivo de consulta extraido: {len(texto)} chars"
-        )
+        logger.info(f"[crear_notas] Motivo de consulta extraido: {len(texto)} chars")
         return texto
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo motivo de consulta: {e}")
         return ""
 
@@ -1190,9 +1153,7 @@ def extraer_anamnesis(driver: WebDriver, logger: logging.Logger) -> str:
     """
     logger.info("[crear_notas] Extrayendo anamnesis (nota clinica de Yadira)...")
     try:
-        anamnesis_li = driver.find_element(
-            By.CSS_SELECTOR, "li#anamnesis"
-        )
+        anamnesis_li = driver.find_element(By.CSS_SELECTOR, "li#anamnesis")
         # Diagnostico: que hay dentro de li#anamnesis ANTES del click ver_mas
         diag_inicial = driver.execute_script(
             """
@@ -1211,25 +1172,19 @@ def extraer_anamnesis(driver: WebDriver, logger: logging.Logger) -> str:
             };
             """
         )
-        logger.info(
-            f"[crear_notas] Diag anamnesis ANTES de ver_mas: {diag_inicial}"
-        )
+        logger.info(f"[crear_notas] Diag anamnesis ANTES de ver_mas: {diag_inicial}")
         # Intentar expandir el "...ver mas" si existe, para asegurar que el
         # texto este visible y copiable
         try:
-            ver_mas = anamnesis_li.find_element(
-                By.CSS_SELECTOR, ".textoverflow-button"
-            )
-            driver.execute_script(
-                "arguments[0].scrollIntoView({block: 'center'});", ver_mas
-            )
+            ver_mas = anamnesis_li.find_element(By.CSS_SELECTOR, ".textoverflow-button")
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", ver_mas)
             time.sleep(0.3)
             try:
                 ver_mas.click()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 driver.execute_script("arguments[0].click();", ver_mas)
             time.sleep(0.5)
-        except Exception:  # noqa: BLE001
+        except Exception:
             # No hay boton "ver mas", probablemente ya esta expandido
             pass
 
@@ -1245,13 +1200,11 @@ def extraer_anamnesis(driver: WebDriver, logger: logging.Logger) -> str:
             """
         )
         # Diagnostico: que se leyo realmente
-        logger.info(
-            f"[crear_notas] Anamnesis extraida: {len((contenido or '').strip())} chars"
-        )
+        logger.info(f"[crear_notas] Anamnesis extraida: {len((contenido or '').strip())} chars")
         contenido = (contenido or "").strip()
         logger.info(f"[crear_notas] Anamnesis extraida: {len(contenido)} chars")
         return contenido
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo anamnesis: {e}")
         return ""
 
@@ -1291,7 +1244,7 @@ def extraer_diagnosticos(driver: WebDriver, logger: logging.Logger) -> list[str]
         diagnosticos = [d for d in (result or []) if d]
         logger.info(f"[crear_notas] Diagnosticos extraidos: {len(diagnosticos)}")
         return diagnosticos
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo diagnosticos: {e}")
         return []
 
@@ -1311,7 +1264,7 @@ def extraer_actividades(driver: WebDriver, logger: logging.Logger) -> list[str]:
         actividades = [a for a in (result or []) if a]
         logger.info(f"[crear_notas] Actividades extraidas: {len(actividades)}")
         return actividades
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo actividades: {e}")
         return []
 
@@ -1335,7 +1288,7 @@ def extraer_profesionales(driver: WebDriver, logger: logging.Logger) -> list[str
         profesionales = [p for p in (result or []) if p]
         logger.info(f"[crear_notas] Profesionales extraidos: {len(profesionales)}")
         return profesionales
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo profesionales: {e}")
         return []
 
@@ -1429,18 +1382,14 @@ def extraer_recetas(driver: WebDriver, logger: logging.Logger) -> list[str]:
     try:
         result = driver.execute_script(js)
         recetas = [r for r in (result or []) if r]
-        logger.info(
-            f"[crear_notas] Recetas extraidas: {len(recetas)} prescripcion(es)"
-        )
+        logger.info(f"[crear_notas] Recetas extraidas: {len(recetas)} prescripcion(es)")
         return recetas
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo recetas: {e}")
         return []
 
 
-def extraer_laboratorio(
-    driver: WebDriver, logger: logging.Logger
-) -> list[str]:
+def extraer_laboratorio(driver: WebDriver, logger: logging.Logger) -> list[str]:
     """Extrae la orden de examen de laboratorio (Plan -> Laboratorio).
 
     DOM (validado 2026-08-26 con Karina Ximena Tapia Herrera, G2):
@@ -1494,13 +1443,10 @@ def extraer_laboratorio(
     """
     try:
         result = driver.execute_script(js)
-        laboratorio = [l for l in (result or []) if l]
-        logger.info(
-            f"[crear_notas] Laboratorio extraido: "
-            f"{len(laboratorio)} orden(es)"
-        )
+        laboratorio = [item for item in (result or []) if item]
+        logger.info(f"[crear_notas] Laboratorio extraido: {len(laboratorio)} orden(es)")
         return laboratorio
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo laboratorio: {e}")
         return []
 
@@ -1512,8 +1458,19 @@ def extraer_laboratorio(
 # que ya fueron reemplazadas por una nueva.
 
 _MONTHS_ES: dict[str, int] = {
-    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
-    "jul": 7, "ago": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dic": 12,
+    "ene": 1,
+    "feb": 2,
+    "mar": 3,
+    "abr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "sep": 9,
+    "sept": 9,
+    "oct": 10,
+    "nov": 11,
+    "dic": 12,
 }
 
 _VIGENCIA_RE = re.compile(
@@ -1528,9 +1485,7 @@ def _parsear_vigencia(primera_linea: str) -> _date | None:
     if not m:
         return None
     day_s, mes_s, year_s = m.groups()
-    mes_num = _MONTHS_ES.get(mes_s.lower()[:4]) or _MONTHS_ES.get(
-        mes_s.lower()[:3]
-    )
+    mes_num = _MONTHS_ES.get(mes_s.lower()[:4]) or _MONTHS_ES.get(mes_s.lower()[:3])
     if not mes_num:
         return None
     try:
@@ -1566,10 +1521,7 @@ def _tipo_atencion_es_recetas(tipo: str | None) -> bool:
     if not tipo:
         return False
     t = " ".join(tipo.strip().lower().split())
-    t = "".join(
-        c for c in unicodedata.normalize("NFD", t)
-        if unicodedata.category(c) != "Mn"
-    )
+    t = "".join(c for c in unicodedata.normalize("NFD", t) if unicodedata.category(c) != "Mn")
     return t == "recetas"
 
 
@@ -1593,7 +1545,7 @@ def extraer_pautas(driver: WebDriver, logger: logging.Logger) -> list[str]:
         pautas = [p for p in (result or []) if p]
         logger.info(f"[crear_notas] Pautas extraidas: {len(pautas)}")
         return pautas
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo pautas: {e}")
         return []
 
@@ -1626,7 +1578,7 @@ def _modal_estratificacion_visible(driver: WebDriver) -> bool:
     try:
         modal = driver.find_element(By.CSS_SELECTOR, _ESTRAT_MODAL_SELECTOR)
         return modal.is_displayed()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
 
 
@@ -1635,13 +1587,11 @@ def _popover_estratificacion_visible(driver: WebDriver) -> bool:
     try:
         card = driver.find_element(By.CSS_SELECTOR, _ESTRAT_CARD_SELECTOR)
         return card.is_displayed()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
 
 
-def _abrir_popover_estratificacion(
-    driver: WebDriver, logger: logging.Logger
-) -> bool:
+def _abrir_popover_estratificacion(driver: WebDriver, logger: logging.Logger) -> bool:
     """Hace click en el badge 'G1/G2/G3 Riesgo ...' del header para abrir
     el popover de estratificacion (.stratification-card).
 
@@ -1653,91 +1603,66 @@ def _abrir_popover_estratificacion(
         # unica `bg-transparent` (los demas dropdowns de Rayen usan otras
         # clases). Eso evita matchear botones de adjuntos / profesionales.
         badge = driver.find_element(
-            By.CSS_SELECTOR,
-            "button.bg-transparent[aria-haspopup='true'] span.badge.badge-pill"
+            By.CSS_SELECTOR, "button.bg-transparent[aria-haspopup='true'] span.badge.badge-pill"
         )
-        logger.info(
-            f"[crear_notas] Badge encontrado: texto={(badge.text or '').strip()!r}"
-        )
-        driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});", badge
-        )
+        logger.info(f"[crear_notas] Badge encontrado: texto={(badge.text or '').strip()!r}")
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", badge)
         time.sleep(0.3)
         try:
             badge.click()
-        except Exception:  # noqa: BLE001
+        except Exception:
             driver.execute_script("arguments[0].click();", badge)
         # Esperar a que el popover sea visible
         try:
             WebDriverWait(driver, 5).until(
                 lambda d: any(
                     c.is_displayed()
-                    for c in d.find_elements(
-                        By.CSS_SELECTOR, _ESTRAT_CARD_SELECTOR
-                    )
+                    for c in d.find_elements(By.CSS_SELECTOR, _ESTRAT_CARD_SELECTOR)
                 )
             )
         except TimeoutException:
-            logger.warning(
-                "[crear_notas] Popover de estrat. no aparecio tras click"
-            )
+            logger.warning("[crear_notas] Popover de estrat. no aparecio tras click")
             return False
         time.sleep(0.3)
         return True
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            f"[crear_notas] No se pudo abrir popover de estrat.: {e}"
-        )
+    except Exception as e:
+        logger.warning(f"[crear_notas] No se pudo abrir popover de estrat.: {e}")
         return False
 
 
-def _abrir_modal_estratificacion(
-    driver: WebDriver, logger: logging.Logger
-) -> bool:
+def _abrir_modal_estratificacion(driver: WebDriver, logger: logging.Logger) -> bool:
     """Hace click en 'Ver todos los diagnosticos activos' para abrir el modal."""
     try:
-        trigger = driver.find_element(
-            By.CSS_SELECTOR, _ESTRAT_MODAL_TRIGGER_SELECTOR
-        )
-        driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});", trigger
-        )
+        trigger = driver.find_element(By.CSS_SELECTOR, _ESTRAT_MODAL_TRIGGER_SELECTOR)
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", trigger)
         time.sleep(0.3)
         try:
             trigger.click()
-        except Exception:  # noqa: BLE001
+        except Exception:
             driver.execute_script("arguments[0].click();", trigger)
         try:
             WebDriverWait(driver, 5).until(
                 lambda d: any(
                     m.is_displayed()
-                    for m in d.find_elements(
-                        By.CSS_SELECTOR, _ESTRAT_MODAL_SELECTOR
-                    )
+                    for m in d.find_elements(By.CSS_SELECTOR, _ESTRAT_MODAL_SELECTOR)
                 )
             )
         except TimeoutException:
-            logger.warning(
-                "[crear_notas] Modal de estrat. no aparecio tras click"
-            )
+            logger.warning("[crear_notas] Modal de estrat. no aparecio tras click")
             return False
         time.sleep(0.5)
         return True
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            f"[crear_notas] No se pudo abrir modal de estrat.: {e}"
-        )
+    except Exception as e:
+        logger.warning(f"[crear_notas] No se pudo abrir modal de estrat.: {e}")
         return False
 
 
-def _cerrar_modal_estratificacion(
-    driver: WebDriver, logger: logging.Logger
-) -> None:
+def _cerrar_modal_estratificacion(driver: WebDriver, logger: logging.Logger) -> None:
     """Cierra el modal de diagnosticos activos. Best-effort."""
     for sel in _ESTRAT_MODAL_CLOSE_SELECTORS:
         try:
             btns = driver.find_elements(By.CSS_SELECTOR, sel)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
         for btn in btns:
             try:
@@ -1745,25 +1670,19 @@ def _cerrar_modal_estratificacion(
                     btn.click()
                     time.sleep(0.3)
                     return
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
-    try:
-        driver.execute_script(
-            "document.querySelector('.modal-backdrop')?.click();"
-        )
-    except Exception:  # noqa: BLE001
-        pass
+    with contextlib.suppress(Exception):
+        driver.execute_script("document.querySelector('.modal-backdrop')?.click();")
     try:
         from selenium.webdriver.common.keys import Keys
 
         driver.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.ESCAPE)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
 
-def _cerrar_popover_estratificacion(
-    driver: WebDriver, logger: logging.Logger
-) -> None:
+def _cerrar_popover_estratificacion(driver: WebDriver, logger: logging.Logger) -> None:
     """Cierra el popover de estratificacion (.stratification-card) despues de
     haber abierto el modal. Sin esto, el popover queda visible y puede
     interceptar el click en 'Atencion actual' que viene despues, rompiendo
@@ -1779,33 +1698,24 @@ def _cerrar_popover_estratificacion(
             try:
                 badge = driver.find_element(
                     By.CSS_SELECTOR,
-                    "button.bg-transparent[aria-haspopup='true']"
-                    " span.badge.badge-pill"
+                    "button.bg-transparent[aria-haspopup='true'] span.badge.badge-pill",
                 )
                 driver.execute_script("arguments[0].click();", badge)
                 time.sleep(0.3)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         # Fallback: click en el body + ESC
-        try:
-            driver.execute_script(
-                "document.body.click();"
-            )
-        except Exception:  # noqa: BLE001
-            pass
+        with contextlib.suppress(Exception):
+            driver.execute_script("document.body.click();")
         try:
             from selenium.webdriver.common.keys import Keys
 
-            driver.find_element(
-                By.CSS_SELECTOR, "body"
-            ).send_keys(Keys.ESCAPE)
-        except Exception:  # noqa: BLE001
+            driver.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.ESCAPE)
+        except Exception:
             pass
         time.sleep(0.3)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            f"[crear_notas] No se pudo cerrar popover de estrat.: {e}"
-        )
+    except Exception as e:
+        logger.warning(f"[crear_notas] No se pudo cerrar popover de estrat.: {e}")
 
 
 # JS inline que lee la card de estratificacion: badge + fecha_inicio.
@@ -2014,9 +1924,7 @@ def formatear_estratificacion(estrat: dict[str, Any] | None) -> str:
     return "\n".join(lineas).rstrip()
 
 
-def extraer_estratificacion_ecicep(
-    driver: WebDriver, logger: logging.Logger
-) -> dict[str, Any]:
+def extraer_estratificacion_ecicep(driver: WebDriver, logger: logging.Logger) -> dict[str, Any]:
     """Extrae la estratificacion ECICEP del paciente desde la UI de Rayen.
 
     Lee:
@@ -2050,10 +1958,8 @@ def extraer_estratificacion_ecicep(
 
     try:
         card_data = driver.execute_script(_ESTRAT_CARD_JS) or {}
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            f"[crear_notas] Error leyendo card de estratificacion: {e}"
-        )
+    except Exception as e:
+        logger.warning(f"[crear_notas] Error leyendo card de estratificacion: {e}")
         return out
 
     if not card_data.get("grupo"):
@@ -2071,21 +1977,15 @@ def extraer_estratificacion_ecicep(
     # el link "Ver todos los diagnosticos activos" (que vive DENTRO del
     # popover) no es clickable.
     if not _popover_estratificacion_visible(driver):
-        logger.info(
-            "[crear_notas] Abriendo popover de estratificacion (click badge)..."
-        )
+        logger.info("[crear_notas] Abriendo popover de estratificacion (click badge)...")
         if not _abrir_popover_estratificacion(driver, logger):
             logger.warning(
-                "[crear_notas] No se pudo abrir el popover. "
-                "Solo se extraera badge + fecha_inicio."
+                "[crear_notas] No se pudo abrir el popover. Solo se extraera badge + fecha_inicio."
             )
             return out
 
     if not _modal_estratificacion_visible(driver):
-        logger.info(
-            "[crear_notas] Abriendo modal de diagnosticos activos para "
-            "estratificacion..."
-        )
+        logger.info("[crear_notas] Abriendo modal de diagnosticos activos para estratificacion...")
         if not _abrir_modal_estratificacion(driver, logger):
             logger.warning(
                 "[crear_notas] No se pudo abrir el modal de estrat. "
@@ -2097,7 +1997,7 @@ def extraer_estratificacion_ecicep(
         modal_data = driver.execute_script(_ESTRAT_MODAL_JS) or {}
         out["agudos"] = modal_data.get("agudos") or []
         out["cronicos"] = modal_data.get("cronicos") or []
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error leyendo modal de estrat.: {e}")
 
     _cerrar_modal_estratificacion(driver, logger)
@@ -2110,9 +2010,7 @@ def extraer_estratificacion_ecicep(
     return out
 
 
-def extraer_otros_items_atencion(
-    driver: WebDriver, logger: logging.Logger
-) -> dict[str, str]:
+def extraer_otros_items_atencion(driver: WebDriver, logger: logging.Logger) -> dict[str, str]:
     """Extrae cualquier item de la atencion que no sea anamnesis, diagnosticos,
     actividades, profesionales o pautas (placeholders para futuras secciones).
     """
@@ -2125,8 +2023,11 @@ def extraer_otros_items_atencion(
         return out
     try:
         ids_excluidos = (
-            "anamnesis", "diagnose-", "activity-",
-            "multiProfessional-", "pauta-",
+            "anamnesis",
+            "diagnose-",
+            "activity-",
+            "multiProfessional-",
+            "pauta-",
         )
         sel = "li.list-group-item[id]"
         for pref in ids_excluidos:
@@ -2134,28 +2035,23 @@ def extraer_otros_items_atencion(
         items = contenedor.find_elements(By.CSS_SELECTOR, sel)
         for item in items:
             titulo_el = None
-            try:
+            with contextlib.suppress(Exception):
                 titulo_el = item.find_element(By.CSS_SELECTOR, ".expandable-title")
-            except Exception:  # noqa: BLE001
-                pass
             titulo = _safe_text(titulo_el) or item.get_attribute("id") or "(seccion)"
             contenido_el = None
-            try:
-                contenido_el = item.find_element(
-                    By.CSS_SELECTOR, ".collapse-text"
-                )
-            except Exception:  # noqa: BLE001
-                pass
+            with contextlib.suppress(Exception):
+                contenido_el = item.find_element(By.CSS_SELECTOR, ".collapse-text")
             contenido = _safe_text(contenido_el)
             if contenido:
                 out[titulo] = contenido
         return out
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"[crear_notas] Error extrayendo otros items: {e}")
         return out
 
 
 # ---- Paso 4.3: guardar nota clinica en archivo .txt ----
+
 
 def _safe_filename(s: str) -> str:
     """Convierte un nombre a filename seguro (sin caracteres raros)."""
@@ -2213,9 +2109,7 @@ def guardar_respaldo_anamnesis(
         return None
     # Sesion 2026-09-16 18:45: prefijo "anam_" para distinguir el
     # respaldo de anamnesis de la nota clinica y del info_paciente.
-    nombre_archivo = (
-        f"anam_{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
-    )
+    nombre_archivo = f"anam_{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
     out_path = backup_dir / nombre_archivo
 
     md = ["---"]
@@ -2251,14 +2145,14 @@ def guardar_nota_clinica(
     profesionales: list[str],
     pautas: list[str],
     examenes: str = "",
-    otros_items: dict[str, str] = None,
+    otros_items: dict[str, str] | None = None,
     estratificacion: dict[str, Any] | None = None,
     motivo_consulta: str = "",
     recetas: list[str] | None = None,
     laboratorio: list[str] | None = None,
-    notas_dir: Path = None,
+    notas_dir: Path | None = None,
     panel_cargo: bool = True,
-) -> Optional[Path]:
+) -> Path | None:
     """Guarda la nota clinica extraida en un .md en armonia con manuales_md.
 
     Sesion 2026-09-16: cambio de .txt con marcadores '=== INICIO/FIN ==='
@@ -2329,12 +2223,10 @@ def guardar_nota_clinica(
             f"fallo (panel_cargo={panel_cargo}). Ver logs de "
             f"`extraer_anamnesis()` y reintentar."
         )
-    historial = filtrar_historial_ultimos_6_meses(
-        historial, paciente.fecha, logger=_log
-    )
-    nombre_archivo = (
-        f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
-    )
+    historial = filtrar_historial_ultimos_6_meses(historial, paciente.fecha, logger=_log)
+    if notas_dir is None:
+        raise ValueError("guardar_nota_clinica: notas_dir es requerido")
+    nombre_archivo = f"{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
     out_path = notas_dir / nombre_archivo
     # Sesion 2026-09-16 14:14 (regla Yadira): el script NO depende de
     # la existencia de un archivo anterior. Si el archivo ya existe
@@ -2366,12 +2258,8 @@ def guardar_nota_clinica(
 
     # ---- Flag de revision si aplica ----
     if not panel_cargo:
-        md.append(
-            "> ⚠️ **ATENCION: panel del paciente NO CARGO en Rayen.**"
-        )
-        md.append(
-            "> La nota tiene placeholders. Revisar manualmente en Rayen."
-        )
+        md.append("> ⚠️ **ATENCION: panel del paciente NO CARGO en Rayen.**")
+        md.append("> La nota tiene placeholders. Revisar manualmente en Rayen.")
         md.append("")
 
     # ---- Secciones ----
@@ -2494,7 +2382,7 @@ def guardar_info_paciente(
     estratificacion: dict[str, Any] | None = None,
     info_paciente_dir: Path = INFO_PACIENTE_DIR,
     panel_cargo: bool = True,
-) -> Optional[Path]:
+) -> Path | None:
     """Guarda un md con TODA la info del paciente EXCEPTO la anamnesis.
 
     Sesion 2026-09-16 17:45 (pedido Yadira): ademas de la nota clinica
@@ -2544,7 +2432,7 @@ def guardar_info_paciente(
     md.append('source_url: "https://clinico.rayenaps.cl/"')
     md.append(f'fecha_extraccion: "{_now_iso()}"')
     md.append(f'panel_cargo: "{str(panel_cargo).lower()}"')
-    md.append("tipo_documento: \"info_paciente (sin anamnesis)\"")
+    md.append('tipo_documento: "info_paciente (sin anamnesis)"')
     md.append("---")
     md.append("")
 
@@ -2635,9 +2523,7 @@ def guardar_info_paciente(
     # Sesion 2026-09-16 18:45: prefijo "info_" para distinguir el
     # doc complementario de la nota clinica completa y del respaldo
     # de anamnesis. Asi Yadira puede cruzar los 3 archivos por nombre.
-    nombre_archivo = (
-        f"info_{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
-    )
+    nombre_archivo = f"info_{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
     out_path = info_paciente_dir / nombre_archivo
 
     info_paciente_dir.mkdir(parents=True, exist_ok=True)
@@ -2645,9 +2531,7 @@ def guardar_info_paciente(
         out_path.write_text("\n".join(md), encoding="utf-8")
     except OSError as e:
         logger = logging.getLogger("crear_notas_clinicas")
-        logger.error(
-            f"[crear_notas] No se pudo escribir info_paciente en {out_path}: {e}"
-        )
+        logger.error(f"[crear_notas] No se pudo escribir info_paciente en {out_path}: {e}")
         return None
 
     logger = logging.getLogger("crear_notas_clinicas")
@@ -2682,12 +2566,11 @@ def _formatear_estrat_para_info(estratificacion: dict[str, Any]) -> str:
 def _now_iso() -> str:
     """Helper: timestamp ISO 8601 al segundo. Usado para el frontmatter."""
     from datetime import datetime
+
     return datetime.now().isoformat(timespec="seconds")
 
 
-def _rellenar_bloque_en_nota(
-    nota_path: Path, bloque: str, contenido_nuevo
-) -> None:
+def _rellenar_bloque_en_nota(nota_path: Path, bloque: str, contenido_nuevo) -> None:
     """Sobrescribe el contenido del bloque dado en el archivo de la nota.
 
     Sesion 2026-09-16 14:14 (regla Yadira): si validar_nota_clinica
@@ -2755,6 +2638,7 @@ def _rellenar_bloque_en_nota(
 
     nota_path.write_text("\n".join(out), encoding="utf-8")
 
+
 def _reintentar_extraccion_anamnesis(
     driver: WebDriver,
     logger: logging.Logger,
@@ -2819,11 +2703,21 @@ def _reintentar_extraccion_anamnesis(
                     f"{intento} exitoso ({len(anamnesis_nueva)} chars)."
                 )
                 return guardar_nota_clinica(
-                    paciente, identificacion, historial,
-                    anamnesis_nueva, diagnosticos, actividades,
-                    profesionales, pautas, examenes, otros_items,
-                    estratificacion, motivo_consulta, recetas,
-                    laboratorio, notas_dir,
+                    paciente,
+                    identificacion,
+                    historial,
+                    anamnesis_nueva,
+                    diagnosticos,
+                    actividades,
+                    profesionales,
+                    pautas,
+                    examenes,
+                    otros_items,
+                    estratificacion,
+                    motivo_consulta,
+                    recetas,
+                    laboratorio,
+                    notas_dir,
                     panel_cargo=paciente.panel_cargo,
                 )
         except Exception as re_err:
@@ -2995,8 +2889,7 @@ def paso_4_1_abrir_ficha(
     resultado_busqueda = _buscar_paciente_en_tabla(driver, logger, paciente.nombre)
     if resultado_busqueda is None:
         logger.warning(
-            f"[crear_notas] No se encontro a '{paciente.nombre}' "
-            f"en la tabla del {paciente.fecha}"
+            f"[crear_notas] No se encontro a '{paciente.nombre}' en la tabla del {paciente.fecha}"
         )
         return False
     row, nombre_rayen = resultado_busqueda
@@ -3049,18 +2942,16 @@ def paso_4_1_abrir_ficha(
         )
         paciente.panel_cargo = False
     else:
-        logger.info(
-            f"[crear_notas] Panel del paciente cargado ({panel.tag_name})"
-        )
+        logger.info(f"[crear_notas] Panel del paciente cargado ({panel.tag_name})")
 
     logger.info(
-        f"[crear_notas] Ficha abierta para {paciente.nombre} "
-        f"(URL actual: {driver.current_url})"
+        f"[crear_notas] Ficha abierta para {paciente.nombre} (URL actual: {driver.current_url})"
     )
     return True
 
 
 # ---- Iterador principal (paso 4.6: sigue con el siguiente) ----
+
 
 def iterar_pacientes(
     driver: WebDriver,
@@ -3070,10 +2961,7 @@ def iterar_pacientes(
     """Por cada paciente: ejecutar paso 4.1. Si falla, sigue con el siguiente."""
     stats = {"procesados": 0, "abiertos": 0, "no_encontrados": 0, "errores": 0}
     for i, p in enumerate(pacientes, 1):
-        logger.info(
-            f"[crear_notas] ({i}/{len(pacientes)}) "
-            f"Procesando: {p.nombre} ({p.fecha})"
-        )
+        logger.info(f"[crear_notas] ({i}/{len(pacientes)}) Procesando: {p.nombre} ({p.fecha})")
         try:
             stats["procesados"] += 1
             ok = paso_4_1_abrir_ficha(driver, logger, p)
@@ -3081,17 +2969,15 @@ def iterar_pacientes(
                 stats["abiertos"] += 1
             else:
                 stats["no_encontrados"] += 1
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             stats["errores"] += 1
-            logger.error(
-                f"[crear_notas] Error con {p.nombre}: {e}. "
-                f"Sigue con el siguiente."
-            )
+            logger.error(f"[crear_notas] Error con {p.nombre}: {e}. Sigue con el siguiente.")
             continue
     return stats
 
 
 # ---- Main ----
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -3190,12 +3076,10 @@ def main() -> int:
                 razon="",
             )
         ]
-        logger.info(
-            f"[crear_notas] Modo 1 paciente: {pacientes[0].nombre} | {pacientes[0].fecha}"
-        )
+        logger.info(f"[crear_notas] Modo 1 paciente: {pacientes[0].nombre} | {pacientes[0].fecha}")
 
     # 3. Pasos 1-3: login + box + Pacientes citados (via run_login)
-    driver: Optional[WebDriver] = None
+    driver: WebDriver | None = None
     stats = {"procesados": 0, "abiertos": 0, "guardados": 0, "saltados": 0, "errores": 0}
     fichas_en_sesion = 0
     # Carpeta donde Chrome dejara los adjuntos descargados. Se crea
@@ -3203,16 +3087,13 @@ def main() -> int:
     ADJUNTOS_DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
     # Capturador de warnings para el informe tecnico (separado de la ficha).
     warnings_collector = WarningsCollector()
-    warnings_collector.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    )
+    warnings_collector.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logging.getLogger("crear_notas").addHandler(warnings_collector)
     # Lista de informes por paciente.
     pacientes_informe: list[PacienteInforme] = []
     import time as _time
-    logger.info(
-        f"[crear_notas] Download dir Chrome: {ADJUNTOS_DOWNLOAD_DIR.resolve()}"
-    )
+
+    logger.info(f"[crear_notas] Download dir Chrome: {ADJUNTOS_DOWNLOAD_DIR.resolve()}")
     try:
         driver = run_login(
             credentials,
@@ -3283,9 +3164,7 @@ def main() -> int:
                 examenes = ""
                 # Ahora si hacemos click en Atencion actual
                 click_ok = click_atencion_actual(driver, logger)
-                motivo_consulta = (
-                    extraer_motivo_consulta(driver, logger) if click_ok else ""
-                )
+                motivo_consulta = extraer_motivo_consulta(driver, logger) if click_ok else ""
                 anamnesis = extraer_anamnesis(driver, logger) if click_ok else ""
                 # Paso 4.2.5 (sesion 2026-09-16 15:14): respaldo de la
                 # anamnesis cruda de Yadira en anamnesis/<paciente>_<fecha>.md.
@@ -3296,32 +3175,20 @@ def main() -> int:
                 # atencion como blockquote antes de la anamnesis (es la
                 # primera linea que Yadira escribe en Rayen).
                 if anamnesis:
-                    guardar_respaldo_anamnesis(
-                        paciente, anamnesis, motivo_consulta=motivo_consulta
-                    )
-                diagnosticos = (
-                    extraer_diagnosticos(driver, logger) if click_ok else []
-                )
-                actividades = (
-                    extraer_actividades(driver, logger) if click_ok else []
-                )
-                profesionales = (
-                    extraer_profesionales(driver, logger) if click_ok else []
-                )
+                    guardar_respaldo_anamnesis(paciente, anamnesis, motivo_consulta=motivo_consulta)
+                diagnosticos = extraer_diagnosticos(driver, logger) if click_ok else []
+                actividades = extraer_actividades(driver, logger) if click_ok else []
+                profesionales = extraer_profesionales(driver, logger) if click_ok else []
                 # Plan (panel derecho). Recetas y Laboratorio se extraen
                 # del mismo panel #right-side-attention que ya esta visible
                 # tras click_atencion_actual. Si click_ok fallo, no se
                 # intenta (no hay panel que leer).
-                recetas = (
-                    extraer_recetas(driver, logger) if click_ok else []
-                )
+                recetas = extraer_recetas(driver, logger) if click_ok else []
                 # Regla Yadira 2026-08-26: si el tipo de atencion es
                 # "Recetas", dejamos SOLO la prescripcion con la Vigencia
                 # mas reciente en el bloque PLAN RECETAS del .txt. Para
                 # cualquier otro tipo, se conservan todas las recetas.
-                if _tipo_atencion_es_recetas(paciente.tipo_atencion) and len(
-                    recetas
-                ) > 1:
+                if _tipo_atencion_es_recetas(paciente.tipo_atencion) and len(recetas) > 1:
                     recetas_filtradas = _filtrar_receta_mas_reciente(recetas)
                     logger.info(
                         f"[crear_notas] tipo=Recetas: filtradas "
@@ -3329,12 +3196,10 @@ def main() -> int:
                         f"prescripcion(es) (mas reciente)"
                     )
                     recetas = recetas_filtradas
-                laboratorio = (
-                    extraer_laboratorio(driver, logger) if click_ok else []
-                )
+                laboratorio = extraer_laboratorio(driver, logger) if click_ok else []
                 # Fuera de scope:
-                pautas = []
-                otros_items = {}
+                pautas: list[str] = []
+                otros_items: dict[str, Any] = {}
 
                 pinfo.extraccion = {
                     "identificacion_campos": len(identificacion),
@@ -3348,27 +3213,36 @@ def main() -> int:
                     "examenes_adjuntos_chars": len(examenes or ""),
                     "recetas_prescripciones": len(recetas or []),
                     "laboratorio_ordenes": len(laboratorio or []),
-                    "estratificacion_grupo": (
-                        (estratificacion or {}).get("grupo")
-                    ),
-                    "estratificacion_cronicos": len(
-                        (estratificacion or {}).get("cronicos") or []
-                    ),
-                    "estratificacion_agudos": len(
-                        (estratificacion or {}).get("agudos") or []
-                    ),
+                    "estratificacion_grupo": ((estratificacion or {}).get("grupo")),
+                    "estratificacion_cronicos": len((estratificacion or {}).get("cronicos") or []),
+                    "estratificacion_agudos": len((estratificacion or {}).get("agudos") or []),
                 }
 
                 # Paso 4.3
                 try:
                     out_path = guardar_nota_clinica(
-                        paciente, identificacion, historial, anamnesis,
-                        diagnosticos, actividades, profesionales, pautas,
-                        examenes, otros_items, estratificacion,
-                        motivo_consulta, recetas, laboratorio, notas_dir,
+                        paciente,
+                        identificacion,
+                        historial,
+                        anamnesis,
+                        diagnosticos,
+                        actividades,
+                        profesionales,
+                        pautas,
+                        examenes,
+                        otros_items,
+                        estratificacion,
+                        motivo_consulta,
+                        recetas,
+                        laboratorio,
+                        notas_dir,
                         panel_cargo=paciente.panel_cargo,
                     )
 
+                    if out_path is None:
+                        raise RuntimeError(
+                            f"guardar_nota_clinica no escribio la nota de {paciente.nombre}"
+                        )
                     # Paso 4.5 (sesion 2026-09-16 17:45): documento
                     # complementario en data/info_paciente/ con TODA la
                     # info del paciente MENOS la anamnesis cruda. Yadira
@@ -3376,9 +3250,15 @@ def main() -> int:
                     # leer el texto libre de la consulta. La anamnesis
                     # sigue en data/anamnesis/ (respaldo separado).
                     guardar_info_paciente(
-                        paciente, identificacion, historial,
-                        diagnosticos, actividades, profesionales,
-                        recetas, laboratorio, estratificacion,
+                        paciente,
+                        identificacion,
+                        historial,
+                        diagnosticos,
+                        actividades,
+                        profesionales,
+                        recetas,
+                        laboratorio,
+                        estratificacion,
                         info_paciente_dir=INFO_PACIENTE_DIR,
                         panel_cargo=paciente.panel_cargo,
                     )
@@ -3400,7 +3280,10 @@ def main() -> int:
                         bloques_aun_vacios: list[str] = []
                         for bloque in faltantes:
                             nuevo = re_extraer_bloque(
-                                driver, logger, bloque, click_ok,
+                                driver,
+                                logger,
+                                bloque,
+                                click_ok,
                                 identificacion=identificacion,
                                 historial=historial,
                                 anamnesis=anamnesis,
@@ -3412,9 +3295,7 @@ def main() -> int:
                                 laboratorio=laboratorio,
                             )
                             if nuevo:
-                                _rellenar_bloque_en_nota(
-                                    out_path, bloque, nuevo
-                                )
+                                _rellenar_bloque_en_nota(out_path, bloque, nuevo)
                                 bloques_reescritos.append(bloque)
                             else:
                                 bloques_aun_vacios.append(bloque)
@@ -3432,10 +3313,7 @@ def main() -> int:
 
                     stats["guardados"] += 1
                     pinfo.estado = "ok"
-                    logger.info(
-                        f"[crear_notas] {paciente.nombre} OK -> "
-                        f"{out_path.name}"
-                    )
+                    logger.info(f"[crear_notas] {paciente.nombre} OK -> {out_path.name}")
                 except ValueError as ve:
                     # Regla Yadira 2026-09-16 14:50 (correccion): NO
                     # escribir markers. Si la extraccion fallo, el
@@ -3444,16 +3322,25 @@ def main() -> int:
                     # Solo si agota todos los reintentos, skip
                     # silencioso (Yadira re-corre cuando Rayen este
                     # estable).
-                    stats["errores_extraccion"] = (
-                        stats.get("errores_extraccion", 0) + 1
-                    )
+                    stats["errores_extraccion"] = stats.get("errores_extraccion", 0) + 1
                     pinfo.errores.append(f"ValueError: {ve!r}")
                     out_reintento = _reintentar_extraccion_anamnesis(
-                        driver, logger, paciente, click_ok,
-                        identificacion, historial, diagnosticos,
-                        actividades, profesionales, recetas,
-                        laboratorio, examenes, otros_items,
-                        estratificacion, motivo_consulta, pautas,
+                        driver,
+                        logger,
+                        paciente,
+                        click_ok,
+                        identificacion,
+                        historial,
+                        diagnosticos,
+                        actividades,
+                        profesionales,
+                        recetas,
+                        laboratorio,
+                        examenes,
+                        otros_items,
+                        estratificacion,
+                        motivo_consulta,
+                        pautas,
                         notas_dir,
                     )
                     if out_reintento is not None:
@@ -3471,13 +3358,14 @@ def main() -> int:
                             f"Yadira re-corre cuando Rayen este estable."
                         )
 
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 stats["errores"] += 1
                 pinfo.estado = "error"
                 # Guardar tipo de excepcion + mensaje. Mensajes vacios ("Message: \n")
                 # son tipicos de WebDriverException con msg vacio; el TIPO es lo
                 # unico que da pista del problema real.
                 import traceback as _tb
+
                 err_repr = f"{type(e).__name__}: {e!r}"
                 pinfo.errores.append(err_repr)
                 tb_short = _tb.format_exc().splitlines()[-3:]
@@ -3496,9 +3384,7 @@ def main() -> int:
             if ficha_ok:
                 fichas_en_sesion += 1
             quedan = len(pacientes) - i
-            necesita_reset = (
-                fichas_en_sesion >= MAX_FICHAS_POR_SESION and quedan > 0
-            )
+            necesita_reset = fichas_en_sesion >= MAX_FICHAS_POR_SESION and quedan > 0
             if necesita_reset:
                 logger.warning(
                     f"[crear_notas] Limite de {MAX_FICHAS_POR_SESION} fichas alcanzado. "
@@ -3533,13 +3419,13 @@ def main() -> int:
         if args.todos:
             total_objetivo = len(pacientes)
             total_ok = stats["abiertos"]
-            faltantes = total_objetivo - total_ok
-            if faltantes > 0:
+            faltantes_target = total_objetivo - total_ok
+            if faltantes_target > 0:
                 logger.warning(
                     f"[crear_notas] === TARGET NO CUMPLIDO === "
                     f"Objetivo informe: {total_objetivo} fichas, "
                     f"abiertas OK: {total_ok}, "
-                    f"FALTAN: {faltantes}. "
+                    f"FALTAN: {faltantes_target}. "
                     f"Revisar logs de 'No se encontro a ...' arriba."
                 )
             else:
@@ -3562,14 +3448,12 @@ def main() -> int:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             informe_path = informes_dir / f"informe_tecnico_{ts}.json"
             informe.guardar(informe_path)
-            logger.info(
-                f"[crear_notas] Informe tecnico guardado en: {informe_path}"
-            )
+            logger.info(f"[crear_notas] Informe tecnico guardado en: {informe_path}")
 
         # 6. Cerrar navegador automaticamente al terminar
         logger.info("[crear_notas] Cerrando navegador...")
         return 0
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.error(f"[crear_notas] Error fatal: {e}")
         return 1
     finally:

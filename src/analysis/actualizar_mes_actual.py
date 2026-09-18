@@ -12,19 +12,18 @@ Tiempo: ~2-3 minutos (un mes de dias habiles = 20-22 dias).
 Privacidad: la DB tiene PII (nombre) y vive en data/analysis/ que
 esta en .gitignore. NO se commitea.
 """
+
 from __future__ import annotations
 
 import calendar
-import logging
 import re
 import sqlite3
 import sys
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 from src.browser_automation import (
     _es_url_login,
-    ensure_session_alive,
     extraer_datos_fila,
     get_pacientes_del_dia,
     safe_quit,
@@ -50,12 +49,21 @@ def sanitizar_tipo(tipo_atencion: str) -> str:
         return ""
     return _INSTRUMENTO_PREFIX_RE.sub("", tipo_atencion.strip()).strip()
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "analysis" / "fichas_completo.db"
 
 COLUMNAS = [
-    "fecha", "hora", "estado", "nombre", "tipo_cupo",
-    "llegada", "llamada", "razon", "tipo_atencion", "adjunto",
+    "fecha",
+    "hora",
+    "estado",
+    "nombre",
+    "tipo_cupo",
+    "llegada",
+    "llamada",
+    "razon",
+    "tipo_atencion",
+    "adjunto",
 ]
 
 
@@ -69,7 +77,7 @@ def _init_db() -> sqlite3.Connection:
             fecha TEXT NOT NULL,
             hora TEXT NOT NULL,
             nombre TEXT NOT NULL,
-            {cols_sql.replace('fecha TEXT,', '').replace('hora TEXT,', '').replace('nombre TEXT,', '')},
+            {cols_sql.replace("fecha TEXT,", "").replace("hora TEXT,", "").replace("nombre TEXT,", "")},
             PRIMARY KEY (fecha, hora, nombre)
         )
         """
@@ -132,8 +140,10 @@ def main() -> int:
     dias = _dias_habiles_del_mes(hoy.year, hoy.month)
     print(f"Mes actual: {hoy.strftime('%m-%Y')}")
     print(f"DB: {DB_PATH.relative_to(BASE_DIR)}")
-    print(f"Recorrido: {dias[0].strftime(DATE_FORMAT)} → {dias[-1].strftime(DATE_FORMAT)} "
-          f"({len(dias)} dias habiles)")
+    print(
+        f"Recorrido: {dias[0].strftime(DATE_FORMAT)} → {dias[-1].strftime(DATE_FORMAT)} "
+        f"({len(dias)} dias habiles)"
+    )
     print()
 
     if not dias:
@@ -160,7 +170,7 @@ def main() -> int:
     driver = None
     total_insertadas = 0
     errores_consecutivos = 0
-    MAX_ERRORES = 3
+    max_errores = 3
 
     try:
         driver = login_rayen(credentials, logger)
@@ -182,12 +192,12 @@ def main() -> int:
                 sort_by_estado(driver, logger)
                 rows = get_pacientes_del_dia(driver, logger)
                 errores_consecutivos = 0
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.error(f"{fecha_str}: error -> {e}")
                 errores_consecutivos += 1
-                if errores_consecutivos >= MAX_ERRORES:
+                if errores_consecutivos >= max_errores:
                     print(
-                        f"\n[ABORT] {MAX_ERRORES} errores consecutivos. "
+                        f"\n[ABORT] {max_errores} errores consecutivos. "
                         f"Abortando. Ultimo error: {e}"
                     )
                     break
@@ -243,12 +253,12 @@ def main() -> int:
         print("=" * 60)
         print(f"Dias habiles:        {len(dias)}")
         print(f"Fichas del mes:      {total_mes}")
-        print(f"Estados:")
+        print("Estados:")
         for estado, cant in estados_mes:
             print(f"  {estado:<25s} {cant}")
         print("=" * 60)
         return 0
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.error(f"Error fatal: {e}")
         return 1
     finally:

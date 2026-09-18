@@ -63,6 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.formato == "json":
         import json
         from dataclasses import asdict
+
         print(json.dumps(asdict(reporte), ensure_ascii=False, indent=2, default=str))
     else:  # markdown
         # Markdown estándar (no Telegram)

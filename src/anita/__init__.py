@@ -7,7 +7,7 @@ Anita NO es interactiva: solo produce reportes. Pilita la invoca cuando
 Yadira pide el reporte, o el cron la llama cada noche.
 """
 
-from src.anita.report_generator import generar_reporte, ReporteDiario
 from src.anita.format_telegram import formatear_telegram
+from src.anita.report_generator import ReporteDiario, generar_reporte
 
-__all__ = ["generar_reporte", "ReporteDiario", "formatear_telegram"]
+__all__ = ["ReporteDiario", "formatear_telegram", "generar_reporte"]

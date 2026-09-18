@@ -54,6 +54,7 @@ Uso:
         --paciente "Benedicto Martin" \\
         --indice 1
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,8 +65,6 @@ import sys
 import unicodedata
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
-
 
 # Repo root (este archivo vive en src/tools/, subimos 2 niveles).
 ROOT = Path(__file__).resolve().parents[2]
@@ -78,7 +77,13 @@ NOTAS_DIR = ROOT / "data" / "notas_clinicas"
 
 # Extensiones aceptadas.
 IMAGE_EXTENSIONS = {
-    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".tiff",
     ".pdf",
 }
 
@@ -86,8 +91,7 @@ IMAGE_EXTENSIONS = {
 def normalizar_texto(texto: str) -> str:
     """Quita tildes, pasa a minusculas, colapsa espacios/guiones."""
     sin_tildes = "".join(
-        c for c in unicodedata.normalize("NFD", texto)
-        if unicodedata.category(c) != "Mn"
+        c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn"
     )
     return re.sub(r"[\s_]+", " ", sin_tildes).strip().lower()
 
@@ -134,19 +138,21 @@ def _indexar_notas_clinicas(notas_dir: Path) -> list[dict[str, str]]:
         paciente = meta.get("paciente", "").strip()
         fecha = meta.get("fecha_atencion", "").strip()
         if paciente and fecha:
-            out.append({
-                "paciente": paciente,
-                "paciente_norm": normalizar_texto(paciente),
-                "fecha_atencion": fecha,
-                "file": path.name,
-            })
+            out.append(
+                {
+                    "paciente": paciente,
+                    "paciente_norm": normalizar_texto(paciente),
+                    "fecha_atencion": fecha,
+                    "file": path.name,
+                }
+            )
     return out
 
 
 def buscar_match_paciente(
     nombre_yadira: str,
     indice: list[dict[str, str]],
-) -> Optional[dict[str, str]]:
+) -> dict[str, str] | None:
     """Busca en el indice el paciente cuyo nombre matchee con lo que Yadira dijo.
 
     Matching por tokens:
@@ -221,8 +227,8 @@ def resolver_path_sin_colision(destino_dir: Path, nombre: str) -> Path:
 def recibir_y_archivar(
     input_path: Path,
     indice_n: int,
-    nombre_paciente: Optional[str] = None,
-    fecha_atencion: Optional[str] = None,
+    nombre_paciente: str | None = None,
+    fecha_atencion: str | None = None,
     notas_dir: Path = NOTAS_DIR,
     destino_dir: Path = DESTINO_DIR,
 ) -> dict:
@@ -287,8 +293,7 @@ def recibir_y_archivar(
     extension = input_path.suffix.lower()
     if extension not in IMAGE_EXTENSIONS:
         resultado["error"] = (
-            f"Extension '{extension}' no aceptada. "
-            f"Aceptadas: {sorted(IMAGE_EXTENSIONS)}"
+            f"Extension '{extension}' no aceptada. Aceptadas: {sorted(IMAGE_EXTENSIONS)}"
         )
         return resultado
 
@@ -315,7 +320,8 @@ def recibir_y_archivar(
             resultado["paciente_matcheado"] = paciente_resuelto
             resultado["match_seleccionado"] = match_seleccionado
             resultado["match_candidatos"] = sum(
-                1 for e in indice_notas
+                1
+                for e in indice_notas
                 if any(
                     t in e["paciente_norm"].split()
                     for t in normalizar_texto(nombre_paciente).split()
@@ -336,9 +342,7 @@ def recibir_y_archivar(
                 try:
                     datetime.strptime(fecha_input, "%d-%m-%Y")
                 except ValueError:
-                    resultado["error"] = (
-                        f"Fecha '{fecha_input}' no es valida (dd-mm-yyyy)"
-                    )
+                    resultado["error"] = f"Fecha '{fecha_input}' no es valida (dd-mm-yyyy)"
                     return resultado
                 if fecha_input != fecha_informe:
                     # Yadira dio fecha distinta del informe. Probablemente
@@ -378,9 +382,7 @@ def recibir_y_archivar(
                 return resultado
     else:
         # Yadira no dio nombre.
-        resultado["error"] = (
-            "Yadira debe dar el nombre del paciente. Rubicita NO adivina."
-        )
+        resultado["error"] = "Yadira debe dar el nombre del paciente. Rubicita NO adivina."
         return resultado
 
     # 4. Validar fecha resuelta
@@ -409,22 +411,25 @@ def recibir_y_archivar(
         resultado["error"] = f"Error copiando a {destino}: {e}"
         return resultado
 
-    resultado.update({
-        "ok": True,
-        "path": str(destino),
-        "nombre": destino.name,
-        "paciente_resuelto": paciente_resuelto,
-        "fecha_resuelta": fecha_resuelta,
-        "fecha_input_descartada": fecha_input_descartada,
-        "motivo_descarte": motivo_descarte,
-        "tamano_kb": destino.stat().st_size // 1024,
-    })
+    resultado.update(
+        {
+            "ok": True,
+            "path": str(destino),
+            "nombre": destino.name,
+            "paciente_resuelto": paciente_resuelto,
+            "fecha_resuelta": fecha_resuelta,
+            "fecha_input_descartada": fecha_input_descartada,
+            "motivo_descarte": motivo_descarte,
+            "tamano_kb": destino.stat().st_size // 1024,
+        }
+    )
     return resultado
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
@@ -436,11 +441,13 @@ def _parse_args() -> argparse.Namespace:
         )
     )
     p.add_argument(
-        "--input", required=True,
+        "--input",
+        required=True,
         help="Ruta al archivo de imagen (descargado de Telegram, Rayen, etc.).",
     )
     p.add_argument(
-        "--paciente", required=True,
+        "--paciente",
+        required=True,
         help=(
             "Nombre del paciente tal como Yadira lo escribio. "
             "Puede ser parcial (ej: 'Benedicto Martin'). "
@@ -448,7 +455,8 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--fecha", default=None,
+        "--fecha",
+        default=None,
         help=(
             "Fecha de la atencion dd-mm-yyyy. Opcional. "
             "Si Yadira envia con la fecha de hoy cuando la atencion fue antes, "
@@ -456,15 +464,19 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--indice", required=True, type=int,
+        "--indice",
+        required=True,
+        type=int,
         help="Indice secuencial de la foto en el mensaje (1, 2, 3, ...).",
     )
     p.add_argument(
-        "--destino", default=None,
+        "--destino",
+        default=None,
         help=f"Directorio destino (default: {DESTINO_DIR}).",
     )
     p.add_argument(
-        "--notas-dir", default=None,
+        "--notas-dir",
+        default=None,
         help=f"Directorio de notas clinicas para matching (default: {NOTAS_DIR}).",
     )
     return p.parse_args()

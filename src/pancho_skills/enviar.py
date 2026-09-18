@@ -21,7 +21,9 @@ from dataclasses import dataclass
 
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.queue_store import TokenInvalidoError, validar_y_consumir_token
+# TokenInvalidoError se re-exporta: los callers atrapan esta excepcion.
+from src.queue_store import TokenInvalidoError as TokenInvalidoError
+from src.queue_store import validar_y_consumir_token
 
 
 @dataclass
@@ -76,9 +78,7 @@ def enviar_ficha(
         contenido=contenido,
     )
 
-    logger.info(
-        f"[pancho] Token #{token} válido. Procediendo con envío de ficha={ficha_id}"
-    )
+    logger.info(f"[pancho] Token #{token} válido. Procediendo con envío de ficha={ficha_id}")
     # TODO: implementar la lógica real de submit a Rayen
     raise NotImplementedError(
         "enviar_ficha: el submit real a Rayen no está implementado. "

@@ -25,6 +25,7 @@ Cubre:
 -  con `panel_cargo=false` (extraccion rota que el pipeline anterior
 -  permitio)
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -99,9 +100,7 @@ def kwargs_minimos(paciente_basico: PacienteObjetivo, tmp_path: Path) -> dict:
 
 
 class TestGuardarNotaClinicaEstructura:
-    def test_crea_archivo_con_extension_md(
-        self, kwargs_minimos: dict, tmp_path: Path
-    ) -> None:
+    def test_crea_archivo_con_extension_md(self, kwargs_minimos: dict, tmp_path: Path) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         assert out is not None
         assert out.exists()
@@ -109,9 +108,7 @@ class TestGuardarNotaClinicaEstructura:
         # Nombre: <safe_nombre>_<fecha>.md
         assert out.name == "Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
 
-    def test_frontmatter_yaml_con_datos_paciente(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_frontmatter_yaml_con_datos_paciente(self, kwargs_minimos: dict) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         # Debe empezar con frontmatter.
@@ -127,16 +124,12 @@ class TestGuardarNotaClinicaEstructura:
         # panel_cargo default True.
         assert 'panel_cargo: "true"' in contenido
 
-    def test_titulo_h1(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_titulo_h1(self, kwargs_minimos: dict) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "# Nota clinica - Nicolas Ignacio Piña Rojas" in contenido
 
-    def test_sin_flag_panel_no_cargo_cuando_panel_cargo_true(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_sin_flag_panel_no_cargo_cuando_panel_cargo_true(self, kwargs_minimos: dict) -> None:
         # Default panel_cargo=True -> sin flag de revision.
         # Frase completa para no confundir con "HISTORIAL DE ATENCIONES".
         out = guardar_nota_clinica(**kwargs_minimos)
@@ -144,9 +137,7 @@ class TestGuardarNotaClinicaEstructura:
         assert "panel del paciente NO CARGO" not in contenido
         assert "Revisar manualmente en Rayen" not in contenido
 
-    def test_todos_los_headers_presentes(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_todos_los_headers_presentes(self, kwargs_minimos: dict) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         for header in [
@@ -161,24 +152,18 @@ class TestGuardarNotaClinicaEstructura:
         ]:
             assert header in contenido, f"Falta header {header}"
 
-    def test_identificacion_como_bullets_clave_valor(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_identificacion_como_bullets_clave_valor(self, kwargs_minimos: dict) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "- **RUN:** 23.012.222-9" in contenido
         assert "- **Edad:** 17 años" in contenido
 
-    def test_historial_renderizado(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_historial_renderizado(self, kwargs_minimos: dict) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "control previo sin novedades" in contenido
 
-    def test_nota_clinica_yadira_con_anamnesis_cruda(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_nota_clinica_yadira_con_anamnesis_cruda(self, kwargs_minimos: dict) -> None:
         # Regla Yadira 2026-09-16 (corregido 13:42): el bloque Yadira
         # contiene la anamnesis CRUDA que Yadira escribio en Rayen.
         # Es el insumo principal del flujo de enriquecimiento via LLM
@@ -191,24 +176,18 @@ class TestGuardarNotaClinicaEstructura:
         # NO hay placeholder (eso era el diseno viejo, pre-13:42).
         assert "bloque a completar por el LLM" not in contenido
 
-    def test_motivo_consulta_como_blockquote(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_motivo_consulta_como_blockquote(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["motivo_consulta"] = "Control de HTA cronica"
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "> **Motivo de atencion:** Control de HTA cronica" in contenido
 
-    def test_diagnosticos_como_bullets(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_diagnosticos_como_bullets(self, kwargs_minimos: dict) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "- I10X Hipertension esencial" in contenido
 
-    def test_diagnostico_con_guion_inicial_no_se_duplica(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_diagnostico_con_guion_inicial_no_se_duplica(self, kwargs_minimos: dict) -> None:
         # Si el diagnostico viene con "- " al inicio (caso del parser),
         # el bullet no debe quedar como "- - ...".
         kwargs_minimos["diagnosticos"] = ["- CIE 10 F32.1 Episodio depresivo"]
@@ -217,9 +196,7 @@ class TestGuardarNotaClinicaEstructura:
         assert "- - " not in contenido
         assert "- CIE 10 F32.1 Episodio depresivo" in contenido
 
-    def test_actividades_como_bullets(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_actividades_como_bullets(self, kwargs_minimos: dict) -> None:
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "- Control de presion arterial" in contenido
@@ -229,32 +206,20 @@ class TestGuardarNotaClinicaEstructura:
 # guardar_nota_clinica: flag panel_cargo
 # ---------------------------------------------------------------------------
 class TestPanelCargoFlag:
-    def test_panel_no_cargo_escribe_flag_atencion(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_panel_no_cargo_escribe_flag_atencion(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["panel_cargo"] = False
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
-        assert (
-            "> \u26a0\ufe0f **ATENCION: panel del paciente NO CARGO en Rayen.**"
-            in contenido
-        )
-        assert (
-            "> La nota tiene placeholders. Revisar manualmente en Rayen."
-            in contenido
-        )
+        assert "> \u26a0\ufe0f **ATENCION: panel del paciente NO CARGO en Rayen.**" in contenido
+        assert "> La nota tiene placeholders. Revisar manualmente en Rayen." in contenido
 
-    def test_panel_no_cargo_se_refleja_en_frontmatter(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_panel_no_cargo_se_refleja_en_frontmatter(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["panel_cargo"] = False
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert 'panel_cargo: "false"' in contenido
 
-    def test_panel_no_cargo_flag_antes_del_primer_header(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_panel_no_cargo_flag_antes_del_primer_header(self, kwargs_minimos: dict) -> None:
         # El flag debe estar antes del primer ## Identificacion para que
         # Yadira lo vea inmediatamente.
         kwargs_minimos["panel_cargo"] = False
@@ -264,9 +229,7 @@ class TestPanelCargoFlag:
         pos_bloque = contenido.index("## Identificacion")
         assert pos_flag < pos_bloque
 
-    def test_panel_cargo_default_es_true(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_panel_cargo_default_es_true(self, kwargs_minimos: dict) -> None:
         # Sin pasar panel_cargo -> default True -> sin flag.
         assert "panel_cargo" not in kwargs_minimos
         out = guardar_nota_clinica(**kwargs_minimos)
@@ -279,17 +242,13 @@ class TestPanelCargoFlag:
 # guardar_nota_clinica: valores vacios / placeholder
 # ---------------------------------------------------------------------------
 class TestGuardarNotaClinicaVacias:
-    def test_identificacion_vacia_muestra_placeholder(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_identificacion_vacia_muestra_placeholder(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["identificacion"] = {}
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "_(no se pudo extraer la tabla de identificacion)_" in contenido
 
-    def test_historial_vacio_muestra_placeholder(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_historial_vacio_muestra_placeholder(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["historial"] = ""
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
@@ -340,13 +299,10 @@ class TestGuardarNotaClinicaVacias:
             guardar_nota_clinica(**kwargs_minimos)
         assert list(tmp_path.iterdir()) == []
 
-    def test_anamnesis_no_vacia_pasa_normal(
-        self, kwargs_minimos: dict, tmp_path: Path
-    ) -> None:
+    def test_anamnesis_no_vacia_pasa_normal(self, kwargs_minimos: dict, tmp_path: Path) -> None:
         # Caso normal: la extraccion devolvio texto. Funcion OK.
         kwargs_minimos["anamnesis"] = (
-            "Paciente consulta por control de su patologia cronica. "
-            "Sin sintomas nuevos."
+            "Paciente consulta por control de su patologia cronica. Sin sintomas nuevos."
         )
         out = guardar_nota_clinica(**kwargs_minimos)
         assert out is not None
@@ -354,25 +310,19 @@ class TestGuardarNotaClinicaVacias:
         contenido = out.read_text(encoding="utf-8")
         assert "## Nota clinica de Yadira" in contenido
 
-    def test_diagnosticos_vacios_muestran_placeholder(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_diagnosticos_vacios_muestran_placeholder(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["diagnosticos"] = []
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "_(sin diagnosticos)_" in contenido
 
-    def test_recetas_vacias_muestran_placeholder(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_recetas_vacias_muestran_placeholder(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["recetas"] = []
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "_(sin recetas)_" in contenido
 
-    def test_laboratorio_vacio_muestra_placeholder(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_laboratorio_vacio_muestra_placeholder(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["laboratorio"] = []
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
@@ -403,9 +353,7 @@ class TestGuardarNotaClinicaSiempreEscribe:
         assert "CONTENIDO PREEXISTENTE" not in contenido
         assert "Nota clinica - Nicolas Ignacio Piña Rojas" in contenido
 
-    def test_segunda_llamada_tambien_escribe(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_segunda_llamada_tambien_escribe(self, kwargs_minimos: dict) -> None:
         # Sesion 2026-09-16 14:14 (regla Yadira): cada corrida arranca
         # fresca. Dos llamadas consecutivas al script con los mismos
         # args producen el mismo archivo (sobrescrito, no duplicado).
@@ -422,21 +370,15 @@ class TestGuardarNotaClinicaSiempreEscribe:
 # guardar_nota_clinica: nombre real de Rayen (match parcial)
 # ---------------------------------------------------------------------------
 class TestGuardarNotaClinicaNombreRayen:
-    def test_nombre_rayen_distinto_aparece_en_frontmatter(
-        self, kwargs_minimos: dict
-    ) -> None:
+    def test_nombre_rayen_distinto_aparece_en_frontmatter(self, kwargs_minimos: dict) -> None:
         kwargs_minimos["paciente"].nombre_rayen = "Nicolas Piña"
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert 'paciente: "Nicolas Ignacio Piña Rojas"' in contenido  # original
         assert 'paciente_rayen: "Nicolas Piña"' in contenido  # real
 
-    def test_nombre_rayen_igual_al_informe_no_aparece(
-        self, kwargs_minimos: dict
-    ) -> None:
-        kwargs_minimos["paciente"].nombre_rayen = (
-            kwargs_minimos["paciente"].nombre
-        )
+    def test_nombre_rayen_igual_al_informe_no_aparece(self, kwargs_minimos: dict) -> None:
+        kwargs_minimos["paciente"].nombre_rayen = kwargs_minimos["paciente"].nombre
         out = guardar_nota_clinica(**kwargs_minimos)
         contenido = out.read_text(encoding="utf-8")
         assert "paciente_rayen" not in contenido
@@ -446,9 +388,7 @@ class TestGuardarNotaClinicaNombreRayen:
 # parsear_informe: smoke test
 # ---------------------------------------------------------------------------
 class TestParsearInforme:
-    def test_parsea_informe_con_formato_6_columnas(
-        self, tmp_path: Path
-    ) -> None:
+    def test_parsea_informe_con_formato_6_columnas(self, tmp_path: Path) -> None:
         informe = tmp_path / "informe_test.txt"
         informe.write_text(
             "10-09-2026    Nicolas Ignacio Piña Rojas    (-)    "
@@ -465,9 +405,7 @@ class TestParsearInforme:
         assert pacientes[1].fecha == "11-09-2026"
         assert pacientes[1].nombre == "Maria Lopez"
 
-    def test_informe_inexistente_devuelve_lista_vacia(
-        self, tmp_path: Path
-    ) -> None:
+    def test_informe_inexistente_devuelve_lista_vacia(self, tmp_path: Path) -> None:
         informe = tmp_path / "no_existe.txt"
         pacientes = parsear_informe(informe)
         assert pacientes == []
@@ -484,9 +422,7 @@ class TestParsearInforme:
         assert len(pacientes) == 1
         assert pacientes[0].nombre == "Juan Perez"
 
-    def test_quita_prefijo_atencion_preferente(
-        self, tmp_path: Path
-    ) -> None:
+    def test_quita_prefijo_atencion_preferente(self, tmp_path: Path) -> None:
         informe = tmp_path / "informe_test.txt"
         informe.write_text(
             "10-09-2026    (atencion preferente) Juan Perez    "
@@ -533,13 +469,9 @@ class TestRegressionGuardNotasClinicas:
 
     NOTAS_DIR = Path(__file__).resolve().parents[1] / "data" / "notas_clinicas"
 
-    def test_no_hay_notas_con_placeholder_yadira_viejo(
-        self, tmp_path: Path
-    ) -> None:
+    def test_no_hay_notas_con_placeholder_yadira_viejo(self, tmp_path: Path) -> None:
         if not self.NOTAS_DIR.exists():
-            pytest.skip(
-                "no hay directorio notas_clinicas/ en este checkout"
-            )
+            pytest.skip("no hay directorio notas_clinicas/ en este checkout")
         rotas: list[str] = []
         for f in sorted(self.NOTAS_DIR.glob("*.md")):
             contenido = f.read_text(encoding="utf-8")
@@ -555,35 +487,28 @@ class TestRegressionGuardNotasClinicas:
             f"Regla dura Yadira: hay {len(rotas)} notas VIEJAS con "
             f"placeholder 'bloque a completar por el LLM' en "
             f"`## Nota clinica de Yadira`. Re-ejecutar "
-            f"`crear_notas_clinicas` o borrarlas manualmente:\n  - "
-            + "\n  - ".join(rotas)
+            f"`crear_notas_clinicas` o borrarlas manualmente:\n  - " + "\n  - ".join(rotas)
         )
 
-    def test_todas_las_notas_tienen_seccion_yadira(
-        self, tmp_path: Path
-    ) -> None:
+    def test_todas_las_notas_tienen_seccion_yadira(self, tmp_path: Path) -> None:
         if not self.NOTAS_DIR.exists():
-            pytest.skip(
-                "no hay directorio notas_clinicas/ en este checkout"
-            )
+            pytest.skip("no hay directorio notas_clinicas/ en este checkout")
         sin_seccion: list[str] = []
         for f in sorted(self.NOTAS_DIR.glob("*.md")):
             contenido = f.read_text(encoding="utf-8")
             if "## Nota clinica de Yadira" not in contenido:
                 sin_seccion.append(f.name)
         assert not sin_seccion, (
-            f"Estas notas no tienen la seccion '## Nota clinica de "
-            f"Yadira' (fueron generadas antes del esquema markdown):\n"
-            f"  - " + "\n  - ".join(sin_seccion)
+            "Estas notas no tienen la seccion '## Nota clinica de "
+            "Yadira' (fueron generadas antes del esquema markdown):\n"
+            "  - " + "\n  - ".join(sin_seccion)
         )
 
 
 # ---------------------------------------------------------------------------
 # validar_nota_clinica + _rellenar_bloque_en_nota: validacion post-write.
 class TestValidarNotaClinica:
-    def test_detecta_bloque_realmente_vacio_como_faltante(
-        self, tmp_path: Path
-    ) -> None:
+    def test_detecta_bloque_realmente_vacio_como_faltante(self, tmp_path: Path) -> None:
         from src.tools.crear_notas_clinicas import validar_nota_clinica
 
         nota = tmp_path / "paciente_test.md"
@@ -625,9 +550,7 @@ class TestValidarNotaClinica:
         assert "Profesionales" not in faltantes
         assert "Plan - Recetas" not in faltantes
 
-    def test_nota_completa_no_tiene_faltantes(
-        self, kwargs_minimos: dict, tmp_path: Path
-    ) -> None:
+    def test_nota_completa_no_tiene_faltantes(self, kwargs_minimos: dict, tmp_path: Path) -> None:
         from src.tools.crear_notas_clinicas import validar_nota_clinica
 
         out = guardar_nota_clinica(**kwargs_minimos)
@@ -637,9 +560,7 @@ class TestValidarNotaClinica:
 
 
 class TestRellenarBloqueEnNota:
-    def test_rellena_bloque_string(
-        self, kwargs_minimos: dict, tmp_path: Path
-    ) -> None:
+    def test_rellena_bloque_string(self, kwargs_minimos: dict, tmp_path: Path) -> None:
         from src.tools.crear_notas_clinicas import (
             _rellenar_bloque_en_nota,
         )
@@ -662,9 +583,7 @@ class TestRellenarBloqueEnNota:
         assert "## Identificacion" in contenido_despues
         assert "RUN" in contenido_despues
 
-    def test_rellena_bloque_lista_como_bullets(
-        self, kwargs_minimos: dict, tmp_path: Path
-    ) -> None:
+    def test_rellena_bloque_lista_como_bullets(self, kwargs_minimos: dict, tmp_path: Path) -> None:
         from src.tools.crear_notas_clinicas import (
             _rellenar_bloque_en_nota,
         )
@@ -679,9 +598,7 @@ class TestRellenarBloqueEnNota:
         assert "- I10X Hipertension esencial" in contenido
         assert "- E78.1 Hipertrigliceridemia" in contenido
 
-    def test_rellena_bloque_dict_como_kv(
-        self, kwargs_minimos: dict, tmp_path: Path
-    ) -> None:
+    def test_rellena_bloque_dict_como_kv(self, kwargs_minimos: dict, tmp_path: Path) -> None:
         from src.tools.crear_notas_clinicas import (
             _rellenar_bloque_en_nota,
         )
@@ -714,9 +631,7 @@ class TestGuardarRespaldoAnamnesis:
             "Paciente consulta por control de HTA cronica. "
             "Adherencia al tratamiento. Asintomatica cardiovascular."
         )
-        out = guardar_respaldo_anamnesis(
-            paciente_basico, anamnesis, backup_dir=tmp_path
-        )
+        out = guardar_respaldo_anamnesis(paciente_basico, anamnesis, backup_dir=tmp_path)
         assert out is not None
         assert out.exists()
         # Sesion 2026-09-16 18:45: prefijo "anam_" para distinguir el
@@ -734,9 +649,7 @@ class TestGuardarRespaldoAnamnesis:
             "Paciente consulta por control de HTA cronica. "
             "Adherencia al tratamiento. Asintomatica cardiovascular."
         )
-        out = guardar_respaldo_anamnesis(
-            paciente_basico, anamnesis, backup_dir=tmp_path
-        )
+        out = guardar_respaldo_anamnesis(paciente_basico, anamnesis, backup_dir=tmp_path)
         contenido = out.read_text(encoding="utf-8")
         # Frontmatter canonico.
         assert 'paciente: "Nicolas Ignacio Piña Rojas"' in contenido
@@ -753,9 +666,7 @@ class TestGuardarRespaldoAnamnesis:
             guardar_respaldo_anamnesis,
         )
 
-        out = guardar_respaldo_anamnesis(
-            paciente_basico, "", backup_dir=tmp_path
-        )
+        out = guardar_respaldo_anamnesis(paciente_basico, "", backup_dir=tmp_path)
         assert out is None
         assert list(tmp_path.iterdir()) == []
 
@@ -766,9 +677,7 @@ class TestGuardarRespaldoAnamnesis:
             guardar_respaldo_anamnesis,
         )
 
-        out = guardar_respaldo_anamnesis(
-            paciente_basico, "   \n  \t  ", backup_dir=tmp_path
-        )
+        out = guardar_respaldo_anamnesis(paciente_basico, "   \n  \t  ", backup_dir=tmp_path)
         assert out is None
         assert list(tmp_path.iterdir()) == []
 
@@ -790,9 +699,7 @@ class TestGuardarRespaldoAnamnesis:
             backup_dir=tmp_path,
         )
         archivos = list(tmp_path.iterdir())
-        assert len(archivos) == 1, (
-            f"Se esperaba 1 archivo, hay {len(archivos)}"
-        )
+        assert len(archivos) == 1, f"Se esperaba 1 archivo, hay {len(archivos)}"
         contenido = archivos[0].read_text(encoding="utf-8")
         assert "Anamnesis nueva" in contenido
         assert "Anamnesis vieja" not in contenido
@@ -871,6 +778,7 @@ class TestGuardarRespaldoAnamnesis:
 # anamnesis. Vive en data/info_paciente/.
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def info_paciente_kwargs(paciente_basico: PacienteObjetivo, tmp_path: Path) -> dict:
     """Argumentos para guardar_info_paciente (sin anamnesis/motivo)."""
@@ -894,9 +802,7 @@ def info_paciente_kwargs(paciente_basico: PacienteObjetivo, tmp_path: Path) -> d
 class TestGuardarInfoPaciente:
     """Sesion 2026-09-16 17:45: documento complementario sin anamnesis."""
 
-    def test_crea_archivo_md(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_crea_archivo_md(self, info_paciente_kwargs: dict) -> None:
         out = guardar_info_paciente(**info_paciente_kwargs)
         assert out is not None
         assert out.exists()
@@ -914,18 +820,14 @@ class TestGuardarInfoPaciente:
         # Y NO debe estar el formato viejo (sin prefijo)
         assert not out.name.startswith("info_info_")  # doble check: no recursivo
 
-    def test_no_incluye_seccion_anamnesis(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_no_incluye_seccion_anamnesis(self, info_paciente_kwargs: dict) -> None:
         """El doc NO debe tener '## Nota clinica de Yadira' ni el motivo."""
         out = guardar_info_paciente(**info_paciente_kwargs)
         contenido = out.read_text(encoding="utf-8")
         assert "## Nota clinica de Yadira" not in contenido
         assert "Motivo de atencion" not in contenido
 
-    def test_incluye_identificacion_completa(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_incluye_identificacion_completa(self, info_paciente_kwargs: dict) -> None:
         """El doc SI debe tener el bloque Identificacion."""
         out = guardar_info_paciente(**info_paciente_kwargs)
         contenido = out.read_text(encoding="utf-8")
@@ -933,9 +835,7 @@ class TestGuardarInfoPaciente:
         assert "23.012.222-9" in contenido
         assert "Masculino" in contenido
 
-    def test_incluye_historial(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_incluye_historial(self, info_paciente_kwargs: dict) -> None:
         out = guardar_info_paciente(**info_paciente_kwargs)
         contenido = out.read_text(encoding="utf-8")
         assert "## Historial" in contenido
@@ -953,9 +853,7 @@ class TestGuardarInfoPaciente:
         assert "## Profesionales" in contenido
         assert "Dr. Lopez" in contenido
 
-    def test_incluye_recetas_y_laboratorio(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_incluye_recetas_y_laboratorio(self, info_paciente_kwargs: dict) -> None:
         out = guardar_info_paciente(**info_paciente_kwargs)
         contenido = out.read_text(encoding="utf-8")
         assert "## Plan - Recetas" in contenido
@@ -963,9 +861,7 @@ class TestGuardarInfoPaciente:
         assert "## Plan - Laboratorio" in contenido
         assert "Hemoglobina glicosilada" in contenido
 
-    def test_frontmatter_tipo_documento_info_paciente(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_frontmatter_tipo_documento_info_paciente(self, info_paciente_kwargs: dict) -> None:
         """El frontmatter marca este doc como 'info_paciente'."""
         out = guardar_info_paciente(**info_paciente_kwargs)
         contenido = out.read_text(encoding="utf-8")
@@ -991,9 +887,7 @@ class TestGuardarInfoPaciente:
         assert "panel del paciente NO CARGO" in contenido
         assert 'panel_cargo: "false"' in contenido
 
-    def test_estrato_incluido_si_hay(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_estrato_incluido_si_hay(self, info_paciente_kwargs: dict) -> None:
         out = guardar_info_paciente(
             **info_paciente_kwargs,
             estratificacion={"riesgo": "alto", "grupo": "g3"},
@@ -1041,17 +935,12 @@ class TestGuardarInfoPaciente:
         )
         assert destino.exists()
 
-    def test_excluye_examenes_adjuntos_y_pautas(
-        self, info_paciente_kwargs: dict
-    ) -> None:
+    def test_excluye_examenes_adjuntos_y_pautas(self, info_paciente_kwargs: dict) -> None:
         """El doc NO debe contener la seccion de examenes adjuntos
         (esa vive en data/examenes/ ahora, no en info_paciente)."""
         out = guardar_info_paciente(**info_paciente_kwargs)
         contenido = out.read_text(encoding="utf-8")
-        secciones = [
-            line for line in contenido.split("\n")
-            if line.startswith("## ")
-        ]
+        secciones = [line for line in contenido.split("\n") if line.startswith("## ")]
         assert "## Examenes adjuntos" not in secciones
         # Sesion 17:55: se elimino la seccion '## Notas' (Yadira pidio
         # borrarla). El doc ahora cierra en Plan - Laboratorio.

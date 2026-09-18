@@ -40,15 +40,18 @@ sufijo que NO colisiona ni con el mensual actual ni con el anual.
 Privacidad: la DB tiene PII (nombre) y vive en data/analysis/ (en
 .gitignore). Los archivos .txt de output tambien.
 """
+
 from __future__ import annotations
 
 import argparse
+import contextlib
 import io
 import sqlite3
 import sys
 from collections import Counter
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
+from typing import Any, TextIO
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "analysis" / "fichas_completo.db"
@@ -56,7 +59,7 @@ OUT_DIR = BASE_DIR / "data" / "analysis"
 
 # Sin columna "Plantilla" — removida por peticion de Yadira.
 # Sin resolucion de plantilla canonica aqui.
-from src.analysis.informe_paths import (  # noqa: E402
+from src.analysis.informe_paths import (
     informe_anual_path,
     informe_mes_actual_path,
 )
@@ -113,12 +116,10 @@ def _es_modo_anual(args: argparse.Namespace) -> bool:
         return False
     if args.mes is not None:
         return False
-    if args.desde or args.hasta:
-        return False
-    return True
+    return not (args.desde or args.hasta)
 
 
-def _resolver_periodo(args: argparse.Namespace) -> tuple[str, str, str, str]:
+def _resolver_periodo(args: argparse.Namespace) -> tuple[str, str, tuple[Any, ...], str]:
     """Devuelve (etiqueta_periodo, sql_where, params_tuple, sufijo_archivo).
 
     Tres modos, cada uno con sufijo unico:
@@ -128,6 +129,7 @@ def _resolver_periodo(args: argparse.Namespace) -> tuple[str, str, str, str]:
     """
     hoy = date.today()
     anio = args.anio if args.anio is not None else hoy.year
+    params: tuple[Any, ...] = ()
 
     if args.desde and args.hasta:
         etiqueta = f"{args.desde} a {args.hasta}"
@@ -149,7 +151,7 @@ def _resolver_periodo(args: argparse.Namespace) -> tuple[str, str, str, str]:
     return etiqueta, where, params, sufijo
 
 
-def _cargar_fichas(where_sql: str, params: tuple) -> list[dict[str, str]]:
+def _cargar_fichas(where_sql: str, params: tuple[Any, ...]) -> list[dict[str, str]]:
     if not DB_PATH.exists():
         print(f"ERROR: no existe la DB en {DB_PATH}", file=sys.stderr)
         return []
@@ -159,9 +161,7 @@ def _cargar_fichas(where_sql: str, params: tuple) -> list[dict[str, str]]:
         # Rayen, sin valor clinico). En su lugar, el enriquecimiento
         # posterior llena 'motivo' desde la nota clinica.
         cur = conn.execute(
-            f"SELECT fecha, nombre, tipo_atencion "
-            f"FROM fichas WHERE {where_sql} "
-            f"ORDER BY fecha ASC",
+            f"SELECT fecha, nombre, tipo_atencion FROM fichas WHERE {where_sql} ORDER BY fecha ASC",
             params,
         )
         filas = [
@@ -240,16 +240,16 @@ def _imprimir_informe(filas: list[dict[str, str]], periodo: str) -> None:
 class _TeeStdout:
     """Wrapper de stdout: duplica a consola y a un buffer en memoria."""
 
-    def __init__(self, original: object) -> None:
+    def __init__(self, original: TextIO) -> None:
         self._original = original
         self._buffer = io.StringIO()
 
     def write(self, s: str) -> int:
-        self._original.write(s)  # type: ignore[union-attr]
+        self._original.write(s)
         return self._buffer.write(s)
 
     def flush(self) -> None:
-        self._original.flush()  # type: ignore[union-attr]
+        self._original.flush()
 
     def get_output(self) -> str:
         return self._buffer.getvalue()
@@ -257,10 +257,8 @@ class _TeeStdout:
 
 def main() -> int:
     # Forzar UTF-8 en consola Windows (sino los guiones/tildes se ven como �)
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
-    except (AttributeError, OSError):
-        pass
+    with contextlib.suppress(AttributeError, OSError):
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
     args = _parse_args()
     periodo, where_sql, params, sufijo = _resolver_periodo(args)
@@ -277,16 +275,12 @@ def main() -> int:
     otros_modos: list[Path] = []
     if modo_anual:
         # Estamos en anual: el archivo del mes en curso NO debe ser este.
-        try:
+        with contextlib.suppress(Exception):
             otros_modos.append(informe_mes_actual_path())
-        except Exception:
-            pass
     else:
         # Estamos en mensual/rango: el archivo anual NO debe ser este.
-        try:
+        with contextlib.suppress(Exception):
             otros_modos.append(informe_anual_path(anio=args.anio))
-        except Exception:
-            pass
     for otro in otros_modos:
         if out_path.resolve() == otro.resolve():
             print(
@@ -314,10 +308,8 @@ def main() -> int:
     try:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         out_path.write_text(tee.get_output(), encoding="utf-8")
-        print(
-            f"\n[output completo guardado en: {out_path.relative_to(BASE_DIR)}]"
-        )
-    except OSError as e:  # noqa: BLE001
+        print(f"\n[output completo guardado en: {out_path.relative_to(BASE_DIR)}]")
+    except OSError as e:
         print(f"WARN: no se pudo guardar output: {e}", file=sys.stderr)
 
     return 0
