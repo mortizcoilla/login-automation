@@ -1,6 +1,8 @@
 """Respaldo de la anamnesis cruda de Yadira (REQ-026/027).
 
-anam_<pac>_<fecha>.md con frontmatter + motivo blockquote + anamnesis.
+anam_<pac>_<fecha>.md con motivo blockquote + anamnesis, SIN frontmatter
+(pedido directo del usuario 18-09-2026: el bloque inicial estorbaba la
+lectura). El nombre del archivo ya identifica paciente y fecha.
 """
 
 from __future__ import annotations
@@ -10,7 +12,6 @@ from pathlib import Path
 from src.core.nombres import safe_filename as _safe_filename
 from src.core.rutas import ANAMNESIS_DIR as ANAMNESIS_BACKUP_DIR
 from src.notas.modelos import PacienteObjetivo
-from src.notas.nota_clinica import _now_iso
 
 # REQ-026/027: motivo nunca vacio; respaldo anam_<pac>_<fecha>.md.
 
@@ -55,16 +56,7 @@ def guardar_respaldo_anamnesis(
     nombre_archivo = f"anam_{_safe_filename(paciente.nombre)}_{paciente.fecha}.md"
     out_path = backup_dir / nombre_archivo
 
-    md = ["---"]
-    md.append(f'paciente: "{paciente.nombre}"')
-    md.append(f'fecha_atencion: "{paciente.fecha}"')
-    if paciente.nombre_rayen and paciente.nombre_rayen != paciente.nombre:
-        md.append(f'paciente_rayen: "{paciente.nombre_rayen}"')
-    md.append('fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"')
-    md.append('source_url: "https://clinico.rayenaps.cl/"')
-    md.append(f'fecha_extraccion: "{_now_iso()}"')
-    md.append("---")
-    md.append("")
+    md: list[str] = []
     # Regla Yadira 2026-09-16 15:35: el motivo SIEMPRE existe. Lo
     # escribimos siempre, aunque venga vacio (eso es senal de bug del
     # extractor, no un caso normal).

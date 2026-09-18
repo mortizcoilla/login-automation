@@ -5,7 +5,8 @@ Referencia visual del proyecto. Fuente de verdad de reglas:
 estructura o comando (ver "Regla de mantenimiento" al final).
 
 Ultima actualizacion: 2026-09-18 (refactorizacion completa, commits
-9827b36..23c364e).
+9827b36..23c364e; mismo dia: anam_<pac>_<fecha>.md ahora SIN frontmatter,
+REQ-027).
 
 ---
 

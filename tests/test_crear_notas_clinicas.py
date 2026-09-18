@@ -630,7 +630,7 @@ class TestGuardarRespaldoAnamnesis:
         # respaldo de anamnesis de la nota clinica y del info_paciente.
         assert out.name == "anam_Nicolas_Ignacio_Piña_Rojas_10-09-2026.md"
 
-    def test_archivo_contiene_anamnesis_y_frontmatter(
+    def test_archivo_contiene_anamnesis_sin_frontmatter(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
         from src.notas.anamnesis import guardar_respaldo_anamnesis
@@ -641,10 +641,11 @@ class TestGuardarRespaldoAnamnesis:
         )
         out = guardar_respaldo_anamnesis(paciente_basico, anamnesis, backup_dir=tmp_path)
         contenido = out.read_text(encoding="utf-8")
-        # Frontmatter canonico.
-        assert 'paciente: "Nicolas Ignacio Piña Rojas"' in contenido
-        assert 'fecha_atencion: "10-09-2026"' in contenido
-        assert 'fuente: "Rayen APS - CESFAM Raul Cuevas, San Bernardo"' in contenido
+        # Pedido usuario 18-09-2026: SIN bloque de frontmatter inicial.
+        assert not contenido.startswith("---")
+        assert 'paciente: "' not in contenido
+        assert 'fecha_atencion: "' not in contenido
+        assert 'fuente: "' not in contenido
         # Anamnesis cruda de Yadira, sin formato extra.
         assert "control de HTA cronica" in contenido
         assert "Adherencia al tratamiento" in contenido
@@ -732,14 +733,15 @@ class TestGuardarRespaldoAnamnesis:
         assert "> **Motivo de atencion:**" in contenido
         assert "Anamnesis aqui" in contenido
 
-    def test_nombre_rayen_en_frontmatter(
+    def test_sin_frontmatter_no_hay_paciente_rayen(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
         from src.notas.anamnesis import guardar_respaldo_anamnesis
 
-        # Si el nombre en Rayen difiere del nombre del informe
-        # (match parcial), el nombre real de Rayen aparece en
-        # paciente_rayen para que Yadira pueda matchear despues.
+        # Con el frontmatter eliminado (pedido 18-09-2026), el nombre
+        # real de Rayen ya no se escribe en el respaldo: el nombre del
+        # informe sigue siendo el canonico del filename. El metadato
+        # paciente_rayen vive SOLO en la nota clinica completa.
         paciente_basico.nombre_rayen = "Maciel Vanessa Orellana Astudillo"
         out = guardar_respaldo_anamnesis(
             paciente_basico,
@@ -747,7 +749,8 @@ class TestGuardarRespaldoAnamnesis:
             backup_dir=tmp_path,
         )
         contenido = out.read_text(encoding="utf-8")
-        assert 'paciente_rayen: "Maciel Vanessa Orellana Astudillo"' in contenido
+        assert "paciente_rayen" not in contenido
+        assert "Maciel" not in contenido
 
 
 # ---------------------------------------------------------------------------
