@@ -53,9 +53,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any, TextIO
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DB_PATH = BASE_DIR / "data" / "analysis" / "fichas_completo.db"
-OUT_DIR = BASE_DIR / "data" / "analysis"
+from src.core.rutas import ANALISIS_DIR, ROOT
+
+BASE_DIR = ROOT
+DB_PATH = ANALISIS_DIR / "fichas_completo.db"
+OUT_DIR = ANALISIS_DIR
 
 # Sin columna "Plantilla" — removida por peticion de Yadira.
 # Sin resolucion de plantilla canonica aqui.

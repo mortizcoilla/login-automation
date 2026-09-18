@@ -62,18 +62,14 @@ import json
 import re
 import shutil
 import sys
-import unicodedata
 from datetime import datetime
 from pathlib import Path
 
-# Repo root (este archivo vive en src/tools/, subimos 2 niveles).
-ROOT = Path(__file__).resolve().parents[2]
+# Paths unicos del proyecto: core.rutas es la unica fuente de verdad.
+from src.core.rutas import EXAMENES_CRUDOS_DIR, NOTAS_DIR
 
-# UNICO directorio de salida de los examenes.
-DESTINO_DIR = ROOT / "data" / "Examenes_crudos"
-
-# Fuente de verdad para resolver matches de paciente y fecha.
-NOTAS_DIR = ROOT / "data" / "notas_clinicas"
+# UNICO directorio de salida de los examenes crudos (REQ-012).
+DESTINO_DIR = EXAMENES_CRUDOS_DIR
 
 # Extensiones aceptadas.
 IMAGE_EXTENSIONS = {
@@ -88,19 +84,8 @@ IMAGE_EXTENSIONS = {
 }
 
 
-def normalizar_texto(texto: str) -> str:
-    """Quita tildes, pasa a minusculas, colapsa espacios/guiones."""
-    sin_tildes = "".join(
-        c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn"
-    )
-    return re.sub(r"[\s_]+", " ", sin_tildes).strip().lower()
-
-
-def nombre_a_filename(nombre: str) -> str:
-    """Normaliza un nombre para usarlo como parte de un nombre de archivo.
-    lowercase, sin tildes, espacios a `_`.
-    """
-    return re.sub(r"\s+", "_", normalizar_texto(nombre))
+# Normalizacion unica: core.nombres (REQ-012/016).
+from src.core.nombres import nombre_a_filename, normalizar_texto
 
 
 def _parsear_frontmatter(texto: str) -> dict[str, str]:

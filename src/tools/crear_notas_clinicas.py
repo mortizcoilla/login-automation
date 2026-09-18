@@ -47,7 +47,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 with contextlib.suppress(AttributeError, OSError):
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+from src.core.rutas import ROOT
+
 sys.path.insert(0, str(ROOT))
 
 from src.browser_automation import (
@@ -59,6 +60,7 @@ from src.browser_automation import (
     select_date,
     sort_by_estado,
 )
+from src.core.nombres import safe_filename as _core_safe_filename
 from src.tools.informe_tecnico import (
     PacienteInforme,
     WarningsCollector,
@@ -2057,13 +2059,11 @@ def extraer_otros_items_atencion(driver: WebDriver, logger: logging.Logger) -> d
 
 
 def _safe_filename(s: str) -> str:
-    """Convierte un nombre a filename seguro (sin caracteres raros)."""
-    s = re.sub(r"[^\w\s\-]+", "", s, flags=re.UNICODE)
-    s = re.sub(r"\s+", "_", s.strip())
-    return s
+    """Convierte un nombre a filename seguro (delega en core.nombres)."""
+    return _core_safe_filename(s)
 
 
-ANAMNESIS_BACKUP_DIR = ROOT / "data" / "anamnesis"
+from src.core.rutas import ANAMNESIS_DIR as ANAMNESIS_BACKUP_DIR
 
 # Documento complementario a la nota clinica: contiene TODA la info del
 # paciente EXCEPTO la anamnesis cruda de Yadira. Es para "mirar al
@@ -2072,7 +2072,7 @@ ANAMNESIS_BACKUP_DIR = ROOT / "data" / "anamnesis"
 #   data/notas_clinicas/<paciente>_<fecha>.md   <- nota completa (incluye anamnesis)
 #   data/anamnesis/<paciente>_<fecha>.md        <- solo anamnesis cruda (respaldo)
 #   data/info_paciente/<paciente>_<fecha>.md    <- todo MENOS la anamnesis (NUEVO)
-INFO_PACIENTE_DIR = ROOT / "data" / "info_paciente"
+from src.core.rutas import INFO_PACIENTE_DIR
 
 
 # REQ-026/027: motivo nunca vacio; respaldo anam_<pac>_<fecha>.md.

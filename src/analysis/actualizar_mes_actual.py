@@ -16,11 +16,9 @@ esta en .gitignore. NO se commitea.
 from __future__ import annotations
 
 import calendar
-import re
 import sqlite3
 import sys
 from datetime import date
-from pathlib import Path
 
 from src.browser_automation import (
     _es_url_login,
@@ -30,28 +28,15 @@ from src.browser_automation import (
     select_date,
     sort_by_estado,
 )
-from src.constants import DATE_FORMAT, INSTRUMENTO_PREFIXES
+from src.constants import DATE_FORMAT
+from src.core.rutas import ANALISIS_DIR, ROOT
+from src.core.tipos_atencion import sanitizar_tipo  # REQ-037: unica copia
 from src.credentials import list_known_users, load_credentials
 from src.logger_config import setup_logger
 from src.pancho_skills import login_rayen
 
-# Sesion 2026-09-18 P0: inlined desde src.plantillas (modulo eliminado).
-# Sanitiza el tipo de atencion removiendo prefijos de instrumento
-# (ME, EN, PS, TO, NU, KT) que Rayen antepone al nombre canonico.
-_INSTRUMENTO_PREFIX_RE = re.compile(
-    r"^(?:" + "|".join(re.escape(p) for p in INSTRUMENTO_PREFIXES) + r")\s*",
-    re.IGNORECASE,
-)
-
-
-def sanitizar_tipo(tipo_atencion: str) -> str:
-    if not tipo_atencion:
-        return ""
-    return _INSTRUMENTO_PREFIX_RE.sub("", tipo_atencion.strip()).strip()
-
-
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DB_PATH = BASE_DIR / "data" / "analysis" / "fichas_completo.db"
+BASE_DIR = ROOT
+DB_PATH = ANALISIS_DIR / "fichas_completo.db"
 
 COLUMNAS = [
     "fecha",

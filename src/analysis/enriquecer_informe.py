@@ -52,10 +52,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-NOTAS_DIR = BASE_DIR / "data" / "notas_clinicas"
-
 from src.analysis.informe_paths import informe_mes_actual_path
+from src.core.nombres import safe_filename
+from src.core.rutas import NOTAS_DIR, ROOT
 
 # REQ-042: trigger `** Mortadelo` (sigue vigente tras eliminar Mortadelo).
 # Sesion 2026-09-18: Mortadelo fue eliminado del flujo (paso 7 sera
@@ -314,16 +313,8 @@ def _parsear_informe_basico(ruta: Path) -> list[dict[str, Any]]:
 
 
 def _safe_filename(nombre: str) -> str:
-    """Convierte 'Eduardo Alfonso Serrano Carmona' a 'Eduardo_Alfonso_Serrano_Carmona'.
-
-    Misma convencion que crear_notas_clinicas.py y el agente Mortadelo:
-    - Strip chars no [\\w\\s-] (parentesis, comas, puntos, etc.).
-    - Whitespace -> '_'.
-    - Tildes y enhe se mantienen (son word chars Unicode en Python 3).
-    """
-    out = re.sub(r"[^\w\s\-]+", "", nombre, flags=re.UNICODE)
-    out = re.sub(r"\s+", "_", out.strip())
-    return out
+    """Delega en core.nombres.safe_filename (unica implementacion)."""
+    return safe_filename(nombre)
 
 
 def _extraer_motivo(nota_path: Path) -> str | None:
@@ -718,7 +709,7 @@ def main() -> int:
 
     try:
         informe_path.write_text(contenido, encoding="utf-8")
-        print(f"[output completo guardado en: {informe_path.relative_to(BASE_DIR)}]")
+        print(f"[output completo guardado en: {informe_path.relative_to(ROOT)}]")
     except OSError as e:
         print(f"WARN: no se pudo guardar: {e}", file=sys.stderr)
         return 1

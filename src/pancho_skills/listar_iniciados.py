@@ -11,7 +11,6 @@ Solo trae los datos crudos de la tabla.
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass
 
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -23,21 +22,7 @@ from src.browser_automation import (
     select_date,
     sort_by_estado,
 )
-from src.constants import INSTRUMENTO_PREFIXES
-
-# Sesion 2026-09-18 P0: inlined desde src.plantillas (modulo eliminado).
-# Sanitiza el tipo de atencion removiendo prefijos de instrumento
-# (ME, EN, PS, TO, NU, KT) que Rayen antepone al nombre canonico.
-_INSTRUMENTO_PREFIX_RE = re.compile(
-    r"^(?:" + "|".join(re.escape(p) for p in INSTRUMENTO_PREFIXES) + r")\s*",
-    re.IGNORECASE,
-)
-
-
-def sanitizar_tipo(tipo_atencion: str) -> str:
-    if not tipo_atencion:
-        return ""
-    return _INSTRUMENTO_PREFIX_RE.sub("", tipo_atencion.strip()).strip()
+from src.core.tipos_atencion import sanitizar_tipo  # REQ-037: unica copia
 
 
 @dataclass
