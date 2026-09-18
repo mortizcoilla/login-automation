@@ -82,7 +82,9 @@ Convencion de fechas: dd-mm-yyyy.
 | REQ-040 | Estado "Iniciado" = ficha abierta = deuda clinica: es el unico filtro de los informes. | Sesion 2026-08 | VIGENTE | SQL `estado = 'Iniciado'` | — (golden Fase 4) |
 | REQ-041 | El informe enriquecido (paso 6) agrega: Edad decimal (coma chilena, 2 decimales, ano juliano 365.25, SIEMPRE re-derivada de la nota) + Examenes, Interconsulta, Indicaciones (si/no). | Yadira 16-09 17:35 | VIGENTE | `_edad_a_decimal`, `_formatear_tabla` | `test_enriquecer_informe.py` (46) |
 | REQ-042 | Trigger `** Mortadelo`: regex case-insensitive tolerante a formato; sigue vigente como senal de Yadira aunque Mortadelo este eliminado. Tres requerimientos: "examenes adjuntos", "generar/crear interconsulta", "realizar/dar/hacer indicaciones". | Yadira 16-09, ampliado 17-09; reconfirmado 18-09 | VIGENTE | `TRIGGER_RE`, `KEYWORDS_REQUERIMIENTOS` (enriquecer_informe) | `test_enriquecer_informe.py` |
-| REQ-043 | BUG REGISTRADO (corregir en Fase 4): el parser del informe mapea 8 columnas con el layout deprecado del 16-09 17:26; el output actual tambien tiene 8 columnas con otro orden → correr paso 6 dos veces seguidas sin paso 5 en medio corrompe tipo/motivo. La cadena diaria (REQ-008) no lo dispara. | Hallazgo refactor 18-09 | PENDIENTE | `_parsear_informe_basico` | — |
+| REQ-043 | CORREGIDO (Fase 4b): el parser del informe mapea 8 columnas con el layout deprecado del 16-09 17:26; el output actual tambien tiene 8 columnas con otro orden → correr paso 6 dos veces seguidas sin paso 5 en medio corrompe tipo/motivo. Fix: disambiguacion por parts[3] en el parser unificado. | Hallazgo refactor 18-09 | VIGENTE | `src/informes/parser.py` | `test_informes_parser.py` |
+
+| REQ-053 | BUGFIX (Fase 4b): parsear_informe mapeaba el layout actual de 5 columnas (con Edad) con la tabla legacy -> tipo_atencion="(-)" en 4 notas reales de sept 2026. Corregido en el parser unificado. | Hallazgo refactor 18-09 | VIGENTE | `src/informes/parser.py` | `test_informes_parser.py` |
 
 ## 6. Privacidad y credenciales
 
@@ -96,7 +98,7 @@ Convencion de fechas: dd-mm-yyyy.
 
 | ID | Requisito | Origen | Estado | Implementacion | Tests |
 |----|-----------|--------|--------|----------------|-------|
-| REQ-047 | Paso 2b (NUEVO): consolidacion de examenes via API de vision de z.ai (GLM vision). Sin OCR local (la maquina no lo soporta). Genera `data/examenes/exam_<pac>_<fecha>.md` desde las fotos crudas; nunca sobrescribe; fallo de API no afecta el archivado 2a. | Usuario 18-09-2026 | PENDIENTE (Fase 5) | `src/examenes/` (a crear) | — |
+| REQ-047 | Paso 2b (NUEVO): consolidacion de examenes via API de vision de z.ai (GLM vision). Sin OCR local (la maquina no lo soporta). Genera `data/examenes/exam_<pac>_<fecha>.md` desde las fotos crudas; nunca sobrescribe; fallo de API no afecta el archivado 2a. | Usuario 18-09-2026 | VIGENTE | `src/examenes/` + CLI `src/tools/consolidar_examenes.py` | `test_examenes.py` (8) |
 | REQ-048 | queue_store + anita se conservan aislados del flujo 3-6: son la base del futuro paso 7 (flujo de aprobacion). No se integran al diario. | Usuario 18-09-2026 | VIGENTE | `src/queue_store.py`, `src/anita/` | `test_anita.py` (12) |
 | REQ-049 | No hay orquestador unico del flujo diario: la cadena de 4 comandos (REQ-008) ES la interfaz. El orden queda documentado, no automatizado. | Usuario 18-09-2026 | VIGENTE | Documentacion (README/AGENTS) | — |
 | REQ-050 | El cron de Anita (19:00, mini PC Ubuntu) solo genera el reporte de la cola; la integracion Telegram queda pendiente hasta resolver el bug del bot. | Sesion 2026-08 | PENDIENTE | `src/anita/cron_runner.py` (imprime, no envia) | `test_anita.py` (CLI) |

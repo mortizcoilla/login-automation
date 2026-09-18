@@ -12,23 +12,29 @@ Yadira es la doctora. El equipo de agentes (Anita, Pancho, Rubicita) automatiza 
 
 ---
 
-## 2. Flujo (paso 1 al 6)
+## 2. Flujo
+
+**Obligatorio diario** (orden REAL de dependencias 4->5->3->6, REQ-008):
 
 ```
-1. Yadira manda fotos de examenes por Telegram
-2. Rubicita recibe, respalda fotos crudas en data/Examenes_crudos/,
-   corre OCR y consolida en data/examenes/exam_<pac>_<fecha>.md
-3. Pancho scrapea Rayen y crea data/notas_clinicas/<pac>_<fecha>.md
-4. Anita actualiza el mes en curso (src/analysis/actualizar_mes_actual.py)
-5. Anita genera el informe de fichas abiertas (src/analysis/informe_fichas_abiertas.py)
-6. Anita enriquece el informe: motivo, edad, Examenes, Interconsulta, Indicaciones
-   (src/analysis/enriquecer_informe.py)
+python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.informe_fichas_abiertas && python -m src.tools.crear_notas_clinicas --todos && python -m src.analysis.enriquecer_informe
 ```
 
-Mortadelo (paso 7: rellenar la ficha a partir de la nota + info + examenes) esta
-**ELIMINADO** y sera reescrito desde cero. Hasta entonces, paso 7 no existe.
+1. (paso 4) Anita actualiza el mes -> data/analysis/fichas_completo.db
+2. (paso 5) Anita genera el informe base -> data/analysis/informe_fichas_abiertas_<MM-YYYY>.txt
+3. (paso 3) Pancho scrapea las fichas del informe -> data/notas_clinicas/,
+   data/info_paciente/, data/anamnesis/
+4. (paso 6) Anita enriquece el informe (motivo, edad, Examenes,
+   Interconsulta, Indicaciones)
+
+**Opt-in por paciente** (solo cuando Yadira envia examenes por Telegram):
+- (paso 1) Yadira manda fotos.
+- (paso 2a) Rubicita archiva en data/examenes_crudos/ (SIN OCR local).
+- (paso 2b) `python -m src.tools.consolidar_examenes --paciente "..."`:
+  transcribe via API de vision z.ai -> data/examenes/exam_<pac>_<fecha>.md.
 
 ---
+
 
 ## 3. Reglas duras
 
@@ -45,39 +51,32 @@ Mortadelo (paso 7: rellenar la ficha a partir de la nota + info + examenes) esta
 
 ---
 
-## 4. Estructura del proyecto
+## 4. Estructura del proyecto (refactor 2026-09-18)
 
 ```
-C:\Workspace\Login-Automation\
-├── data/
-│   ├── notas_clinicas/         ← input: notas crudas de Rayen (Pancho)
-│   ├── info_paciente/          ← input: metadata de Rayen (Pancho)
-│   ├── examenes/               ← input: examenes consolidados OCR (Rubicita)
-│   └── Examenes_crudos/        ← input: fotos crudas de Telegram (Rubicita)
-├── src/
-│   ├── analysis/               ← Anita (pasos 4, 5, 6)
-│   │   ├── actualizar_mes_actual.py
-│   │   ├── informe_fichas_abiertas.py
-│   │   ├── informe_paths.py
-│   │   ├── enriquecer_informe.py
-│   │   └── ...
-│   ├── pancho_skills/          ← Pancho (paso 3: scraping Rayen)
-│   └── tools/
-│       ├── crear_notas_clinicas.py     ← Pancho (CLI: python -m ...)
-│       └── recibir_foto_examen.py      ← Rubicita (CLI: python -m ...)
-├── tests/                      ← tests de los scripts vivos
-└── docs/                        ← notas
+src/
+  core/            kernel compartido: fechas, nombres, tipos_atencion, rutas
+  rayen/           capa Selenium: navegador, navegacion, tabla,
+                   extraccion/ (identificacion, historial, atencion_actual,
+                   diagnosticos, plan, estratificacion)
+  notas/           escritura de documentos: modelos, nota_clinica,
+                   info_paciente, anamnesis
+  informes/        pasos 4-6: mes.py, base.py, enriquecer.py,
+                   parser.py (parser UNICO del informe)
+  examenes/        paso 2b: vision_api.py (z.ai), consolidar.py
+  analysis/        CLIs finos (paths estables): actualizar_mes_actual,
+                   informe_fichas_abiertas, enriquecer_informe
+  tools/           CLIs: crear_notas_clinicas, recibir_foto_examen,
+                   consolidar_examenes, informe_tecnico
+  pancho_skills/   capa skills sobre rayen/
+  queue_store.py + anita/  subsistema de aprobaciones (futuro paso 7)
+docs/REQUISITOS.md  matriz de trazabilidad REQ <-> codigo <-> tests
 ```
 
-**NO existe** en este proyecto (eliminado en sesion 2026-09-17):
-- `src/tools/generar_ficha_con_llm.py` (paso 7, sera reescrito).
-- `src/tools/mortadelo_batch.py`, `mortadelo_parser.py`, `mortadelo_redactores.py`.
-- `src/mortadelo/` (bundles/skills).
-- `.opencode/agent/mortadelo.md`.
-- `data/anamnesis/`, `data/fichas_clinicas/`, `data/plantillas/`, `data/prompts*/`.
-- `scripts_temp/`.
+Detalles y reglas por requisito: `docs/REQUISITOS.md` (REQ-001..053).
+Referencia inmutable de comportamiento:
+`C:\Workspace\Login-Automation_BACKUP_2026-09-18\` (solo lectura).
 
----
 
 ## 5. Convencion de nombres
 
