@@ -109,6 +109,9 @@ Convencion de fechas: dd-mm-yyyy.
 
 ## Reglas de mantenimiento de esta matriz
 
+0. Los diagramas de `docs/DIAGRAMAS.md` se actualizan en el mismo commit
+   que cualquier cambio de flujo/estructura/comando (regla compartida).
+
 1. Todo cambio de comportamiento requiere: actualizar la fila del REQ afectado
    (o crear nuevo REQ y marcar el viejo SUPERSEDED apuntando al nuevo).
 2. Todo REQ VIGENTE con "pendiente" en Tests es deuda explicita: la fase que

@@ -126,6 +126,12 @@ python -m src.analysis.enriquecer_informe
 
 ## 7. Documentacion
 
+- `docs/DIAGRAMAS.md` — pipeline y arquitectura en diagramas.
+  **Se actualiza EN EL MISMO COMMIT de cualquier cambio de flujo, comando,
+  modulo o archivo de salida.** Diagrama desactualizado = bug de docs.
+- `docs/REQUISITOS.md` — matriz de trazabilidad REQ <-> codigo <-> tests.
+  Mismo compromiso: todo cambio de regla actualiza su fila en el mismo commit.
+
 - `docs/HANDOFF-PROYECTO-2026-08-23.md` — handoff general del proyecto.
 - `docs/CREDENCIALES.md` — API keys y credenciales.
 - `C:\Users\morti\.minimax\agents\mavis\memory\MEMORY.md` — memoria del agente Mavis (reglas durables adicionales).

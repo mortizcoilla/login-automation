@@ -70,7 +70,9 @@ CI (.github/workflows/ci.yml) corre todo esto en Python 3.10/3.11/3.12.
 
 ## Documentacion
 
-- `AGENTS.md` — reglas durables para cualquier agente que entre al workspace.
+- `docs/DIAGRAMAS.md` — pipeline y arquitectura en diagramas (se actualiza en cada cambio).
+- `docs/REQUISITOS.md` — matriz de trazabilidad REQ <-> codigo <-> tests.
+
 - `data/docs/CREDENCIALES.md` — API keys y credenciales.
 - `data/docs/HANDOFF-PROYECTO-2026-08-23.md` — handoff general del proyecto.
 - `data/docs/rubicita-conventions.md` — convenciones de Rubicita.
