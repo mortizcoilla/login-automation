@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from unittest.mock import MagicMock
 
-from src.tools.crear_notas_clinicas import extraer_anamnesis
+from src.rayen.extraccion.atencion_actual import extraer_anamnesis
 
 
 def _make_logger() -> logging.Logger:

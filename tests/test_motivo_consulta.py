@@ -12,11 +12,8 @@ import logging
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from src.tools.crear_notas_clinicas import (
-    PacienteObjetivo,
-    extraer_motivo_consulta,
-    guardar_nota_clinica,
-)
+from src.rayen.extraccion.atencion_actual import extraer_motivo_consulta
+from src.tools.crear_notas_clinicas import PacienteObjetivo, guardar_nota_clinica
 
 # ---- HTML fixture: la estructura real de li#anamnesis en Rayen ----
 
@@ -103,7 +100,7 @@ class TestExtraerMotivoConsulta:
         """El JS debe usar `.textoverflow-container[style*='height: 28px']`
         dentro de `li#anamnesis`. Lo verificamos leyendo el codigo fuente
         para evitar regresiones silenciosas."""
-        from src.tools import crear_notas_clinicas as cnc
+        from src.rayen.extraccion import atencion_actual as cnc
 
         # El docstring ya menciona la convencion. Tambien verificamos que
         # la funcion existe y no fue removida por error.
@@ -125,7 +122,7 @@ class TestSelectorJsMotivo:
     def test_js_busca_li_anamnesis(self) -> None:
         import inspect
 
-        from src.tools.crear_notas_clinicas import extraer_motivo_consulta
+        from src.rayen.extraccion.atencion_actual import extraer_motivo_consulta
 
         src = inspect.getsource(extraer_motivo_consulta)
         assert "li#anamnesis" in src
@@ -133,7 +130,7 @@ class TestSelectorJsMotivo:
     def test_js_busca_textoverflow_con_height_28px(self) -> None:
         import inspect
 
-        from src.tools.crear_notas_clinicas import extraer_motivo_consulta
+        from src.rayen.extraccion.atencion_actual import extraer_motivo_consulta
 
         src = inspect.getsource(extraer_motivo_consulta)
         # El selector clave: el motivo es el container de height 28px
@@ -148,7 +145,7 @@ class TestSelectorJsMotivo:
         import inspect
         import re
 
-        from src.tools.crear_notas_clinicas import extraer_motivo_consulta
+        from src.rayen.extraccion.atencion_actual import extraer_motivo_consulta
 
         src = inspect.getsource(extraer_motivo_consulta)
         # Extraemos el string JS embebido (entre r""" ... """)

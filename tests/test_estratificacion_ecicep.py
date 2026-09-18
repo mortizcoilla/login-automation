@@ -23,12 +23,9 @@ from pathlib import Path
 
 import pytest
 
-from src.tools import crear_notas_clinicas as cnc
-from src.tools.crear_notas_clinicas import (
-    PacienteObjetivo,
-    formatear_estratificacion,
-    guardar_nota_clinica,
-)
+from src.rayen.extraccion import estratificacion as cnc
+from src.rayen.extraccion.estratificacion import formatear_estratificacion
+from src.tools.crear_notas_clinicas import PacienteObjetivo, guardar_nota_clinica
 
 
 @pytest.fixture
@@ -466,7 +463,7 @@ class TestModuloCarga:
         el popover ANTES de intentar abrir el modal."""
         import inspect
 
-        from src.tools.crear_notas_clinicas import (
+        from src.rayen.extraccion.estratificacion import (
             extraer_estratificacion_ecicep,
         )
 
@@ -548,7 +545,7 @@ class TestFixEsGenerico:
         retorna el dict con grupo=None y el resto vacio. NO crashea."""
         from unittest.mock import MagicMock
 
-        from src.tools.crear_notas_clinicas import (
+        from src.rayen.extraccion.estratificacion import (
             extraer_estratificacion_ecicep,
         )
 
@@ -573,7 +570,7 @@ class TestFixEsGenerico:
         extraer (grupo + label + fecha) sin crashear."""
         from unittest.mock import MagicMock, patch
 
-        from src.tools.crear_notas_clinicas import (
+        from src.rayen.extraccion.estratificacion import (
             extraer_estratificacion_ecicep,
         )
 
@@ -591,15 +588,15 @@ class TestFixEsGenerico:
         ]
         with (
             patch(
-                "src.tools.crear_notas_clinicas._popover_estratificacion_visible",
+                "src.rayen.extraccion.estratificacion._popover_estratificacion_visible",
                 return_value=True,
             ),
             patch(
-                "src.tools.crear_notas_clinicas._modal_estratificacion_visible",
+                "src.rayen.extraccion.estratificacion._modal_estratificacion_visible",
                 return_value=False,
             ),
             patch(
-                "src.tools.crear_notas_clinicas._abrir_modal_estratificacion",
+                "src.rayen.extraccion.estratificacion._abrir_modal_estratificacion",
                 return_value=False,
             ),
         ):

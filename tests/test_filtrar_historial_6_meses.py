@@ -12,7 +12,7 @@ from datetime import date
 
 import pytest
 
-from src.tools.crear_notas_clinicas import (
+from src.rayen.extraccion.historial import (
     _fecha_meses_atras,
     filtrar_historial_ultimos_6_meses,
 )
