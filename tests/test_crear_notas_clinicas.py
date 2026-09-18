@@ -32,13 +32,13 @@ from pathlib import Path
 
 import pytest
 
-from src.tools.crear_notas_clinicas import (
-    PacienteObjetivo,
+from src.notas.info_paciente import guardar_info_paciente
+from src.notas.modelos import PacienteObjetivo
+from src.notas.nota_clinica import (
     _safe_filename,
-    guardar_info_paciente,
     guardar_nota_clinica,
-    parsear_informe,
 )
+from src.tools.crear_notas_clinicas import parsear_informe
 
 
 # ---------------------------------------------------------------------------
@@ -509,7 +509,7 @@ class TestRegressionGuardNotasClinicas:
 # validar_nota_clinica + _rellenar_bloque_en_nota: validacion post-write.
 class TestValidarNotaClinica:
     def test_detecta_bloque_realmente_vacio_como_faltante(self, tmp_path: Path) -> None:
-        from src.tools.crear_notas_clinicas import validar_nota_clinica
+        from src.notas.nota_clinica import validar_nota_clinica
 
         nota = tmp_path / "paciente_test.md"
         # Simulamos que el extractor fallo en 2 bloques (sin contenido),
@@ -551,7 +551,7 @@ class TestValidarNotaClinica:
         assert "Plan - Recetas" not in faltantes
 
     def test_nota_completa_no_tiene_faltantes(self, kwargs_minimos: dict, tmp_path: Path) -> None:
-        from src.tools.crear_notas_clinicas import validar_nota_clinica
+        from src.notas.nota_clinica import validar_nota_clinica
 
         out = guardar_nota_clinica(**kwargs_minimos)
         # Nota completa, no deberia haber faltantes.
@@ -561,9 +561,7 @@ class TestValidarNotaClinica:
 
 class TestRellenarBloqueEnNota:
     def test_rellena_bloque_string(self, kwargs_minimos: dict, tmp_path: Path) -> None:
-        from src.tools.crear_notas_clinicas import (
-            _rellenar_bloque_en_nota,
-        )
+        from src.notas.nota_clinica import _rellenar_bloque_en_nota
 
         # Escribir nota inicial.
         out = guardar_nota_clinica(**kwargs_minimos)
@@ -584,9 +582,7 @@ class TestRellenarBloqueEnNota:
         assert "RUN" in contenido_despues
 
     def test_rellena_bloque_lista_como_bullets(self, kwargs_minimos: dict, tmp_path: Path) -> None:
-        from src.tools.crear_notas_clinicas import (
-            _rellenar_bloque_en_nota,
-        )
+        from src.notas.nota_clinica import _rellenar_bloque_en_nota
 
         out = guardar_nota_clinica(**kwargs_minimos)
         _rellenar_bloque_en_nota(
@@ -599,9 +595,7 @@ class TestRellenarBloqueEnNota:
         assert "- E78.1 Hipertrigliceridemia" in contenido
 
     def test_rellena_bloque_dict_como_kv(self, kwargs_minimos: dict, tmp_path: Path) -> None:
-        from src.tools.crear_notas_clinicas import (
-            _rellenar_bloque_en_nota,
-        )
+        from src.notas.nota_clinica import _rellenar_bloque_en_nota
 
         out = guardar_nota_clinica(**kwargs_minimos)
         _rellenar_bloque_en_nota(
@@ -623,9 +617,7 @@ class TestGuardarRespaldoAnamnesis:
     def test_escribe_archivo_en_backup_dir(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         anamnesis = (
             "Paciente consulta por control de HTA cronica. "
@@ -641,9 +633,7 @@ class TestGuardarRespaldoAnamnesis:
     def test_archivo_contiene_anamnesis_y_frontmatter(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         anamnesis = (
             "Paciente consulta por control de HTA cronica. "
@@ -662,9 +652,7 @@ class TestGuardarRespaldoAnamnesis:
     def test_anamnesis_vacia_retorna_none(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         out = guardar_respaldo_anamnesis(paciente_basico, "", backup_dir=tmp_path)
         assert out is None
@@ -673,9 +661,7 @@ class TestGuardarRespaldoAnamnesis:
     def test_anamnesis_solo_whitespace_retorna_none(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         out = guardar_respaldo_anamnesis(paciente_basico, "   \n  \t  ", backup_dir=tmp_path)
         assert out is None
@@ -684,9 +670,7 @@ class TestGuardarRespaldoAnamnesis:
     def test_sobreescribe_si_existe(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         guardar_respaldo_anamnesis(
             paciente_basico,
@@ -710,9 +694,7 @@ class TestGuardarRespaldoAnamnesis:
         # Sesion 2026-09-16 15:27 (Yadira): el respaldo tambien debe
         # incluir el motivo de atencion. Es la primera linea que Yadira
         # escribe en Rayen.
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         out = guardar_respaldo_anamnesis(
             paciente_basico,
@@ -737,9 +719,7 @@ class TestGuardarRespaldoAnamnesis:
         # normal). Por lo tanto, esta funcion SIEMPRE escribe el
         # blockquote del motivo, aunque venga vacio (como senal visible
         # del bug).
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         out = guardar_respaldo_anamnesis(
             paciente_basico,
@@ -755,9 +735,7 @@ class TestGuardarRespaldoAnamnesis:
     def test_nombre_rayen_en_frontmatter(
         self, paciente_basico: PacienteObjetivo, tmp_path: Path
     ) -> None:
-        from src.tools.crear_notas_clinicas import (
-            guardar_respaldo_anamnesis,
-        )
+        from src.notas.anamnesis import guardar_respaldo_anamnesis
 
         # Si el nombre en Rayen difiere del nombre del informe
         # (match parcial), el nombre real de Rayen aparece en
