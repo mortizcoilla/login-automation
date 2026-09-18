@@ -4,65 +4,55 @@ Proyecto para asistir a Yadira en el flujo clínico diario del CESFAM Raúl Cuev
 
 ## Que hace
 
-El sistema automatiza la cadena de ingreso de información clínica para que Yadira no se lleve trabajo a casa.
+Automatiza la cadena de ingreso de informacion clinica para que Yadira no
+se lleve trabajo a casa.
 
-**Flujo (paso 1 al 6)**:
-
-```
-1. Yadira manda fotos de examenes por Telegram
-2. Rubicita (agente Mavis) respalda las fotos en data/Examenes_crudos/
-   y genera el consolidado OCR en data/examenes/exam_<pac>_<fecha>.md
-3. Pancho (agente Mavis) scrapea Rayen y crea data/notas_clinicas/<pac>_<fecha>.md
-4. Anita (agente Mavis) ejecuta src/analysis/actualizar_mes_actual.py
-5. Anita ejecuta src/analysis/informe_fichas_abiertas.py
-6. Anita ejecuta src/analysis/enriquecer_informe.py
-```
-
-**Paso 7** (rellenar la ficha a partir de la nota + info + examenes) está **eliminado**.
-Será reescrito desde cero.
-
-## Estructura del proyecto
+**Flujo obligatorio diario** (orden real de dependencias 4->5->3->6):
 
 ```
-C:\Workspace\Login-Automation\
-├── data/
-│   ├── notas_clinicas/         ← output de Pancho (paso 3)
-│   ├── info_paciente/          ← input (metadata de Rayen)
-│   ├── examenes/               ← output de Rubicita (consolidado OCR, paso 2)
-│   └── Examenes_crudos/        ← output de Rubicita (fotos crudas, paso 2)
-├── src/
-│   ├── analysis/               ← pasos 4, 5, 6 (Anita)
-│   ├── pancho_skills/          ← paso 3 (Pancho)
-│   └── tools/
-│       ├── crear_notas_clinicas.py     ← CLI paso 3
-│       └── recibir_foto_examen.py      ← CLI paso 2
-├── tests/                      ← tests de los scripts vivos
-├── data/docs/                  ← documentacion del proyecto
-└── AGENTS.md                   ← reglas durables
+python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.informe_fichas_abiertas && python -m src.tools.crear_notas_clinicas --todos && python -m src.analysis.enriquecer_informe
 ```
 
-## Comandos del flujo
+1. (paso 4) Actualiza el mes desde Rayen -> data/analysis/fichas_completo.db
+2. (paso 5) Genera el informe base -> data/analysis/informe_fichas_abiertas_<MM-YYYY>.txt
+3. (paso 3) Scrapea las fichas del informe -> notas_clinicas/, info_paciente/, anamnesis/
+4. (paso 6) Enriquece el informe: motivo, edad decimal, Examenes, Interconsulta, Indicaciones
 
-```bash
-# Paso 2: Rubicita (manual, lo normal es por Telegram)
-python -m src.tools.recibir_foto_examen \
-    --input "C:/ruta/a/foto.jpg" \
-    --paciente "Nombre Apellido" \
-    --fecha "dd-mm-yyyy" \
-    --indice 1
+**Flujo opt-in por paciente** (cuando Yadira envia examenes por Telegram):
+1. Yadira manda fotos.
+2. (paso 2a) Rubicita archiva en data/examenes_crudos/ (sin OCR local).
+3. (paso 2b) `python -m src.tools.consolidar_examenes --paciente "Nombre"`:
+   transcripcion via API de vision z.ai -> data/examenes/exam_<pac>_<fecha>.md.
 
-# Paso 3: Pancho
-python -m src.tools.crear_notas_clinicas --todos --user yadira
+**Paso 7** (rellenar fichas): eliminado, pendiente de reescritura.
 
-# Paso 4: Anita
-python -m src.analysis.actualizar_mes_actual yadira
+## Estructura (refactor 2026-09-18)
 
-# Paso 5: Anita
-python -m src.analysis.informe_fichas_abiertas
-
-# Paso 6: Anita
-python -m src.analysis.enriquecer_informe
 ```
+src/
+  core/       kernel: fechas dd-mm-yyyy, nombres, tipos_atencion, rutas
+  rayen/      Selenium: navegador, navegacion, tabla + extraccion/ (6 modulos)
+  notas/      escritura: nota_clinica, info_paciente, anamnesis, modelos
+  informes/   pasos 4-6: mes, base, enriquecer + parser UNICO del informe
+  examenes/   paso 2b: vision_api (z.ai), consolidar
+  analysis/   CLIs finos (paths estables del flujo diario)
+  tools/      CLIs: crear_notas_clinicas, recibir_foto_examen,
+              consolidar_examenes, informe_tecnico
+  pancho_skills/  capa skills sobre rayen
+  queue_store.py + anita/  aprobaciones (base del futuro paso 7)
+docs/REQUISITOS.md  matriz de trazabilidad REQ <-> codigo <-> tests
+tests/              339 tests (pytest; mockean Selenium, sin login)
+```
+
+## Verificacion
+
+```
+pytest --cov     # suite + gate de coverage (core/notas/informes/examenes)
+ruff check src tests && ruff format --check src tests
+mypy src
+```
+
+CI (.github/workflows/ci.yml) corre todo esto en Python 3.10/3.11/3.12.
 
 ## Convenciones
 
