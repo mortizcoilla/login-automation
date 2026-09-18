@@ -255,6 +255,7 @@ class _TeeStdout:
         return self._buffer.getvalue()
 
 
+# REQ-039/040: informe base 5 columnas con (-) en faltantes; solo estado 'Iniciado'.
 def main() -> int:
     # Forzar UTF-8 en consola Windows (sino los guiones/tildes se ven como �)
     with contextlib.suppress(AttributeError, OSError):

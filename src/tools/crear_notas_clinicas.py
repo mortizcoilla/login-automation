@@ -189,6 +189,7 @@ def parsear_informe(ruta: Path) -> list[PacienteObjetivo]:
 # ---- Paso 4.1: filtrar por fecha, buscar nombre, doble click ----
 
 
+# REQ-019: match exacto -> parcial unico -> ambiguo NO matchea.
 def _buscar_paciente_en_tabla(
     driver: WebDriver,
     logger: logging.Logger,
@@ -252,6 +253,7 @@ def _buscar_paciente_en_tabla(
     return None
 
 
+# REQ-031: doble-click tolerante a stale element (re-find por nombre).
 def _doble_click_en_paciente(
     driver: WebDriver,
     logger: logging.Logger,
@@ -318,7 +320,7 @@ def volver_a_pacientes_citados(driver: WebDriver, logger: logging.Logger) -> boo
         return False
 
 
-# ---- Limite de Rayen: solo se pueden abrir 8 fichas por sesion ----
+# ---- REQ-017: limite de Rayen - solo 8 fichas por sesion (reset al llegar) ----
 MAX_FICHAS_POR_SESION = 8
 
 
@@ -366,6 +368,7 @@ def _fecha_meses_atras(fecha: _date, meses: int) -> _date:
     return _date(new_year, new_month, new_day)
 
 
+# REQ-018: historial limitado a los ultimos 6 meses; lo no parseable se conserva.
 def filtrar_historial_ultimos_6_meses(
     historial: str,
     fecha_objetivo: str,
@@ -1451,7 +1454,7 @@ def extraer_laboratorio(driver: WebDriver, logger: logging.Logger) -> list[str]:
         return []
 
 
-# ---- Regla Yadira 2026-08-26: tipo=Recetas -> solo la receta mas reciente ----
+# ---- REQ-029: tipo=Recetas -> solo la prescripcion con Vigencia mas reciente ----
 # Cuando el tipo de atencion es "Recetas", la ficha rellenada por Mortadelo
 # debe incluir UNICAMENTE la prescripcion con la Vigencia mas reciente.
 # Esto evita que se acumulen en el bloque Doctora sugerencias sobre recetas
@@ -2072,6 +2075,7 @@ ANAMNESIS_BACKUP_DIR = ROOT / "data" / "anamnesis"
 INFO_PACIENTE_DIR = ROOT / "data" / "info_paciente"
 
 
+# REQ-026/027: motivo nunca vacio; respaldo anam_<pac>_<fecha>.md.
 def guardar_respaldo_anamnesis(
     paciente: PacienteObjetivo,
     anamnesis: str,
@@ -2135,6 +2139,8 @@ def guardar_respaldo_anamnesis(
     return out_path
 
 
+# REQ-020/021/022: anamnesis vacia=ValueError; nota SIEMPRE se sobrescribe;
+# validacion post-write con re-fetch de bloques vacios. Ver docs/REQUISITOS.md.
 def guardar_nota_clinica(
     paciente: PacienteObjetivo,
     identificacion: dict[str, str],
@@ -2370,6 +2376,7 @@ def guardar_nota_clinica(
     return out_path
 
 
+# REQ-028: info_<pac>_<fecha>.md = todo menos anamnesis/motivo.
 def guardar_info_paciente(
     paciente,
     identificacion: dict[str, str],
@@ -2639,6 +2646,7 @@ def _rellenar_bloque_en_nota(nota_path: Path, bloque: str, contenido_nuevo) -> N
     nota_path.write_text("\n".join(out), encoding="utf-8")
 
 
+# REQ-023: sin markers de fallo; hasta 3 reintentos de anamnesis.
 def _reintentar_extraccion_anamnesis(
     driver: WebDriver,
     logger: logging.Logger,
@@ -2867,6 +2875,7 @@ def re_extraer_bloque(
     return None
 
 
+# REQ-030: timeout panel 60s; sin carga -> placeholders + panel_cargo=false.
 def paso_4_1_abrir_ficha(
     driver: WebDriver,
     logger: logging.Logger,
@@ -3143,7 +3152,7 @@ def main() -> int:
                     pinfo.match_tipo = "exacto"
 
                 # Paso 4.2
-                # ORDEN 2026-08-26 (Miguel): estratificacion ECICEP PRIMERO.
+                # REQ-024: estratificacion ECICEP PRIMERO (su modal debe cerrarse antes).
                 # Razon: la estratificacion abre un modal; hay que cerrarlo
                 # con el boton "Salir" antes de cualquier otra extraccion, para
                 # que el overlay/modal no intercepte clicks posteriores.
@@ -3160,6 +3169,7 @@ def main() -> int:
                 # Historial ANTES del click en "Atencion actual" porque ese
                 # click puede colapsar el panel del historial.
                 historial = extraer_historial(driver, logger)
+                # REQ-033: fuera de scope: examenes, pautas, otros items, imagenologia, interconsulta.
                 # Secciones fuera de scope (no se extraen, se pasan vacias):
                 examenes = ""
                 # Ahora si hacemos click en Atencion actual
@@ -3414,6 +3424,7 @@ def main() -> int:
             f"errores={stats['errores']}"
         )
 
+        # REQ-032: verificacion de target del batch contra el informe.
         # Verificacion de target: el informe dice N fichas abiertas, el
         # script tiene que procesar las N. Si falta alguna, alertar.
         if args.todos:

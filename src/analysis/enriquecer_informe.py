@@ -57,7 +57,7 @@ NOTAS_DIR = BASE_DIR / "data" / "notas_clinicas"
 
 from src.analysis.informe_paths import informe_mes_actual_path
 
-# Regex del trigger `** Mortadelo` que Yadira deja en la nota clinica.
+# REQ-042: trigger `** Mortadelo` (sigue vigente tras eliminar Mortadelo).
 # Sesion 2026-09-18: Mortadelo fue eliminado del flujo (paso 7 sera
 # reescrito desde cero), pero este trigger SIGUE siendo la senal que
 # usa Yadira para pedir examenes/interconsulta/indicaciones en el
@@ -183,6 +183,8 @@ EDAD_DECIMAL_RE = re.compile(
 )
 
 
+# REQ-041: edad decimal (coma CL, 2 decimales, ano juliano 365.25), siempre
+# re-derivada de la nota clinica.
 def _edad_a_decimal(edad_str: str) -> str | None:
     """Convierte 'X anos Y meses Z dias' -> 'X,YZ' (2 decimales).
 

@@ -224,6 +224,8 @@ def resolver_path_sin_colision(destino_dir: Path, nombre: str) -> Path:
             raise RuntimeError(f"Demasiadas colisiones para {nombre}")
 
 
+# REQ-012..016: archivado sin OCR; fecha del informe manda; nunca sobrescribe;
+# sin nombre no se adivina; matching por tokens. Ver docs/REQUISITOS.md.
 def recibir_y_archivar(
     input_path: Path,
     indice_n: int,

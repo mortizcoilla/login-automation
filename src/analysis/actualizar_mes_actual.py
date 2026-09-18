@@ -125,6 +125,7 @@ def _resolver_usuario() -> str | None:
     return users[0]
 
 
+# REQ-035/036: reconstruccion completa del mes; aborta tras 3 errores consecutivos.
 def main() -> int:
     logger = setup_logger()
     print("=" * 60)
