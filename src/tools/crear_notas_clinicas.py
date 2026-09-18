@@ -23,7 +23,6 @@ import argparse
 import contextlib
 import json
 import logging
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -131,58 +130,12 @@ def list_known_users() -> list[str]:
 def parsear_informe(ruta: Path) -> list[PacienteObjetivo]:
     """Lee el informe y devuelve la lista de pacientes objetivo.
 
-    Mismo formato que usa mortadelo_batch._parsear_informe:
-        dd-mm-yyyy  NOMBRE  TIPO_ATENCION  RAZON
+    Wrapper del parser unificado (src.informes.parser, Fase 4b). El mapeo
+    de columnas vive ALLA (layouts 4/5/6/7/8 + REQ-043 + REQ-053).
     """
-    if not ruta.exists():
-        return []
-    contenido = ruta.read_text(encoding="utf-8")
-    # Prefijos que Rayen pone en el informe pero NO son parte del nombre
-    # real del paciente. Hay que quitarlos para que el match contra
-    # la tabla de Rayen funcione (alli aparece solo el nombre limpio).
-    prefijo_patron = re.compile(
-        r"^\s*\(?\s*(atenci[oó]n preferente|prioritario|urgente)\s*\)?\s*",
-        re.IGNORECASE,
-    )
-    # Sesion 2026-09-09: el informe ahora puede traer la columna Edad
-    # entre Nombre y Tipo. El regex anterior (`[A-Za-z]` para el 3er
-    # campo) hacia backtracking e INCLUIA el "(-)" de Edad dentro del
-    # nombre, produciendo nombres corruptos como
-    # "Lisette Jara Gajardo              (-)" que Rayen no encuentra.
-    # Migramos a re.split() y asignamos segun el conteo de columnas.
-    #   6 cols: Fecha | Nombre | Edad | Tipo | Motivo | Plantilla
-    #   5 cols: Fecha | Nombre | Tipo | Motivo | Plantilla (legacy)
-    #   4 cols: Fecha | Nombre | Tipo | Plantilla (mas legacy)
-    out: list[PacienteObjetivo] = []
-    for line in contenido.splitlines():
-        parts = re.split(r"\s{2,}", line.strip())
-        if len(parts) < 4:
-            continue
-        if not re.match(r"^\d{2}-\d{2}-\d{4}$", parts[0]):
-            continue
-        fecha = parts[0]
-        if len(parts) >= 6:
-            nombre = parts[1]
-            tipo_atencion = parts[3]
-            motivo = parts[4]
-        elif len(parts) == 5:
-            nombre = parts[1]
-            tipo_atencion = parts[2]
-            motivo = parts[3]
-        else:  # 4 cols (legacy, sin motivo)
-            nombre = parts[1]
-            tipo_atencion = parts[2]
-            motivo = ""
-        nombre_limpio = prefijo_patron.sub("", nombre).strip()
-        out.append(
-            PacienteObjetivo(
-                fecha=fecha.strip(),
-                nombre=nombre_limpio,
-                tipo_atencion=tipo_atencion.strip(),
-                razon=motivo.strip(),  # compat: 'razon' es el nombre del campo
-            )
-        )
-    return out
+    from src.informes.parser import parsear_pacientes_objetivo
+
+    return parsear_pacientes_objetivo(ruta)
 
 
 # ---- Paso 4.1: filtrar por fecha, buscar nombre, doble click ----

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.analysis.enriquecer_informe import (
+from src.informes.enriquecer import (
     KEYWORDS_REQUERIMIENTOS,
     TRIGGER_RE,
     _edad_a_decimal,
@@ -305,7 +305,7 @@ def test_keywords_son_regex_compilados():
 # soportar tanto .md como .txt legacy)
 # ---------------------------------------------------------------------------
 
-from src.analysis.enriquecer_informe import _extraer_edad, _extraer_motivo
+from src.informes.enriquecer import _extraer_edad, _extraer_motivo
 
 
 def test_extraer_motivo_md_bullet_bold(tmp_path: Path):
@@ -465,7 +465,7 @@ def test_enriquecer_extrae_motivo_y_edad_de_nota_real():
     import os
     import tempfile
 
-    from src.analysis.enriquecer_informe import (
+    from src.informes.enriquecer import (
         _extraer_edad,
         _extraer_motivo,
     )
