@@ -11,7 +11,7 @@ import logging
 
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.browser_automation import run_login
+from src.rayen.navegador import run_login
 
 
 def login_rayen(

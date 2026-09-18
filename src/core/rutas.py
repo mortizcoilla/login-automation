@@ -20,6 +20,8 @@ EXAMENES_CRUDOS_DIR = DATA_DIR / "examenes_crudos"
 EXAMENES_DIR = DATA_DIR / "examenes"
 ADJUNTOS_DIR = DATA_DIR / "adjuntos"
 ANALISIS_DIR = DATA_DIR / "analysis"
+LOGS_DIR = ROOT / "logs"
+SCREENSHOTS_DIR = DATA_DIR / "logs" / "screenshots"
 
 
 def informe_mes_actual_path(fecha: date | None = None) -> Path:

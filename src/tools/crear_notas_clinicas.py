@@ -33,7 +33,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -51,16 +51,17 @@ from src.core.rutas import ROOT
 
 sys.path.insert(0, str(ROOT))
 
-from src.browser_automation import (
-    ensure_session_alive,
-    extraer_datos_fila,
-    get_pacientes_del_dia,
-    run_login,
-    safe_quit,
+from src.core.nombres import safe_filename as _core_safe_filename
+from src.rayen.navegacion import (
     select_date,
     sort_by_estado,
+    volver_a_pacientes_citados,
 )
-from src.core.nombres import safe_filename as _core_safe_filename
+from src.rayen.navegador import ensure_session_alive, run_login, safe_quit
+from src.rayen.tabla import (
+    _buscar_paciente_en_tabla,
+    _doble_click_en_paciente,
+)
 from src.tools.informe_tecnico import (
     PacienteInforme,
     WarningsCollector,
@@ -189,137 +190,6 @@ def parsear_informe(ruta: Path) -> list[PacienteObjetivo]:
 
 
 # ---- Paso 4.1: filtrar por fecha, buscar nombre, doble click ----
-
-
-# REQ-019: match exacto -> parcial unico -> ambiguo NO matchea.
-def _buscar_paciente_en_tabla(
-    driver: WebDriver,
-    logger: logging.Logger,
-    nombre_objetivo: str,
-) -> tuple[WebElement, str | None] | None:
-    """Busca la fila del paciente por nombre en la tabla del dia.
-
-    Devuelve una tupla (WebElement de la fila, nombre_real_rayen) si
-    la encuentra, None si no.
-
-    Si hubo match exacto, nombre_real_rayen es None (porque coincide
-    con el nombre del informe). Si hubo match parcial, nombre_real_rayen
-    tiene el nombre completo de Rayen (para guardarlo como metadato).
-
-    Estrategia de match (en orden):
-    1) Exacto: el nombre de Rayen es identico al del informe.
-    2) Parcial unico: el nombre del informe esta contenido en el de
-       Rayen (caso de informe truncado) o viceversa. Si hay UN solo
-       candidato, matchea.
-    3) Si hay multiples candidatos parciales, NO matchea para evitar
-       falsos positivos.
-    """
-    rows = get_pacientes_del_dia(driver, logger)
-    nombre_norm = nombre_objetivo.strip().lower()
-
-    # 1) Match exacto.
-    for row in rows:
-        try:
-            datos = extraer_datos_fila(row)
-        except (ValueError, StaleElementReferenceException):
-            # StaleElement: la fila se re-renderizo mientras iterabamos.
-            # Saltamos y seguimos con las siguientes.
-            continue
-        if datos.get("nombre", "").strip().lower() == nombre_norm:
-            return (row, None)
-
-    # 2) Match parcial.
-    candidatos: list[tuple[WebElement, str]] = []
-    for row in rows:
-        try:
-            datos = extraer_datos_fila(row)
-        except (ValueError, StaleElementReferenceException):
-            continue
-        nombre_row = datos.get("nombre", "").strip()
-        if not nombre_row:
-            continue
-        if nombre_norm in nombre_row.lower() or nombre_row.lower() in nombre_norm:
-            candidatos.append((row, nombre_row))
-
-    if len(candidatos) == 1:
-        logger.info(f"[crear_notas] Match parcial: '{nombre_objetivo}' ~ '{candidatos[0][1]}'")
-        return (candidatos[0][0], candidatos[0][1])
-    if len(candidatos) > 1:
-        nombres = [c[1] for c in candidatos]
-        logger.warning(
-            f"[crear_notas] Match parcial ambiguo para '{nombre_objetivo}': "
-            f"{nombres}. No se hace match."
-        )
-        return None
-
-    return None
-
-
-# REQ-031: doble-click tolerante a stale element (re-find por nombre).
-def _doble_click_en_paciente(
-    driver: WebDriver,
-    logger: logging.Logger,
-    row: WebElement,
-    nombre_objetivo: str | None = None,
-) -> None:
-    """Hace doble click en la fila del paciente para abrir la ficha.
-
-    Si la fila quedo stale (Rayen re-renderizo la tabla mientras esperabamos),
-    re-busca por nombre y re-intenta una vez. Sesion 2026-09-16: bug que
-    afectaba ECICEP-g3 porque el panel tarda 15-30s en cargar y durante esa
-    espera la fila original quedaba stale, haciendo fallar los 6 pacientes
-    del mes con `StaleElementReferenceException`.
-    """
-    try:
-        ActionChains(driver).double_click(row).perform()
-        logger.info("[crear_notas] Doble click sobre la fila del paciente")
-        return
-    except StaleElementReferenceException:
-        if not nombre_objetivo:
-            # Sin nombre no podemos re-find. Propagamos el error original.
-            logger.warning("[crear_notas] Fila stale pero no se paso nombre para re-find")
-            raise
-    except Exception as e:
-        logger.warning(f"[crear_notas] No se pudo doble-click en fila: {e}")
-        raise
-
-    # Stale + tenemos nombre: re-buscar y re-intentar una sola vez.
-    logger.warning(
-        "[crear_notas] Fila stale tras esperar panel (15-30s). Re-buscando por nombre..."
-    )
-    time.sleep(1)
-    resultado = _buscar_paciente_en_tabla(driver, logger, nombre_objetivo)
-    if resultado is None:
-        raise RuntimeError(f"No se encontro '{nombre_objetivo}' tras stale element")
-    row_fresh, _ = resultado
-    ActionChains(driver).double_click(row_fresh).perform()
-    logger.info("[crear_notas] Doble click (re-find) OK")
-
-
-# ---- Navegacion: volver a la lista de Pacientes citados ----
-
-
-def volver_a_pacientes_citados(driver: WebDriver, logger: logging.Logger) -> bool:
-    """Hace click en el link 'Pacientes citados' del sidebar para volver
-    a la lista. Sin esto, el script se queda pegado en la ficha del paciente.
-    """
-    try:
-        link = driver.find_element(
-            By.XPATH,
-            "//a[contains(@href, '/main') and normalize-space(text())='Pacientes citados']",
-        )
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
-        time.sleep(0.3)
-        try:
-            link.click()
-        except Exception:
-            driver.execute_script("arguments[0].click();", link)
-        time.sleep(1.5)
-        logger.info("[crear_notas] Vuelta a 'Pacientes citados' OK")
-        return True
-    except Exception as e:
-        logger.warning(f"[crear_notas] No se pudo volver a 'Pacientes citados': {e}")
-        return False
 
 
 # ---- REQ-017: limite de Rayen - solo 8 fichas por sesion (reset al llegar) ----

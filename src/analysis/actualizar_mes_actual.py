@@ -20,20 +20,15 @@ import sqlite3
 import sys
 from datetime import date
 
-from src.browser_automation import (
-    _es_url_login,
-    extraer_datos_fila,
-    get_pacientes_del_dia,
-    safe_quit,
-    select_date,
-    sort_by_estado,
-)
 from src.constants import DATE_FORMAT
 from src.core.rutas import ANALISIS_DIR, ROOT
 from src.core.tipos_atencion import sanitizar_tipo  # REQ-037: unica copia
 from src.credentials import list_known_users, load_credentials
 from src.logger_config import setup_logger
 from src.pancho_skills import login_rayen
+from src.rayen.navegacion import select_date, sort_by_estado
+from src.rayen.navegador import _es_url_login, safe_quit
+from src.rayen.tabla import extraer_datos_fila, get_pacientes_del_dia
 
 BASE_DIR = ROOT
 DB_PATH = ANALISIS_DIR / "fichas_completo.db"

@@ -64,10 +64,18 @@ class TestEnvBool:
 # HEADLESS_DEFAULT: module-level constant (reimport para recalcular)
 # ---------------------------------------------------------------------------
 def _reload_browser_automation() -> None:
-    """Reimportar `src.browser_automation` para que HEADLESS_DEFAULT se
-    recalcule desde la env var actual."""
-    import src.browser_automation as ba
+    """Reimportar el nucleo Selenium para que HEADLESS_DEFAULT se
+    recalcule desde la env var actual.
 
+    Desde la refactorizacion 2026-09-18 (Fase 3a) el nucleo vive en
+    src.rayen.navegador; browser_automation es un shim de re-export.
+    Hay que recargar PRIMERO navegador (donde se calcula la constante)
+    y despues el shim (para que re-exporte el valor nuevo).
+    """
+    import src.browser_automation as ba
+    import src.rayen.navegador as nav
+
+    importlib.reload(nav)
     importlib.reload(ba)
 
 
