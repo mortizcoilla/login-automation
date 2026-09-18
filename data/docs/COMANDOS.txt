@@ -11,8 +11,9 @@ cd C:\Workspace\Login-Automation
 
 Nota sobre la estructura:
   A partir de sept-2026 todos los artefactos locales viven bajo data/
-  (manuales_md/, notas_clinicas/, fichas_clinicas/, anamnesis/, logs/,
-  docs/, analysis/). Los scripts en src/ apuntan a data/...
+  (manuales_md/, notas_clinicas/, anamnesis/, info_paciente/, examenes/,
+  fichas_clinicas/, informes/, logs/, docs/, analysis/). Los scripts en
+  src/ apuntan a data/...
   Excepciones que siguen en raiz:
     - main.py                 (entry point principal)
     - manuales/               (PDFs fuente de los manuales clinicos)
@@ -205,7 +206,34 @@ Indice
     - data/analysis/informe_fichas_abiertas_<periodo>.txt
 
 
-  4.4 Analisis historico desde raw_responses/ (legacy, deprecado)
+  4.4 Enriquecer informe (post-extraccion, agrega motivo + edad + triggers)
+  -----------------------------------------------------------------------------
+  Despues de correr `crear_notas_clinicas --todos` para los pacientes
+  del informe, se enriquece el informe con columnas adicionales:
+    - Motivo de atencion            (extraido de la anamnesis .md)
+    - Edad (decimal)                 (re-derivada de la nota: anos + meses/12 + dias/365.25)
+    - Requerimientos Yadira->Mortadelo (si aparecen `examenes adjuntos` /
+                                       `crear interconsulta` en bloque `** mortadelo`)
+
+  Mes en curso (default):
+    python -m src.analysis.enriquecer_informe
+
+  Informe explicito (ej. si quieres re-procesar uno):
+    python -m src.analysis.enriquecer_informe --informe data/analysis/informe_fichas_abiertas_09-2026.txt
+
+  Anio completo NO soportado por seguridad (regla Yadira 2026-09-09).
+
+  Ojo: este paso SOBREESCRIBE el informe basico. Solo opera sobre el
+  informe MENSUAL actual. El anual (`_completo.txt`) NO se toca.
+
+  Output:
+    - Mismo archivo `data/analysis/informe_fichas_abiertas_<periodo>.txt`
+      enriquecido (8 columnas en vez de 6).
+    - Stats por consola: motivo/edad/decimal ok vs sin campo, examenes/IC
+      con requerimiento vs sin.
+
+
+  4.5 Analisis historico desde raw_responses/ (legacy, deprecado)
   ---------------------------------------------------------------
   Lee los JSON en data/raw_responses/ y produce un CSV historico con
   agregados por dia. SOLO util si regeneras raw_responses; si no,
@@ -217,9 +245,39 @@ Indice
     - data/analysis/fichas_abiertas_historico.csv
 
 
+  4.6 Flujo recomendado end-to-end (Yadira tiene backlog de fichas)
+
+    # 1. Refrescar DB del mes (sin PII, ~2-3 min)
+    python -m src.analysis.actualizar_mes_actual yadira
+
+    # 2. Generar el informe basico
+    python -m src.analysis.informe_fichas_abiertas
+
+    # 3. Para CADA paciente del informe, extraer de Rayen y guardar:
+    #    - data/notas_clinicas/<paciente>_<fecha>.md
+    #    - data/anamnesis/anam_<paciente>_<fecha>.md
+    #    - data/info_paciente/info_<paciente>_<fecha>.md
+    python -m src.tools.crear_notas_clinicas --todos --user yadira
+
+    # 4. Enriquecer el informe basico con motivo + Edad (decimal) +
+    #    requerimientos Yadira->Mortadelo
+    python -m src.analysis.enriquecer_informe
+
+    # 5. Mortadelo rellena anamnesis + emite bloque Doctora (gasta cuota LLM).
+    #    Lee triada: anam_<pac>_<fecha>.md + info_<pac>_<fecha>.md + examenes/<pac>.md.
+    #    Emite 2 archivos por paciente:
+    #    - data/fichas_clinicas/<pac>_<fecha>.md  (anamnesis cerrada)
+    #    - data/informes/<pac>_<fecha>.md         (bloque ** Doctora:)
+    python -m src.tools.generar_ficha_con_llm --informe
+
+    # 6. (Opcional) Limpiar screenshots
+    python -m src.tools.limpiar_screenshots
+
+
 ================================================================================
 5. TESTS
 ================================================================================
+  Suite actual: 645 passed, 0 failed (~16s).
   Correr toda la suite:
     pytest
 
@@ -259,7 +317,10 @@ Indice
     data/plantillas/*.txt         plantillas de fichas (INMUTABLES Yadira)
     data/notas_clinicas/          notas crudas extraidas de Rayen (gitignored)
                                   naming: <paciente>_<fecha>.md (sin prefijo)
-    data/fichas_clinicas/         fichas rellenadas por Mortadelo (gitignored)
+    data/fichas_clinicas/         anamnesis cerrada generada por Mortadelo (gitignored)
+                                  naming: <paciente>_<fecha>.md
+    data/informes/                bloque ** Doctora: con advice a Yadira (gitignored)
+                                  naming: <paciente>_<fecha>.md
     data/anamnesis/               respaldo de SOLO la anamnesis Yadira (gitignored)
                                   naming: anam_<paciente>_<fecha>.md
     data/info_paciente/           TODO lo del paciente MENOS la anamnesis (gitignored)

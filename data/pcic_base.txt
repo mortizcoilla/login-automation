@@ -21,7 +21,7 @@
 # 3) Paciente sin datos suficientes para customizar.
 #    -> USAR ESTE TEMPLATE con el OBJETIVO en su forma minima
 #       ("disminuir a lo menos el 5% del peso corporal / control de
-#       cifras de tsh y trigliceridos") y avisar en `** Doctora:`.
+#       cifras de tsh y trigliceridos").
 # ----------------------------------------------------------------------------
 
 1) Objetivo: <CUSTOMIZAR segun paciente — ver "Reglas de customizacion">

@@ -28,7 +28,8 @@ BACKOFF_BASE = 1.5
 def load_api_config(path: str = API_CONFIG_PATH) -> dict[str, Any]:
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"No se encuentra {path}. Ejecute primero: python -m src.discover_api"
+            f"No se encuentra {path}. Genere el archivo de configuracion API "
+            f"ejecutando el helper de descubrimiento correspondiente."
         )
     with open(path, encoding="utf-8") as f:
         config: dict[str, Any] = json.load(f)

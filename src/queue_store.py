@@ -406,7 +406,7 @@ def listar_fichas_por_estado(
             params.append(fecha_consulta)
         query += " ORDER BY updated_at DESC"
         rows = conn.execute(query, params).fetchall()
-    return [_row_to_fila(r) for r in rows] if False else [_row_to_ficha(r) for r in rows]
+    return [_row_to_ficha(r) for r in rows]
 
 
 def listar_fichas_hoy(db_path: str | Path, fecha: str | None = None) -> list[Ficha]:

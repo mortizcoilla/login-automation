@@ -71,6 +71,18 @@ data/adjuntos/
 # uso futuro. Sesion 2026-09-16.
 data/examenes/
 
+# Fotos crudas de examenes recibidas por Telegram (Rubicita, paso 2).
+# PII (imagenes de examenes con nombre/RUN del paciente). Ambos casings
+# porque el script escribe Examenes_crudos y el FS de Windows es
+# case-insensitive pero los patrones de git son case-sensitive.
+data/examenes_crudos/
+data/Examenes_crudos/
+
+# Artefactos de datos derivados (PII de pacientes). Local-only.
+data/cross_refs.json
+data/ner.json
+data/referencias.json
+
 # Capturas de pantalla + HTML de diagnostico del flujo Selenium. Van a
 # data/logs/screenshots/. Se borran con `python -m src.tools.limpiar_screenshots`
 # al final de una corrida exitosa + tests OK.

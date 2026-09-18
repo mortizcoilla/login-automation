@@ -1,83 +1,58 @@
-"""Recibir fotos de examenes clinicos desde Telegram u otras fuentes.
+"""Rubicita — recibe examenes de Yadira (Telegram u otras fuentes) y los
+RENOMBRA + ARCHIVA en `data/Examenes_crudos/`.
 
-Cuando Yadira manda una foto a Pilita por Telegram (o cualquier otra
-fuente), este script:
+Alcance (decision Yadira/Miguel 2026-09-17):
+  1. Recibe una imagen (path local descargado de Telegram o de donde sea).
+  2. Si Yadira solo dio nombre parcial y/o fecha incorrecta, busca el
+     match en `data/notas_clinicas/` y resuelve el nombre completo + la
+     fecha real de la atencion.
+  3. RENOMBRA con la convencion:
+        <paciente_corto>_<n>_<dd-mm-aaaa>.<ext>
+  4. ARCHIVA en `data/Examenes_crudos/`.
 
-1. Guarda la imagen cruda en `data/adjuntos/` como respaldo local.
-2. La envia al LLM vision (gemini-2.5-pro) para OCR / digitalizacion.
-3. Guarda la transcripcion resultante en `data/examenes/` como .md
-   con la misma nomenclatura que `crear_notas_clinicas` usa para
-   los nombres de pacientes.
+NO hace:
+  - NO OCR / LLM vision.
+  - NO archivado en `data/adjuntos/`.
+  - NO archivado en `data/examenes/`.
+  - NO clasificacion por tipo de examen.
+  - NO re-encode de la imagen (es copia byte-a-bit).
 
-Convencion de nombre (alineada con el matcher existente):
-    <paciente_corto>_<fecha_dd_mm_yyyy>_<tipo>_<timestamp>.jpg
-
+Convencion de nombre:
+    <paciente_corto>_<n>_<dd-mm-aaaa>.<ext>
 Donde:
-- paciente_corto = primer_nombre + primer_apellido, lowercase, sin tildes
-- fecha_dd_mm_yyyy = fecha de la atencion (formato dd-mm-yyyy)
-- tipo = audiometria | ecg | laboratorio | imagen | radiografia |
-         receta | certificado | otro (default: "examen")
-- timestamp = HHMMSS para evitar colisiones si hay varias fotos el mismo dia
+- paciente_corto: nombre que Yadira dio, normalizado (lowercase, sin
+  tildes, espacios a `_`). Si se encontro match en data/notas_clinicas/,
+  se usa el nombre COMPLETO del informe (resuelve "Benedicto Martin" a
+  "Benedicto_Alfonso_Martin_Colimil").
+- n: indice secuencial (1, 2, 3, ...) en el orden que Yadira mando las
+  fotos en el mismo mensaje.
+- dd-mm-aaaa: fecha de la atencion clinica. Si Yadira dio una fecha
+  incorrecta (ej: la de hoy cuando los examenes son del 16), Rubicita
+  busca en data/notas_clinicas/ y usa la fecha del informe.
+- ext: extension original (.jpg, .jpeg, .png, .pdf, .webp). NO cambiar.
 
-El matcher en `analizar_adjuntos_imagen()` busca en el nombre del archivo:
-- la fecha dd-mm-yyyy, O
-- el nombre del paciente normalizado, O
-- cualquier parte del nombre (>= 4 chars)
-
-Por eso esta convencion es robusta: matchea por paciente, por fecha, o
-por ambos. Es importante: NO usar guiones altos en el nombre del
-paciente, ni el segundo apellido (eso lo confunde con la busqueda por
-"primer_apellido").
-
-Naming del .md digitalizado (data/examenes/):
-    <paciente>_<fecha>_<tipo>.md
-Donde <paciente> usa `_safe_filename` (mismo regex que
-`crear_notas_clinicas._safe_filename`) para preservar mayusculas y
-tildes del nombre original. Esto difiere del inbox (lowercase, sin
-tildes) porque el .md es metadata, no un archivo que matchea el matcher.
-
-Reglas duras:
-- NO sobrescribe archivos existentes (agrega sufijo _v2, _v3, ...).
-- NO acepta inputs que no sean archivos de imagen validos.
-- SIEMPRE valida que el paciente tiene al menos nombre y apellido.
-- NUNCA inventa datos. Si falta info, retorna error explicito.
-- Si el OCR falla, el archivo en data/adjuntos/ YA ESTA guardado
-  (es el respaldo). El script retorna ok=True con ocr_ok=False y
-  el error en ocr_error. Yadira puede reintentar el OCR despues.
-
-Uso tipico (desde Pilita o cualquier gato):
-    # Foto ya descargada a disco (respaldo + OCR automatico)
+Uso:
+    # Caso completo: Yadira da nombre completo + fecha
     python -m src.tools.recibir_foto_examen \\
-        --input "C:/path/to/photo.jpg" \\
-        --paciente "Cecilia Reyes" \\
-        --fecha 10-07-2026 \\
-        --tipo audiometria
+        --input "C:/tmp/foto1.jpg" \\
+        --paciente "Benedicto Alfonso Martin Colimil" \\
+        --fecha 16-09-2026 \\
+        --indice 1
 
-    # Sin tipo (default: examen)
+    # Caso parcial: Yadira solo da "Benedicto Martin" + fecha de hoy
     python -m src.tools.recibir_foto_examen \\
-        --input photo.jpg \\
-        --paciente "Cecilia Reyes"
+        --input "C:/tmp/foto1.jpg" \\
+        --paciente "Benedicto Martin" \\
+        --indice 1
+    # Rubicita busca en data/notas_clinicas/ y resuelve:
+    #   nombre completo = "Benedicto Alfonso Martin Colimil"
+    #   fecha            = "16-09-2026"
 
-    # Solo respaldo (sin OCR, util para tests o si el LLM no responde)
+    # Caso sin fecha: Rubicita toma la fecha del match
     python -m src.tools.recibir_foto_examen \\
-        --input photo.jpg \\
-        --paciente "Cecilia Reyes" \\
-        --no-ocr
-
-Salida (stdout, JSON para que sea facil de parsear por el agente):
-    {
-      "ok": true,
-      "path": "C:/.../adjuntos/cecilia_reyes_10-07-2026_audiometria_163045.jpg",
-      "nombre": "cecilia_reyes_10-07-2026_audiometria_163045.jpg",
-      "paciente": "cecilia reyes",
-      "fecha": "10-07-2026",
-      "tipo": "audiometria",
-      "tamano_kb": 234,
-      "ocr_ok": true,
-      "examen_path": "C:/.../examenes/Cecilia_Reyes_10-07-2026_audiometria.md",
-      "ocr_modelo": "google/gemini-2.5-pro",
-      "ocr_error": ""
-    }
+        --input "C:/tmp/foto1.jpg" \\
+        --paciente "Benedicto Martin" \\
+        --indice 1
 """
 from __future__ import annotations
 
@@ -92,37 +67,24 @@ from pathlib import Path
 from typing import Optional
 
 
-# Repo root (este archivo vive en src/tools/, asi que subimos 2 niveles)
+# Repo root (este archivo vive en src/tools/, subimos 2 niveles).
 ROOT = Path(__file__).resolve().parents[2]
 
-# Inbox donde se guardan las fotos crudas (respaldo local).
-# Sesion 2026-09-16: se movio desde data/notas_clinicas/_adjuntos/.
-DESTINO_DIR = ROOT / "data" / "adjuntos"
+# UNICO directorio de salida de los examenes.
+DESTINO_DIR = ROOT / "data" / "Examenes_crudos"
 
-# Donde se guardan los examenes digitalizados (.md con la transcripcion
-# del OCR). Misma convencion de nombre de paciente que crear_notas_clinicas.
-EXAMENES_DIR = ROOT / "data" / "examenes"
+# Fuente de verdad para resolver matches de paciente y fecha.
+NOTAS_DIR = ROOT / "data" / "notas_clinicas"
 
-# Extensiones de imagen aceptadas (mismas que IMAGE_EXTENSIONS en generar_ficha_con_llm.py)
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"}
-
-# Tipos validos (cualquier otro cae en "otro")
-TIPOS_VALIDOS = {
-    "audiometria", "ecg", "electrocardiograma",
-    "laboratorio", "lab", "sangre",
-    "imagen", "radiografia", "rx", "ecografia", "eco",
-    "receta", "certificado", "ic", "interconsulta",
-    "fondo_ojo", "dermatologia", "lesion", "herida",
-    "otro", "examen",  # "examen" es el default generico
+# Extensiones aceptadas.
+IMAGE_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff",
+    ".pdf",
 }
 
 
 def normalizar_texto(texto: str) -> str:
-    """Quita tildes, pasa a minusculas, colapsa espacios y guiones.
-
-    Usado para construir el nombre de archivo y para matching.
-    """
-    # NFD separa la letra base del acento, luego filtramos las marcas.
+    """Quita tildes, pasa a minusculas, colapsa espacios/guiones."""
     sin_tildes = "".join(
         c for c in unicodedata.normalize("NFD", texto)
         if unicodedata.category(c) != "Mn"
@@ -130,368 +92,191 @@ def normalizar_texto(texto: str) -> str:
     return re.sub(r"[\s_]+", " ", sin_tildes).strip().lower()
 
 
-def paciente_corto(nombre_completo: str) -> str:
-    """Devuelve 'primer_nombre primer_apellido' normalizado.
-
-    Sin tildes, lowercase, sin segundo apellido (eso ayuda al matcher
-    porque el archivo generado es mas corto y matchea mejor).
-
-    Raises:
-        ValueError: si el nombre no tiene al menos 2 palabras.
+def nombre_a_filename(nombre: str) -> str:
+    """Normaliza un nombre para usarlo como parte de un nombre de archivo.
+    lowercase, sin tildes, espacios a `_`.
     """
-    partes = nombre_completo.strip().split()
-    if len(partes) < 2:
-        raise ValueError(
-            f"Nombre '{nombre_completo}' debe tener al menos nombre y apellido. "
-            f"Ejemplo: 'Cecilia Reyes'"
-        )
-    nombre = partes[0]
-    apellido = partes[-1] if len(partes) > 1 else partes[0]
-    return f"{nombre} {apellido}"
+    return re.sub(r"\s+", "_", normalizar_texto(nombre))
 
 
-def nombre_archivo_valido(nombre: str) -> str:
-    """Limpia un string para usarlo como nombre de archivo (sin espacios
-    raros, sin caracteres especiales que rompan el matcher).
+def _parsear_frontmatter(texto: str) -> dict[str, str]:
+    """Extrae los campos `key: "value"` del frontmatter YAML al inicio del .md.
+
+    Solo soporta strings simples entre comillas dobles. Suficiente para
+    el frontmatter que `crear_notas_clinicas` emite.
     """
-    # Quitar acentos, lowercase, reemplazar espacios por underscore
-    norm = normalizar_texto(nombre)
-    # Reemplazar cualquier cosa que no sea alfanumerico o guion bajo
-    limpio = re.sub(r"[^a-z0-9_]+", "_", norm)
-    # Colapsar guiones bajos multiples
-    limpio = re.sub(r"_+", "_", limpio).strip("_")
-    return limpio
+    out: dict[str, str] = {}
+    if not texto.startswith("---"):
+        return out
+    fin = texto.find("\n---", 3)
+    if fin < 0:
+        return out
+    bloque = texto[3:fin]
+    for m in re.finditer(r'^([a-zA-Z_][\w]*)\s*:\s*"([^"]*)"', bloque, re.MULTILINE):
+        out[m.group(1)] = m.group(2)
+    return out
 
 
-def validar_fecha(fecha: str) -> str:
-    """Valida que la fecha este en formato dd-mm-yyyy. Retorna igual si OK.
+def _indexar_notas_clinicas(notas_dir: Path) -> list[dict[str, str]]:
+    """Lee todos los .md en notas_dir y extrae {paciente, fecha_atencion, file}.
 
-    Raises:
-        ValueError: si no matchea el formato o no es fecha real.
+    Si el directorio no existe, retorna lista vacia (matching deshabilitado).
     """
-    if not re.match(r"^\d{2}-\d{2}-\d{4}$", fecha):
-        raise ValueError(
-            f"Fecha '{fecha}' debe estar en formato dd-mm-yyyy "
-            f"(ejemplo: 10-07-2026)"
-        )
-    try:
-        datetime.strptime(fecha, "%d-%m-%Y")
-    except ValueError as e:
-        raise ValueError(f"Fecha '{fecha}' no es valida: {e}")
-    return fecha
+    if not notas_dir.exists():
+        return []
+    out: list[dict[str, str]] = []
+    for path in sorted(notas_dir.glob("*.md")):
+        try:
+            texto = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        meta = _parsear_frontmatter(texto)
+        paciente = meta.get("paciente", "").strip()
+        fecha = meta.get("fecha_atencion", "").strip()
+        if paciente and fecha:
+            out.append({
+                "paciente": paciente,
+                "paciente_norm": normalizar_texto(paciente),
+                "fecha_atencion": fecha,
+                "file": path.name,
+            })
+    return out
 
 
-def normalizar_tipo(tipo: Optional[str]) -> str:
-    """Normaliza el tipo de examen a un valor canonico."""
-    if not tipo:
-        return "examen"
-    t = normalizar_texto(tipo)
-    # Mapear sinonimos al canonico mas corto
-    mapa = {
-        "electrocardiograma": "ecg",
-        "lab": "laboratorio",
-        "sangre": "laboratorio",
-        "rx": "radiografia",
-        "eco": "ecografia",
-        "ic": "interconsulta",
-        "lesion": "dermatologia",
-        "herida": "dermatologia",
-        "certificado": "certificado",
-        "receta": "receta",
-        "audiometria": "audiometria",
-        "ecg": "ecg",
-        "laboratorio": "laboratorio",
-        "imagen": "imagen",
-        "radiografia": "radiografia",
-        "ecografia": "ecografia",
-        "interconsulta": "interconsulta",
-        "fondo ojo": "fondo_ojo",
-        "dermatologia": "dermatologia",
-        "otro": "otro",
-        "examen": "examen",
-    }
-    return mapa.get(t, "otro" if t not in {"examen", "audiometria", "ecg",
-                                            "laboratorio", "imagen",
-                                            "radiografia", "ecografia",
-                                            "interconsulta", "fondo_ojo",
-                                            "dermatologia", "certificado",
-                                            "receta"} else t)
+def buscar_match_paciente(
+    nombre_yadira: str,
+    indice: list[dict[str, str]],
+) -> Optional[dict[str, str]]:
+    """Busca en el indice el paciente cuyo nombre matchee con lo que Yadira dijo.
+
+    Matching por tokens:
+    - Normaliza ambos (lowercase, sin tildes).
+    - Cuenta cuantos tokens del nombre Yadira aparecen en el nombre completo.
+    - Si >= 1 token coincide, es candidato.
+    - Si hay varios candidatos, se prefiere el de fecha mas reciente
+      (Yadira probablemente esta hablando del paciente activo).
+    - Si no hay match, retorna None.
+
+    Args:
+        nombre_yadira: nombre tal como Yadira lo escribio
+                       (ej: "Benedicto Martin", "pericode").
+        indice: lista de dicts {paciente, paciente_norm, fecha_atencion, file}
+                (tipicamente el resultado de _indexar_notas_clinicas).
+
+    Returns:
+        dict {paciente, fecha_atencion, file} del match, o None.
+    """
+    if not nombre_yadira.strip() or not indice:
+        return None
+    yadira_norm = normalizar_texto(nombre_yadira)
+    tokens_yadira = [t for t in yadira_norm.split() if len(t) >= 3]
+
+    candidatos: list[tuple[int, dict[str, str]]] = []
+    for entry in indice:
+        nombre_norm = entry["paciente_norm"]
+        tokens_nombre = set(nombre_norm.split())
+        coincidencias = sum(1 for t in tokens_yadira if t in tokens_nombre)
+        if coincidencias > 0:
+            candidatos.append((coincidencias, entry))
+
+    if not candidatos:
+        return None
+
+    # Ordenar por: mas coincidencias primero, luego fecha mas reciente.
+    candidatos.sort(
+        key=lambda x: (x[0], x[1]["fecha_atencion"]),
+        reverse=True,
+    )
+    return candidatos[0][1]
 
 
 def construir_nombre_destino(
-    nombre_paciente: str,
+    paciente_norm_filename: str,
     fecha_dd_mm_yyyy: str,
-    tipo: str,
-    timestamp: Optional[str] = None,
+    indice_n: int,
+    extension: str,
 ) -> str:
-    """Construye el nombre de archivo destino segun la convencion.
-
-    Formato: <paciente>_<fecha>_<tipo>[_<timestamp>].<ext>
-    """
-    paciente = nombre_archivo_valido(paciente_corto(nombre_paciente))
-    tipo_norm = nombre_archivo_valido(tipo)
-    if timestamp is None:
-        timestamp = datetime.now().strftime("%H%M%S")
-    else:
-        timestamp = re.sub(r"[^0-9]", "", timestamp)
-    return f"{paciente}_{fecha_dd_mm_yyyy}_{tipo_norm}_{timestamp}"
+    """Construye el nombre: <paciente>_<n>_<dd-mm-aaaa>.<ext>"""
+    ext = extension.lower().lstrip(".")
+    return f"{paciente_norm_filename}_{indice_n}_{fecha_dd_mm_yyyy}.{ext}"
 
 
-def resolver_path_sin_colision(destino_dir: Path, base_nombre: str, extension: str) -> Path:
-    """Retorna un path que no exista, agregando _v2, _v3, ... si hay colision.
-
-    NO sobrescribe archivos existentes (regla dura).
-    """
-    candidato = destino_dir / f"{base_nombre}{extension}"
+def resolver_path_sin_colision(destino_dir: Path, nombre: str) -> Path:
+    """Si el archivo existe, agrega _v2, _v3, ... NUNCA sobrescribe."""
+    candidato = destino_dir / nombre
     if not candidato.exists():
         return candidato
+    stem = candidato.stem
+    suffix = candidato.suffix
     n = 2
     while True:
-        candidato = destino_dir / f"{base_nombre}_v{n}{extension}"
-        if not candidato.exists():
-            return candidato
+        nuevo = destino_dir / f"{stem}_v{n}{suffix}"
+        if not nuevo.exists():
+            return nuevo
         n += 1
         if n > 999:
-            raise RuntimeError(f"Demasiadas colisiones para {base_nombre} en {destino_dir}")
+            raise RuntimeError(f"Demasiadas colisiones para {nombre}")
 
 
-def _safe_filename(s: str) -> str:
-    """Convierte un nombre a filename seguro. Misma regex que
-    `crear_notas_clinicas._safe_filename` para que la nomenclatura del
-    .md digitalizado sea identica a la de las notas clinicas.
-
-    Mantener sincronizado si crear_notas_clinicas._safe_filename cambia.
-    """
-    s = re.sub(r"[^\w\s\-]+", "", s, flags=re.UNICODE)
-    s = re.sub(r"\s+", "_", s.strip())
-    return s
-
-
-def construir_nombre_examen_md(
-    nombre_paciente: str,
-    fecha_dd_mm_yyyy: str,
-    tipo: str,
-) -> str:
-    """Nombre del .md digitalizado en data/examenes/.
-
-    Formato: <safe_paciente>_<fecha>_<tipo>.md
-    A diferencia del inbox (lowercase, sin tildes), aqui preservamos
-    mayusculas y tildes porque es metadata, no un archivo para matcher.
-    """
-    paciente = _safe_filename(nombre_paciente)
-    tipo_norm = nombre_archivo_valido(tipo)
-    return f"{paciente}_{fecha_dd_mm_yyyy}_{tipo_norm}.md"
-
-
-def _renderizar_examen_md(
-    nombre_paciente: str,
-    fecha_atencion: str,
-    tipo: str,
-    archivo_origen: str,
-    transcripcion: str,
-    modelo: str,
-) -> str:
-    """Renderiza el .md del examen digitalizado (frontmatter YAML + headers).
-
-    Mismo formato canonico (frontmatter + ## headers) que
-    crear_notas_clinicas y data/manuales_md/.
-    """
-    timestamp_iso = datetime.now().isoformat(timespec="seconds")
-    md = [
-        "---",
-        f'paciente: "{nombre_paciente}"',
-        f'fecha_atencion: "{fecha_atencion}"',
-        f'tipo: "{tipo}"',
-        f'archivo_origen: "{archivo_origen}"',
-        f'modelo_ocr: "{modelo}"',
-        f'fecha_digitalizacion: "{timestamp_iso}"',
-        "fuente: \"OCR automatico via LLM vision (Yadira debe validar)\"",
-        "---",
-        "",
-        f"# Examen - {nombre_paciente}",
-        "",
-        "## Metadatos",
-        f"- **Tipo:** {tipo}",
-        f"- **Fecha atencion:** {fecha_atencion}",
-        f"- **Archivo origen:** `{archivo_origen}`",
-        f"- **Modelo OCR:** `{modelo}`",
-        f"- **Fecha digitalizacion:** {timestamp_iso}",
-        "",
-        "## Transcripcion",
-        "",
-        transcripcion.strip(),
-        "",
-        "## Notas",
-        "- Transcripcion automatica con LLM vision (gemini-2.5-pro).",
-        "- Yadira debe validar contra la imagen original antes de cerrar la ficha.",
-        "",
-    ]
-    return "\n".join(md)
-
-
-def procesar_examen_con_ocr(
-    img_path: Path,
-    nombre_paciente: str,
-    fecha_atencion: str,
-    tipo: str,
-    examenes_dir: Path = EXAMENES_DIR,
-) -> dict:
-    """Envia la imagen al LLM vision y guarda la transcripcion en data/examenes/.
-
-    Usa `invocar_con_fallback(tier="vision", ...)` de generar_ficha_con_llm.
-    Import lazy para no arrastrar selenium si el script se llama solo
-    para el respaldo (--no-ocr).
-
-    Returns dict con:
-      - ok: bool (True si la transcripcion se guardo)
-      - path: ruta al .md generado
-      - transcripcion: texto extraido por el LLM
-      - modelo: modelo usado
-      - error: mensaje de error (si ok=False)
-    """
-    resultado = {
-        "ok": False,
-        "path": "",
-        "transcripcion": "",
-        "modelo": "",
-        "error": "",
-    }
-
-    # Lazy import: solo si se invoca OCR (no en --no-ocr)
-    try:
-        from src.tools.generar_ficha_con_llm import invocar_con_fallback
-    except ImportError as e:
-        resultado["error"] = f"No se pudo importar invocar_con_fallback: {e}"
-        return resultado
-
-    # Prompt para el OCR. Inspirado en analizar_adjuntos_imagen() pero
-    # con foco en examen especifico (sabemos el tipo de antemano).
-    prompt = (
-        f"Este es un examen clinico de tipo '{tipo}' del paciente "
-        f"{nombre_paciente} (atencion del {fecha_atencion}).\n\n"
-        f"Transcribe TODO el contenido clinico visible:\n"
-        f"- Valores numericos con sus unidades y rangos de referencia\n"
-        f"- Conclusiones o interpretaciones del examinador\n"
-        f"- Fecha del examen si esta visible\n"
-        f"- Nombre del profesional que firma o interpreta\n"
-        f"- Cualquier texto visible (etiquetas, membrete, observaciones)\n\n"
-        f"Si la imagen es ruido, ilegible o no es un documento clinico, "
-        f"indicalo explicitamente con '[NO ES UN DOCUMENTO CLINICO]'.\n"
-        f"NO inventes datos. Si algo no se ve, marcalo como 'no visible'.\n"
-        f"NO hagas diagnosticos. Solo describe lo que ves.\n\n"
-        f"Formato de salida: texto plano, sin markdown, organizado por "
-        f"secciones con MAYUSCULAS como titulo. NO agregues meta-comentarios, "
-        f"NO digas 'como IA...', NO agregues despedidas. Solo la transcripcion."
-    )
-
-    try:
-        texto, modelo = invocar_con_fallback(
-            tier="vision",
-            prompt=prompt,
-            agent="mortadelo",  # no se usa realmente para vision
-            timeout=300,
-            archivos=[img_path],
-        )
-    except Exception as e:  # noqa: BLE001
-        resultado["error"] = f"Error invocando vision LLM: {type(e).__name__}: {e}"
-        return resultado
-
-    if not texto or len(texto.strip()) < 10:
-        resultado["error"] = "Vision LLM devolvio vacio o muy corto (<10 chars)"
-        return resultado
-
-    # Guardar como markdown en data/examenes/
-    try:
-        examenes_dir.mkdir(parents=True, exist_ok=True)
-        nombre_md = construir_nombre_examen_md(nombre_paciente, fecha_atencion, tipo)
-        out_path = examenes_dir / nombre_md
-        # Resolver colision (_v2, _v3, ...) igual que en el inbox
-        out_path = resolver_path_sin_colision(
-            examenes_dir, out_path.stem, ".md"
-        )
-        contenido = _renderizar_examen_md(
-            nombre_paciente, fecha_atencion, tipo,
-            archivo_origen=img_path.name,
-            transcripcion=texto,
-            modelo=modelo,
-        )
-        out_path.write_text(contenido, encoding="utf-8")
-    except Exception as e:  # noqa: BLE001
-        resultado["error"] = f"Error guardando .md en {examenes_dir}: {e}"
-        return resultado
-
-    resultado.update({
-        "ok": True,
-        "path": str(out_path),
-        "transcripcion": texto.strip(),
-        "modelo": modelo,
-    })
-    return resultado
-
-
-def recibir_foto(
+def recibir_y_archivar(
     input_path: Path,
-    nombre_paciente: str,
-    fecha_atencion: str,
-    tipo: Optional[str] = None,
+    indice_n: int,
+    nombre_paciente: Optional[str] = None,
+    fecha_atencion: Optional[str] = None,
+    notas_dir: Path = NOTAS_DIR,
     destino_dir: Path = DESTINO_DIR,
-    timestamp: Optional[str] = None,
-    no_ocr: bool = False,
 ) -> dict:
-    """Guarda una foto de examen en destino_dir con el nombre convencional.
-
-    Si no_ocr es False (default), despues de guardar la foto la envia al
-    LLM vision para OCR y guarda la transcripcion en data/examenes/.
-    Si no_ocr es True, solo guarda la foto y omite el OCR (util para
-    tests o cuando el LLM no responde).
+    """Recibe una imagen, resuelve paciente/fecha (si falta) y archiva.
 
     Args:
-        input_path: ruta al archivo de imagen origen (descargado de Telegram
-            o de cualquier otra fuente).
-        nombre_paciente: nombre completo del paciente (ej: "Cecilia Reyes").
-        fecha_atencion: fecha de la atencion en formato dd-mm-yyyy.
-        tipo: tipo de examen (audiometria, ecg, laboratorio, etc.).
-            Si es None o vacio, usa "examen".
-        destino_dir: directorio destino (default: data/adjuntos/).
-        no_ocr: si True, NO invoca el LLM vision (solo respaldo raw).
+        input_path: ruta al archivo tal como llego (descargado de Telegram
+            o de donde sea). Se copia BIT-A-BIT (shutil.copy2).
+        indice_n: numero de orden de la foto en el mensaje (1, 2, 3, ...).
+        nombre_paciente: nombre que dio Yadira (puede ser parcial, ej:
+            "Benedicto Martin"). Si None o vacio, NO se busca match y el
+            archivo falla (Yadira debe dar el nombre).
+        fecha_atencion: fecha dd-mm-yyyy (puede ser la de hoy cuando
+            Yadira envia tarde). Si None o vacio, se usa la fecha del match.
+        notas_dir: directorio con las notas clinicas (fuente del match).
+        destino_dir: directorio destino (default: data/Examenes_crudos/).
 
     Returns:
         dict con:
-          - ok: bool (True si la foto se guardo OK)
-          - path: ruta absoluta del archivo guardado (si ok=True)
-          - nombre: nombre del archivo guardado
-          - paciente: nombre del paciente normalizado
-          - fecha: fecha validada
-          - tipo: tipo normalizado
-          - tamano_kb: tamano del archivo guardado
-          - ocr_ok: bool (True si el OCR y el .md en data/examenes/ se
-                    generaron OK; False si --no-ocr o si el OCR fallo)
-          - examen_path: ruta al .md digitalizado (si ocr_ok=True)
-          - ocr_modelo: modelo vision usado (si ocr_ok=True)
-          - ocr_error: mensaje de error del OCR (si ocr_ok=False y no_ocr=False)
-          - ocr_skipped: bool (True si --no-ocr se uso explicitamente)
-          - error: mensaje de error (si ok=False)
-
-    Raises:
-        No raise. Todos los errores van al dict de retorno.
+          - ok: bool
+          - path: ruta absoluta del archivo archivado
+          - nombre: nombre del archivo archivado
+          - paciente_input: nombre que dio Yadira
+          - paciente_matcheado: nombre completo del match (o None si no hubo)
+          - paciente_resuelto: nombre final usado para el archivo
+          - fecha_input: fecha que dio Yadira (o None)
+          - fecha_matcheada: fecha del match (o None)
+          - fecha_resuelta: fecha final usada para el archivo
+          - indice: indice usado
+          - match_candidatos: numero de candidatos encontrados
+          - match_seleccionado: nombre del archivo del match seleccionado
+          - tamano_kb: tamano del archivo
+          - error: mensaje de error si ok=False
     """
     resultado = {
         "ok": False,
         "path": "",
         "nombre": "",
-        "paciente": "",
-        "fecha": "",
-        "tipo": "",
+        "paciente_input": nombre_paciente or "",
+        "paciente_matcheado": "",
+        "paciente_resuelto": "",
+        "fecha_input": fecha_atencion or "",
+        "fecha_matcheada": "",
+        "fecha_resuelta": "",
+        "fecha_input_descartada": False,
+        "motivo_descarte": "",
+        "indice": indice_n,
+        "match_candidatos": 0,
+        "match_seleccionado": "",
         "tamano_kb": 0,
-        "ocr_ok": False,
-        "examen_path": "",
-        "ocr_modelo": "",
-        "ocr_error": "",
-        "ocr_skipped": False,
         "error": "",
     }
 
-    # 1. Validar input existe y es imagen
+    # 1. Validar input
     if not input_path.exists():
         resultado["error"] = f"Archivo no existe: {input_path}"
         return resultado
@@ -502,73 +287,136 @@ def recibir_foto(
     extension = input_path.suffix.lower()
     if extension not in IMAGE_EXTENSIONS:
         resultado["error"] = (
-            f"Extension '{extension}' no es una imagen valida. "
+            f"Extension '{extension}' no aceptada. "
             f"Aceptadas: {sorted(IMAGE_EXTENSIONS)}"
         )
         return resultado
 
-    # 2. Validar paciente
-    try:
-        paciente = paciente_corto(nombre_paciente)
-    except ValueError as e:
-        resultado["error"] = str(e)
+    # 2. Validar indice
+    if indice_n < 1:
+        resultado["error"] = f"Indice debe ser >= 1, recibio {indice_n}"
         return resultado
 
-    # 3. Validar fecha
-    try:
-        fecha = validar_fecha(fecha_atencion)
-    except ValueError as e:
-        resultado["error"] = str(e)
+    # 3. Resolver paciente y fecha
+    indice_notas = _indexar_notas_clinicas(notas_dir)
+    paciente_resuelto = ""
+    fecha_resuelta = ""
+    match_seleccionado = ""
+    fecha_input_descartada = False
+    motivo_descarte = ""
+
+    if nombre_paciente and nombre_paciente.strip():
+        # Tenemos nombre de Yadira. Buscar match por tokens.
+        match = buscar_match_paciente(nombre_paciente, indice_notas)
+        if match:
+            # Match encontrado: usar nombre completo del informe.
+            paciente_resuelto = match["paciente"]
+            match_seleccionado = match["file"]
+            resultado["paciente_matcheado"] = paciente_resuelto
+            resultado["match_seleccionado"] = match_seleccionado
+            resultado["match_candidatos"] = sum(
+                1 for e in indice_notas
+                if any(
+                    t in e["paciente_norm"].split()
+                    for t in normalizar_texto(nombre_paciente).split()
+                    if len(t) >= 3
+                )
+            )
+
+            # La fecha del informe es la fuente de verdad. Si Yadira dio
+            # una fecha y coincide, OK. Si dio otra o no dio, usamos la
+            # del informe (la fecha del informe es la fecha REAL de la
+            # atencion clinica, no la fecha en que Yadira envio el
+            # examen por Telegram).
+            fecha_informe = match["fecha_atencion"]
+            resultado["fecha_matcheada"] = fecha_informe
+
+            if fecha_atencion and fecha_atencion.strip():
+                fecha_input = fecha_atencion.strip()
+                try:
+                    datetime.strptime(fecha_input, "%d-%m-%Y")
+                except ValueError:
+                    resultado["error"] = (
+                        f"Fecha '{fecha_input}' no es valida (dd-mm-yyyy)"
+                    )
+                    return resultado
+                if fecha_input != fecha_informe:
+                    # Yadira dio fecha distinta del informe. Probablemente
+                    # puso la fecha de hoy cuando la atencion fue antes.
+                    # Usamos la del informe (fuente de verdad) y marcamos.
+                    fecha_input_descartada = True
+                    motivo_descarte = (
+                        f"Yadira dio '{fecha_input}' pero el informe dice "
+                        f"'{fecha_informe}'. Usando la del informe."
+                    )
+                    fecha_resuelta = fecha_informe
+                else:
+                    fecha_resuelta = fecha_input
+            else:
+                # Yadira no dio fecha. Usar la del informe.
+                fecha_resuelta = fecha_informe
+        else:
+            # No hay match. Usar lo que Yadira dio (si dio).
+            paciente_resuelto = nombre_paciente.strip()
+            if fecha_atencion and fecha_atencion.strip():
+                fecha_input = fecha_atencion.strip()
+                try:
+                    datetime.strptime(fecha_input, "%d-%m-%Y")
+                    fecha_resuelta = fecha_input
+                except ValueError:
+                    resultado["error"] = (
+                        f"Fecha '{fecha_input}' no es valida (dd-mm-yyyy) "
+                        f"y no se encontro match en notas_clinicas/ para "
+                        f"resolver la fecha."
+                    )
+                    return resultado
+            else:
+                resultado["error"] = (
+                    f"Yadira no dio fecha y no se encontro match en "
+                    f"notas_clinicas/ para el paciente '{nombre_paciente}'."
+                )
+                return resultado
+    else:
+        # Yadira no dio nombre.
+        resultado["error"] = (
+            "Yadira debe dar el nombre del paciente. Rubicita NO adivina."
+        )
         return resultado
 
-    # 4. Normalizar tipo
-    tipo_norm = normalizar_tipo(tipo)
+    # 4. Validar fecha resuelta
+    try:
+        datetime.strptime(fecha_resuelta, "%d-%m-%Y")
+    except ValueError as e:
+        resultado["error"] = f"Fecha resuelta invalida '{fecha_resuelta}': {e}"
+        return resultado
 
-    # 5. Construir nombre y resolver path sin colision
+    # 5. Construir nombre y resolver colision
     try:
         destino_dir.mkdir(parents=True, exist_ok=True)
-        base = construir_nombre_destino(paciente, fecha, tipo_norm, timestamp=timestamp)
-        destino = resolver_path_sin_colision(destino_dir, base, extension)
-    except Exception as e:  # noqa: BLE001
+        paciente_filename = nombre_a_filename(paciente_resuelto)
+        nombre_destino = construir_nombre_destino(
+            paciente_filename, fecha_resuelta, indice_n, extension
+        )
+        destino = resolver_path_sin_colision(destino_dir, nombre_destino)
+    except Exception as e:
         resultado["error"] = f"Error construyendo path destino: {e}"
         return resultado
 
-    # 6. Copiar
+    # 6. Copiar BIT-A-BIT
     try:
         shutil.copy2(input_path, destino)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         resultado["error"] = f"Error copiando a {destino}: {e}"
         return resultado
 
-    # 6.5. OCR con LLM vision (a menos que --no-ocr)
-    # El respaldo raw YA esta guardado en este punto. Si el OCR falla,
-    # el archivo en data/adjuntos/ sigue existiendo (es el respaldo
-    # local). El script retorna ok=True con ocr_ok=False y el error
-    # en ocr_error para que Yadira pueda diagnosticar.
-    if no_ocr:
-        resultado["ocr_skipped"] = True
-    else:
-        ocr = procesar_examen_con_ocr(
-            img_path=destino,
-            nombre_paciente=nombre_paciente,
-            fecha_atencion=fecha,
-            tipo=tipo_norm,
-        )
-        resultado.update({
-            "ocr_ok": ocr["ok"],
-            "examen_path": ocr["path"],
-            "ocr_modelo": ocr["modelo"],
-            "ocr_error": ocr["error"],
-        })
-
-    # 7. Exito
     resultado.update({
         "ok": True,
         "path": str(destino),
         "nombre": destino.name,
-        "paciente": paciente,
-        "fecha": fecha,
-        "tipo": tipo_norm,
+        "paciente_resuelto": paciente_resuelto,
+        "fecha_resuelta": fecha_resuelta,
+        "fecha_input_descartada": fecha_input_descartada,
+        "motivo_descarte": motivo_descarte,
         "tamano_kb": destino.stat().st_size // 1024,
     })
     return resultado
@@ -580,44 +428,44 @@ def recibir_foto(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Recibe una foto de examen: la guarda en data/adjuntos/ "
-                    "como respaldo raw y la envia al LLM vision para OCR "
-                    "(la transcripcion se guarda en data/examenes/<paciente>_<fecha>_<tipo>.md).",
+        description=(
+            "Rubicita: recibe un examen (Telegram u otra fuente), "
+            "resuelve paciente/fecha contra data/notas_clinicas/ si hace falta, "
+            "lo RENOMBRA con la convencion <paciente>_<n>_<dd-mm-aaaa>.<ext> "
+            "y lo ARCHIVA en data/Examenes_crudos/. Solo eso."
+        )
     )
     p.add_argument(
         "--input", required=True,
-        help="Ruta al archivo de imagen origen (descargado de Telegram, "
-             "Rayen, o donde sea).",
+        help="Ruta al archivo de imagen (descargado de Telegram, Rayen, etc.).",
     )
     p.add_argument(
         "--paciente", required=True,
-        help="Nombre completo del paciente (ej: 'Cecilia Reyes'). "
-             "Debe tener al menos nombre y apellido.",
+        help=(
+            "Nombre del paciente tal como Yadira lo escribio. "
+            "Puede ser parcial (ej: 'Benedicto Martin'). "
+            "Rubicita busca el nombre completo en data/notas_clinicas/."
+        ),
     )
     p.add_argument(
-        "--fecha", required=True,
-        help="Fecha de la atencion en formato dd-mm-yyyy (ej: 10-07-2026).",
+        "--fecha", default=None,
+        help=(
+            "Fecha de la atencion dd-mm-yyyy. Opcional. "
+            "Si Yadira envia con la fecha de hoy cuando la atencion fue antes, "
+            "Rubicita usa la fecha del match en data/notas_clinicas/."
+        ),
     )
     p.add_argument(
-        "--tipo", default=None,
-        help="Tipo de examen: audiometria, ecg, laboratorio, imagen, "
-             "radiografia, ecografia, receta, certificado, interconsulta, "
-             "fondo_ojo, dermatologia, otro. Default: examen.",
+        "--indice", required=True, type=int,
+        help="Indice secuencial de la foto en el mensaje (1, 2, 3, ...).",
     )
     p.add_argument(
         "--destino", default=None,
-        help=f"Directorio destino del respaldo raw (default: {DESTINO_DIR}).",
+        help=f"Directorio destino (default: {DESTINO_DIR}).",
     )
     p.add_argument(
-        "--timestamp", default=None,
-        help="Timestamp explicito (HHMMSS) para el nombre. Default: hora actual. "
-             "Util para tests deterministas o para nombrar fotos manualmente.",
-    )
-    p.add_argument(
-        "--no-ocr", action="store_true",
-        help="Saltar el paso de OCR. Solo guarda la foto como respaldo raw "
-             "en data/adjuntos/. Util para tests o cuando el LLM vision "
-             "no responde. El .md digitalizado NO se genera.",
+        "--notas-dir", default=None,
+        help=f"Directorio de notas clinicas para matching (default: {NOTAS_DIR}).",
     )
     return p.parse_args()
 
@@ -625,16 +473,15 @@ def _parse_args() -> argparse.Namespace:
 def main() -> int:
     args = _parse_args()
     destino = Path(args.destino) if args.destino else DESTINO_DIR
-    resultado = recibir_foto(
+    notas = Path(args.notas_dir) if args.notas_dir else NOTAS_DIR
+    resultado = recibir_y_archivar(
         input_path=Path(args.input),
+        indice_n=args.indice,
         nombre_paciente=args.paciente,
         fecha_atencion=args.fecha,
-        tipo=args.tipo,
+        notas_dir=notas,
         destino_dir=destino,
-        timestamp=args.timestamp,
-        no_ocr=args.no_ocr,
     )
-    # Salida en JSON para que sea facil de parsear por Pilita u otro agente.
     print(json.dumps(resultado, ensure_ascii=False, indent=2))
     return 0 if resultado["ok"] else 1
 

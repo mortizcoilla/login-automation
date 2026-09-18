@@ -54,10 +54,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "analysis" / "fichas_completo.db"
 OUT_DIR = BASE_DIR / "data" / "analysis"
 
-# Para resolver tipo_atencion -> plantilla canonica (sesion 2026-08-26).
-# Sin pasar edad_meses: Control salud devuelve None (requiere resolver
-# con edad, lo cual no tenemos en la DB todavia).
-from src.reglas_plantillas import resolver_plantilla  # noqa: E402
+# Sin columna "Plantilla" — removida por peticion de Yadira.
+# Sin resolucion de plantilla canonica aqui.
 from src.analysis.informe_paths import (  # noqa: E402
     informe_anual_path,
     informe_mes_actual_path,
@@ -179,27 +177,6 @@ def _cargar_fichas(where_sql: str, params: tuple) -> list[dict[str, str]]:
     return filas
 
 
-def _resolver_plantilla_display(tipo: str) -> str:
-    """Devuelve la plantilla canonica que Mortadelo usaria para este tipo.
-
-    Sesion 2026-08-26: agregado al informe para que Yadira vea de un vistazo
-    que plantilla se llenara. Si resolver_plantilla devuelve None (caso
-    'Control salud' sin edad en la DB, o tipo desconocido), devuelve un
-    placeholder legible en vez de '?'.
-    """
-    if not tipo or tipo == "-":
-        return "?"
-    canonica = resolver_plantilla(tipo)
-    if canonica is None:
-        # Si no matchea, distinguir Control salud (placeholder por edad)
-        # de tipo realmente desconocido.
-        norm = tipo.strip().lower()
-        if "control salud" in norm or "nino sano" in norm or "niño sano" in norm:
-            return "NIÑO SANO 1/3 M (req edad)"
-        return "NO MAPEA"
-    return canonica
-
-
 def _imprimir_informe(filas: list[dict[str, str]], periodo: str) -> None:
     print()
     print("=" * 180)
@@ -221,28 +198,23 @@ def _imprimir_informe(filas: list[dict[str, str]], periodo: str) -> None:
     # nota clinica. La columna 'Edad' se llena desde la seccion
     # IDENTIFICACION de la nota.
     #
-    # Orden de columnas (sesion 2026-09-09, pedido por Yadira):
-    #   Fecha | Nombre | Edad | Tipo de atencion | Motivo | Plantilla
+    # Orden de columnas:
+    #   Fecha | Nombre | Edad | Tipo de atencion | Motivo
     # Edad y Motivo se imprimen como '(-)' cuando estan vacios (basico
     # sin enriquecer) para que el parser de enriquecer_informe.py
-    # reciba SIEMPRE 6 partes y no se confunda con el formato viejo.
+    # reciba SIEMPRE 5 partes y no se confunda con el formato viejo.
     cols = [
         ("fecha", "Fecha", 12),
         ("nombre", "Nombre", 32),
         ("edad", "Edad", 24),
         ("tipo_atencion", "Tipo de atencion", 32),
         ("motivo", "Motivo de la atencion", 24),
-        ("plantilla", "Plantilla", 40),
     ]
     header = "  ".join(f"{label:<{w}}" for _, label, w in cols)
     print(header)
     print("-" * len(header))
     for f in filas:
-        # Resolver plantilla en el momento (no se guarda en la DB; se
-        # computa al vuelo para que el informe siempre este alineado con
-        # el resolver actual de reglas_plantillas.py).
-        f["plantilla"] = _resolver_plantilla_display(f["tipo_atencion"])
-        # '(-)' en lugar de '' para que el parser siempre vea 6 partes.
+        # '(-)' en lugar de '' para que el parser siempre vea 5 partes.
         edad = f.get("edad") or "(-)"
         motivo = f.get("motivo") or "(-)"
         cells = [
@@ -251,7 +223,6 @@ def _imprimir_informe(filas: list[dict[str, str]], periodo: str) -> None:
             f"{edad[:24]:<{24}}",
             f"{f.get('tipo_atencion', '-')[:32]:<{32}}",
             f"{motivo[:24]:<{24}}",
-            f"{f.get('plantilla', '-')[:40]:<{40}}",
         ]
         print("  ".join(cells))
     print("=" * 180)

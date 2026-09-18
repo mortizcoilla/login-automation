@@ -1,158 +1,95 @@
 # Login-Automation
 
-Automatizacion de login y gestion de plantillas para Rayen APS
-(consultorio de la Dra. Yadira Hernandez Cabrera, CESFAM Raul Cuevas,
-San Bernardo).
+Proyecto para asistir a Yadira en el flujo clínico diario del CESFAM Raúl Cuevas (San Bernardo).
 
----
+## Que hace
 
-## 1. Requisitos del sistema
+El sistema automatiza la cadena de ingreso de información clínica para que Yadira no se lleve trabajo a casa.
 
-- **Python 3.10+** (probado en 3.10, 3.11, 3.12, 3.14)
-- **Google Chrome** (estable, NO Chrome Dev ni Canary) para Selenium
-- **Git** para clonar el repo
-- **Windows** con PowerShell 7+ (probado en PS 7.6.5). En Mac/Linux
-  funciona pero no esta en el flujo soportado por Yadira.
-
----
-
-## 2. Instalacion (primera vez en una PC nueva)
-
-```powershell
-# 2.1 Clonar el repo
-cd C:\Workspace
-git clone <url-del-repo> Login-Automation
-cd Login-Automation
-
-# 2.2 Crear y activar venv
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-
-# 2.3 Instalar dependencias
-#    Runtime + herramientas de desarrollo (pytest, ruff, mypy)
-pip install -e .[dev]
-
-#    Solo runtime (sin pytest/ruff/mypy):
-# pip install -e .
-
-# 2.4 Configurar variables de entorno
-copy .env.example .env
-notepad .env   # editar credenciales y secretos (ver data/docs/CREDENCIALES.md)
-```
-
-Notas:
-- `pip install -e .[dev]` instala el proyecto en modo "editable":
-  cualquier cambio en `src/` se ve reflejado sin reinstalar.
-- `.env` NUNCA se commitea (esta en .gitignore). Contiene API keys,
-  credenciales Rayen, paths locales.
-- Si Python 3.10+ no esta en PATH, ajustar el `python` al launcher
-  (`py -3.12 -m venv venv`).
-
----
-
-## 3. Verificar la instalacion
-
-```powershell
-# Suite completa de tests (567 tests, ~15s)
-pytest
-
-# Lint rapido
-ruff check src tests main.py
-
-# Type-check
-mypy src
-
-# Ver usuarios configurados (smoke test de main.py)
-python main.py --list-users
-```
-
-Si todo esto pasa, la PC esta lista para correr `python main.py --user yadira --date dd-mm-aaaa`.
-
----
-
-## 4. Primer uso contra Rayen
-
-1. **Login manual** desde Chrome para verificar que Yadira puede entrar.
-2. **Capturar la API** (solo si la URL o los headers cambiaron):
-   ```powershell
-   python -m src.discover_api
-   ```
-3. **Login + listado de hoy**:
-   ```powershell
-   python main.py --user yadira --date 16-09-2026 --no-input
-   ```
-
-Mas opciones (headless, fechas pasadas, etc.) en `data/docs/COMANDOS.txt`.
-
----
-
-## 5. Estructura del proyecto
+**Flujo (paso 1 al 6)**:
 
 ```
-Login-Automation/
-├── main.py                 ← entry point (login + rellenar plantillas)
-├── pyproject.toml          ← dependencias (runtime + [dev]) + tool config
-├── AGENTS.md               ← reglas duras para agentes IA
-├── actualizar_y_notas.ps1  ← wrapper pipeline (5 pasos)
-├── venv/                   ← entorno virtual (NO se commitea)
-├── .env                    ← secretos locales (NO se commitea)
-├── config/                 ← api_config.json, users.json, selectors.json
-├── manuales/               ← PDFs fuente de manuales clinicos
-├── src/                    ← codigo del proyecto
-│   ├── browser_automation.py
-│   ├── credentials.py
-│   ├── pancho_skills/      ← login + navegacion en Rayen
-│   ├── mortadelo/          ← bundles (skills clinicos)
-│   ├── tools/              ← scripts del pipeline
-│   └── analysis/           ← scripts de actualizacion de DB y listados
-├── tests/                  ← suite pytest (567 tests)
-└── data/                   ← TODO lo local-only (gitignored):
-    ├── docs/               ← COMANDOS.txt, HANDOFFs, guias
-    ├── manuales_md/        ← manuales convertidos a .md + index.json
-    ├── plantillas/         ← plantillas Yadira (INMUTABLES)
-    ├── notas_clinicas/     ← notas crudas extraidas de Rayen
-    │                          naming: <paciente>_<fecha>.md (sin prefijo)
-    ├── fichas_clinicas/    ← fichas rellenadas por Mortadelo
-    ├── anamnesis/          ← respaldo de SOLO la anamnesis Yadira
-    │                          naming: anam_<paciente>_<fecha>.md
-    ├── info_paciente/      ← TODO lo del paciente MENOS la anamnesis (complemento)
-    │                          naming: info_<paciente>_<fecha>.md
-    ├── adjuntos/           ← inbox de fotos de examenes (Yadira/Pilita) — futuro
-    ├── examenes/           ← examenes procesados por vision LLM — futuro
-    ├── analysis/           ← DBs (fichas_completo.db, tracking*.db) + reportes
-    ├── logs/               ← logs del pipeline + screenshots
-    ├── prompts/            ← prompts LLM
-    └── test_cases/         ← fixtures de tests
+1. Yadira manda fotos de examenes por Telegram
+2. Rubicita (agente Mavis) respalda las fotos en data/Examenes_crudos/
+   y genera el consolidado OCR en data/examenes/exam_<pac>_<fecha>.md
+3. Pancho (agente Mavis) scrapea Rayen y crea data/notas_clinicas/<pac>_<fecha>.md
+4. Anita (agente Mavis) ejecuta src/analysis/actualizar_mes_actual.py
+5. Anita ejecuta src/analysis/informe_fichas_abiertas.py
+6. Anita ejecuta src/analysis/enriquecer_informe.py
 ```
 
-Para el detalle de que hace cada archivo / DB / script, ver
-`data/docs/COMANDOS.txt` (indice completo de comandos operativos).
+**Paso 7** (rellenar la ficha a partir de la nota + info + examenes) está **eliminado**.
+Será reescrito desde cero.
 
----
+## Estructura del proyecto
 
-## 6. Privacidad y datos sensibles
+```
+C:\Workspace\Login-Automation\
+├── data/
+│   ├── notas_clinicas/         ← output de Pancho (paso 3)
+│   ├── info_paciente/          ← input (metadata de Rayen)
+│   ├── examenes/               ← output de Rubicita (consolidado OCR, paso 2)
+│   └── Examenes_crudos/        ← output de Rubicita (fotos crudas, paso 2)
+├── src/
+│   ├── analysis/               ← pasos 4, 5, 6 (Anita)
+│   ├── pancho_skills/          ← paso 3 (Pancho)
+│   └── tools/
+│       ├── crear_notas_clinicas.py     ← CLI paso 3
+│       └── recibir_foto_examen.py      ← CLI paso 2
+├── tests/                      ← tests de los scripts vivos
+├── data/docs/                  ← documentacion del proyecto
+└── AGENTS.md                   ← reglas durables
+```
 
-- `data/` contiene datos clinicos con PII (RUT, nombre, observacion).
-  **NUNCA se commitea**. Esta en .gitignore.
-- `.env` contiene API keys y credenciales. **NUNCA se commitea**.
-- `data/analysis/tracking*.db` NO tiene PII (solo `cita_id` + `tipo_atencion`).
-  Es la unica DB que se puede compartir.
-- Para detalle de la politica de credenciales, ver
-  `data/docs/CREDENCIALES.md`.
+## Comandos del flujo
 
----
+```bash
+# Paso 2: Rubicita (manual, lo normal es por Telegram)
+python -m src.tools.recibir_foto_examen \
+    --input "C:/ruta/a/foto.jpg" \
+    --paciente "Nombre Apellido" \
+    --fecha "dd-mm-yyyy" \
+    --indice 1
 
-## 7. Problemas frecuentes
+# Paso 3: Pancho
+python -m src.tools.crear_notas_clinicas --todos --user yadira
 
-| Sintoma                                  | Causa probable                              | Solucion                                       |
-|------------------------------------------|---------------------------------------------|------------------------------------------------|
-| `ModuleNotFoundError: src`               | venv no activado                            | `.\venv\Scripts\Activate.ps1`                   |
-| `pip install -e .[dev]` falla            | Python <3.10                                | Instalar Python 3.10+ desde python.org         |
-| `chromedriver not found`                 | Selenium no encontro Chrome                 | Instalar Google Chrome estable (NO Dev/Canary)  |
-| `pytest` no encontrado                   | Instalaste solo runtime (`pip install -e .`) | `pip install -e .[dev]`                        |
-| Login falla pero Chrome abre             | Credenciales en `.env` mal                  | Editar `.env`, comparar con `data/docs/CREDENCIALES.md` |
-| `git status` muestra `data/` con archivos | No es bug, es data local (gitignored)        | OK, no commitear                                |
+# Paso 4: Anita
+python -m src.analysis.actualizar_mes_actual yadira
 
----
+# Paso 5: Anita
+python -m src.analysis.informe_fichas_abiertas
 
-Ultima actualizacion: 2026-09-16 (consolidacion data/ + deps en pyproject.toml).
+# Paso 6: Anita
+python -m src.analysis.enriquecer_informe
+```
+
+## Convenciones
+
+- `data/notas_clinicas/<pac>_<fecha>.md` — input de Yadira a Pancho.
+- `data/examenes/exam_<pac>_<fecha>.md` — consolidado OCR de Rubicita.
+- `data/Examenes_crudos/<pac>_<n>_<dd-mm-aaaa>.<ext>` — fotos crudas.
+- Los triggers `** Mortadelo` en la nota activan columnas del informe enriquecido: Examenes, Interconsulta, Indicaciones.
+
+## Que NO hay
+
+- **Mortadelo / paso 7**: eliminado. Reescritura pendiente.
+- **Plantillas / data/plantillas/**: eliminadas en sesion 2026-09-17.
+- **scripts_temp/**: eliminado.
+- **.trash/, data/prompts*/**: eliminados.
+
+## Documentacion
+
+- `AGENTS.md` — reglas durables para cualquier agente que entre al workspace.
+- `data/docs/CREDENCIALES.md` — API keys y credenciales.
+- `data/docs/HANDOFF-PROYECTO-2026-08-23.md` — handoff general del proyecto.
+- `data/docs/rubicita-conventions.md` — convenciones de Rubicita.
+
+## Agentes Mavis (fuera de este proyecto)
+
+Los agentes en `C:\Users\morti\.minimax\agents\` son la cara visible para Yadira:
+
+- `agents/rubicita/` — recibe fotos por Telegram, invoca `recibir_foto_examen.py`.
+- `agents/pancho/` — login + scraping de Rayen, invoca `crear_notas_clinicas.py`.
+- `agents/anita/` — orquestacion diaria, invoca scripts de `src/analysis/`.
+- `agents/mortadelo/` — **ELIMINADO** (paso 7 se reescribirá desde cero).

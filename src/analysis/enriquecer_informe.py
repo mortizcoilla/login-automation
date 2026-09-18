@@ -54,7 +54,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 NOTAS_DIR = BASE_DIR / "data" / "notas_clinicas"
 
 from src.analysis.informe_paths import informe_mes_actual_path
-from src.mortadelo.trigger import TRIGGER_RE
+
+
+# Regex del trigger `** Mortadelo` que Yadira deja en la nota clinica.
+# Sesion 2026-09-18: Mortadelo fue eliminado del flujo (paso 7 sera
+# reescrito desde cero), pero este trigger SIGUE siendo la senal que
+# usa Yadira para pedir examenes/interconsulta/indicaciones en el
+# informe enriquecido. Inlined aca para no depender de
+# `src.mortadelo.trigger` (modulo eliminado).
+# Reglas: dos asteriscos, opcional espacios, "Mortadelo" case-
+# insensitive, seguido de whitespace/puntuacion/EOL. NO matchea
+# dentro de otra palabra ni con punto inmediato.
+TRIGGER_RE: re.Pattern[str] = re.compile(
+    r"\*\*\s*Mortadelo(?=[\s:,;\-]|$)",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 # Regex de fila NO se usa directamente; el parser usa re.split() y
@@ -63,8 +77,7 @@ from src.mortadelo.trigger import TRIGGER_RE
 # colapse con el separador). Ver _parsear_informe_basico.
 # Orden de columnas:
 #   Fecha | Nombre | Edad | Tipo de atencion | Motivo de la atencion
-#   | Plantilla | Examenes adjuntos | Crear interconsulta
-# (Sesion 2026-09-16: +2 cols de requerimientos Yadira->Mortadelo).
+#   | Examenes | Interconsulta | Indicaciones
 # Back-compat: acepta 6 cols (informe pre-2026-09-16, sin las 2 nuevas).
 
 # Bloque Yadira: desde === INICIO NOTA CLINICA DE YADIRA === hasta
@@ -202,16 +215,19 @@ def _edad_a_decimal(edad_str: str) -> Optional[str]:
     # errores de coma flotante (ej 19.190000000000001).
     return f"{decimal:.2f}".replace(".", ",")
 
-# Keywords de requerimientos Yadira->Mortadelo (sesion 2026-09-16).
-# Se buscan en el texto que sigue a cada trigger `** mortadelo`.
-# Case-insensitive, tolerante a tildes (examenes/exámenes) y typos comunes.
+# Keywords de requerimientos Yadira (en el trigger `** mortadelo` de la nota).
+# Case-insensitive, tolerante a tildes y typos comunes.
 KEYWORDS_REQUERIMIENTOS = {
-    "examenes_adjuntos": re.compile(
+    "examenes": re.compile(
         r"ex[aá]men(?:es)?\s+adjuntos?",  # examen/examenes/exámenes
         re.IGNORECASE,
     ),
-    "crear_interconsulta": re.compile(
-        r"crea[r]?\s+interconsulta",  # crear/crear/crea (typo)
+    "interconsulta": re.compile(
+        r"(?:genera[r]?|crea[r]?|crear)\s+interconsulta",  # generar/crear interconsulta
+        re.IGNORECASE,
+    ),
+    "indicaciones": re.compile(
+        r"(?:realizar|dar|hacer)\s+indicaciones?",  # realizar/indicar
         re.IGNORECASE,
     ),
 }
@@ -233,26 +249,26 @@ def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
     formato verbose). Las columnas de Edad en posiciones 2 y 3 se
     IGNORAN — siempre se re-deriva el decimal desde la nota.
 
-    Orden 8 cols (sesion 2026-09-16 17:35, formato de salida actual):
-        Fecha | Nombre | Edad (decimal) | Tipo | Motivo | Plantilla
-        | Examenes adjuntos | Crear interconsulta
+    Orden 7 cols (formato de salida actual):
+        Fecha | Nombre | Edad (decimal) | Tipo | Motivo
+        | Examenes | Interconsulta | Indicaciones
 
-    Orden 6 cols (basico):
-        Fecha | Nombre | Edad | Tipo | Motivo | Plantilla
+    Orden 5 cols (basico):
+        Fecha | Nombre | Edad | Tipo | Motivo
 
-    Orden 9 cols (sesion 2026-09-16 17:26, deprecada):
-        Fecha | Nombre | Edad | Edad_decimal | Tipo | Motivo | Plantilla
-        | Examenes adjuntos | Crear interconsulta
+    Orden 8 cols (deprecada, formato 2026-09-16 17:26):
+        Fecha | Nombre | Edad | Edad_decimal | Tipo | Motivo
+        | Examenes | Interconsulta | Indicaciones
 
     Ignora headers, separadores `---`, la seccion de Distribucion, y
-    lineas con cantidad de columnas != 6, != 8 y != 9.
+    lineas con cantidad de columnas != 5, != 7 y != 8.
     """
     if not ruta.exists():
         return []
     filas: list[dict[str, str]] = []
     for line in ruta.read_text(encoding="utf-8").splitlines():
         parts = re.split(r"\s{2,}", line.rstrip())
-        if len(parts) not in (6, 8, 9):
+        if len(parts) not in (5, 7, 8):
             continue
         if not re.match(r"^\d{2}-\d{2}-\d{4}$", parts[0]):
             continue
@@ -261,36 +277,30 @@ def _parsear_informe_basico(ruta: Path) -> list[dict[str, str]]:
         # en main(). Solo nos importa la posicion del resto.
         fecha = parts[0]
         nombre = parts[1]
-        if len(parts) == 9:
+        if len(parts) == 8:
             # Version 17:26 (deprecada): Edad verbose en parts[2],
             # Edad_decimal en parts[3]. Ambos IGNORADOS.
             tipo_atencion = parts[4]
             motivo = parts[5]
-            plantilla = parts[6]
-            examenes_adjuntos = parts[7]
-            crear_interconsulta = parts[8]
-        elif len(parts) == 8:
+        elif len(parts) == 7:
             # Version 16:30 o 17:35: Edad en parts[2] (ignorada)
             tipo_atencion = parts[3]
             motivo = parts[4]
-            plantilla = parts[5]
-            examenes_adjuntos = parts[6]
-            crear_interconsulta = parts[7]
-        else:  # 6 cols
+        else:  # 5 cols
             # Basico o sesion 17:35: Edad en parts[2] (ignorada)
             tipo_atencion = parts[3]
             motivo = parts[4]
-            plantilla = parts[5]
-            examenes_adjuntos = None
-            crear_interconsulta = None
         fila = {
             "fecha": fecha,
             "nombre": nombre,
             "tipo_atencion": tipo_atencion,
             "motivo": motivo,
-            "plantilla": plantilla,
-            "examenes_adjuntos": examenes_adjuntos,
-            "crear_interconsulta": crear_interconsulta,
+            # Las 3 cols de Yadira vienen SIEMPRE de la nota clinica
+            # (regex sobre `** mortadelo`), NO del informe. Asi no
+            # depende del formato del informe.
+            "examenes": None,
+            "interconsulta": None,
+            "indicaciones": None,
             # Edad SIEMPRE None al inicio: el main() la re-deriva de la nota.
             "edad": None,
         }
@@ -386,31 +396,34 @@ def _extraer_requerimientos(nota_path: Path) -> dict[str, bool]:
 
     Sesion 2026-09-16 (pedido por Yadira): la nota clinica puede tener
     un bloque `** mortadelo` con bullets listando lo que Mortadelo debe
-    hacer. Por ahora se trackean 2 requerimientos:
+    hacer. Sesion 2026-09-17: 3 requerimientos trackeados:
 
-    - `examenes adjuntos`   -> True si esta en algun bloque trigger
-    - `crear interconsulta` -> True si esta en algun bloque trigger
+    - `examenes adjuntos`    -> True si esta en algun bloque trigger
+    - `generar/crear interconsulta` -> True si esta en algun bloque trigger
+    - `realizar/indicar indicaciones` -> True si esta en algun bloque trigger
 
     Formato esperado (Yadira escribe asi en la anamnesis):
         ** mortadelo
 
-        - examenes adjuntos
-        - crear interconsulta
+        - Examenes Adjuntos
+        - Generar interconsulta urologia
+        - Realizar indicaciones de forma general
 
         **
 
     Deteccion format-agnostic: busca `** mortadelo` con TRIGGER_RE,
     luego mira el texto que sigue al trigger (hasta el proximo trigger
-    o fin de archivo) y testea los keywords.
+    o fin de archivo) y testea los keywords. Case-insensitive, tolerante
+    a variaciones (mayusculas/minusculas, verbos).
 
     Args:
         nota_path: ruta al .md (o .txt legacy) en data/notas_clinicas/.
 
     Returns:
-        dict con keys 'examenes_adjuntos' y 'crear_interconsulta',
-        ambas bool. Si la nota no existe, ambas False.
+        dict con keys 'examenes', 'interconsulta' y 'indicaciones',
+        todas bool. Si la nota no existe, todas False.
     """
-    resultado = {"examenes_adjuntos": False, "crear_interconsulta": False}
+    resultado = {"examenes": False, "interconsulta": False, "indicaciones": False}
 
     if not nota_path.exists():
         return resultado
@@ -454,9 +467,9 @@ _ANCHO_NOMBRE = 32
 _ANCHO_EDAD = 12
 _ANCHO_TIPO = 32
 _ANCHO_MOTIVO = 24
-_ANCHO_PLANTILLA = 40
 _ANCHO_EXAMENES_ADJUNTOS = 18
 _ANCHO_CREAR_INTERCONSULTA = 20
+_ANCHO_INDICACIONES = 16
 _ANCHO_TOTAL = 210
 
 
@@ -476,15 +489,15 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
         out.write("=" * _ANCHO_TOTAL + "\n")
         return out.getvalue()
 
-    # Orden de columnas (sesion 2026-09-16 17:35, simplificado por Yadira):
-    #   Fecha | Nombre | Edad | Tipo | Motivo | Plantilla
-    #   | Examenes adjuntos | Crear interconsulta
+    # Orden de columnas del output:
+    #   Fecha | Nombre | Edad | Tipo | Motivo
+    #   | Examenes | Interconsulta | Indicaciones
     # Edad se imprime como DECIMAL (ej "19,19"). El formato verbose
     # ("19 anos 2 meses 10 dias") ya no se muestra — Yadira prefiere
     # ver el decimal para lectura rapida.
     # Edad se imprime ANTES de Tipo (entre Nombre y Tipo) para que la
     # info clinica del paciente (quien es, que edad) aparezca junta y
-    # la metadata de tramite (tipo, motivo, plantilla) despues.
+    # la metadata de tramite (tipo, motivo) despues.
     # Las 2 ultimas columnas son requerimientos que Yadira deja a
     # Mortadelo en el bloque ** mortadelo de la anamnesis.
     header = "  ".join([
@@ -493,9 +506,9 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
         f"{'Edad':<{_ANCHO_EDAD}}",
         f"{'Tipo de atencion':<{_ANCHO_TIPO}}",
         f"{'Motivo de la atencion':<{_ANCHO_MOTIVO}}",
-        f"{'Plantilla':<{_ANCHO_PLANTILLA}}",
-        f"{'Examenes adjuntos':<{_ANCHO_EXAMENES_ADJUNTOS}}",
-        f"{'Crear interconsulta':<{_ANCHO_CREAR_INTERCONSULTA}}",
+        f"{'Examenes':<{_ANCHO_EXAMENES_ADJUNTOS}}",
+        f"{'Interconsulta':<{_ANCHO_CREAR_INTERCONSULTA}}",
+        f"{'Indicaciones':<{_ANCHO_INDICACIONES}}",
     ])
     out.write(header + "\n")
     out.write("-" * len(header) + "\n")
@@ -505,17 +518,18 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
         # Si el dict no tiene la clave, tambien cae a '(-)'.
         edad = f.get("edad") or "(-)"
         motivo = f.get("motivo") or "(-)"
-        examenes = "si" if f.get("examenes_adjuntos") else "no"
-        ic = "si" if f.get("crear_interconsulta") else "no"
+        examenes = "si" if f.get("examenes") else "no"
+        ic = "si" if f.get("interconsulta") else "no"
+        indicaciones = "si" if f.get("indicaciones") else "no"
         cells = "  ".join([
             f"{f.get('fecha', '-'):<{_ANCHO_FECHA}}",
             f"{f.get('nombre', '-')[:_ANCHO_NOMBRE]:<{_ANCHO_NOMBRE}}",
             f"{edad[:_ANCHO_EDAD]:<{_ANCHO_EDAD}}",
             f"{f.get('tipo_atencion', '-')[:_ANCHO_TIPO]:<{_ANCHO_TIPO}}",
             f"{motivo[:_ANCHO_MOTIVO]:<{_ANCHO_MOTIVO}}",
-            f"{f.get('plantilla', '-')[:_ANCHO_PLANTILLA]:<{_ANCHO_PLANTILLA}}",
             f"{examenes:<{_ANCHO_EXAMENES_ADJUNTOS}}",
             f"{ic:<{_ANCHO_CREAR_INTERCONSULTA}}",
+            f"{indicaciones:<{_ANCHO_INDICACIONES}}",
         ])
         out.write(cells + "\n")
     out.write("=" * _ANCHO_TOTAL + "\n")
@@ -610,6 +624,7 @@ def main() -> int:
     enriched_edad = 0
     enriched_examenes = 0
     enriched_ic = 0
+    enriched_indicaciones = 0
     missing_nota = 0
     missing_motivo = 0
     missing_edad = 0
@@ -643,14 +658,17 @@ def main() -> int:
             fila["edad"] = edad
             enriched_edad_total += 1
 
-        # Requerimientos Yadira -> Mortadelo (sesion 2026-09-16)
+        # Requerimientos Yadira -> Mortadelo (sesion 2026-09-16, ampliado 2026-09-17)
         reqs = _extraer_requerimientos(nota_path)
-        fila["examenes_adjuntos"] = reqs["examenes_adjuntos"]
-        fila["crear_interconsulta"] = reqs["crear_interconsulta"]
-        if reqs["examenes_adjuntos"]:
+        fila["examenes"] = reqs["examenes"]
+        fila["interconsulta"] = reqs["interconsulta"]
+        fila["indicaciones"] = reqs["indicaciones"]
+        if reqs["examenes"]:
             enriched_examenes += 1
-        if reqs["crear_interconsulta"]:
+        if reqs["interconsulta"]:
             enriched_ic += 1
+        if reqs["indicaciones"]:
+            enriched_indicaciones += 1
 
         # Edad (sesion 2026-09-16 17:35, pedido por Yadira):
         # SIEMPRE se re-deriva de la nota en formato decimal (ej "19,19").
@@ -672,8 +690,9 @@ def main() -> int:
         print(
             f"  {fila['nombre']:<40s} edad={fila['edad']!r:<10s} "
             f"motivo={fila['motivo']!r}{suffix} "
-            f"examenes={('si' if reqs['examenes_adjuntos'] else 'no')} "
-            f"ic={('si' if reqs['crear_interconsulta'] else 'no')}"
+            f"examenes={('si' if reqs['examenes'] else 'no')} "
+            f"ic={('si' if reqs['interconsulta'] else 'no')} "
+            f"indicaciones={('si' if reqs['indicaciones'] else 'no')}"
         )
 
     print()
@@ -681,8 +700,9 @@ def main() -> int:
         f"  motivo:    {enriched_motivo} ok, {missing_motivo} sin campo, {missing_nota} sin nota\n"
         f"  edad:      {enriched_edad} ok, {missing_edad} sin campo, {missing_nota} sin nota\n"
         f"  decimal:   {enriched_edad} ok, {enriched_edad_total - enriched_edad} no computable\n"
-        f"  examenes:  {enriched_examenes} con requerimiento, {len(filas) - enriched_examenes} sin\n"
-        f"  IC:        {enriched_ic} con requerimiento, {len(filas) - enriched_ic} sin"
+        f"  Examenes:  {enriched_examenes} con requerimiento, {len(filas) - enriched_examenes} sin\n"
+        f"  Interconsulta: {enriched_ic} con requerimiento, {len(filas) - enriched_ic} sin\n"
+        f"  Indicaciones:   {enriched_indicaciones} con requerimiento, {len(filas) - enriched_indicaciones} sin"
     )
     print()
 
