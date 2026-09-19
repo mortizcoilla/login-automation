@@ -15,6 +15,9 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6:
 
     python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.informe_fichas_abiertas && python -m src.tools.crear_notas_clinicas --todos && python -m src.analysis.enriquecer_informe
 
+Runner conveniente (mismos 4 pasos, se detiene en el primer fallo):
+    python flujo_diario.py
+
 Paso a paso:
     # (4) Actualizar el mes desde Rayen (~2-3 min, requiere login)
     python -m src.analysis.actualizar_mes_actual yadira
