@@ -11,9 +11,9 @@ Setup rapido:
 
 FLUJO DIARIO OBLIGATORIO (REQ-008)
 ----------------------------------
-Orden real de dependencias 4 -> 5 -> 3 -> 6:
+Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (paso 7 = Mortadelo):
 
-    python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.informe_fichas_abiertas && python -m src.tools.crear_notas_clinicas --todos && python -m src.analysis.enriquecer_informe
+    python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.informe_fichas_abiertas && python -m src.tools.crear_notas_clinicas --todos && python -m src.analysis.enriquecer_informe && python -m src.tools.mortadelo --todos
 
 Runner conveniente (mismos 4 pasos, se detiene en el primer fallo):
     python flujo_diario.py
@@ -47,6 +47,11 @@ FLUJO OPT-IN: EXAMENES (REQ-009/012/047)
     # (2b) Consolidar via vision z.ai -> data/examenes/exam_<pac>_<fecha>.md
     #      Requiere ZAI_API_KEY en .env (ver .env.example)
     python -m src.tools.consolidar_examenes --paciente "Nombre Apellido"
+
+    # (7) Mortadelo: ficha completa + informe de trazabilidad por paciente
+    #     (LLM via opencode CLI; requiere anamnesis/info del paso 3)
+    python -m src.tools.mortadelo --todos
+    python -m src.tools.mortadelo --paciente "Nombre Apellido" --fecha dd-mm-yyyy
 
 VERIFICACION (REQ-051)
 ----------------------

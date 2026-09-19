@@ -17,7 +17,7 @@ Yadira es la doctora. El equipo de agentes (Anita, Pancho, Rubicita) automatiza 
 **Obligatorio diario** (orden REAL de dependencias 4->5->3->6, REQ-008):
 
 ```
-python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.informe_fichas_abiertas && python -m src.tools.crear_notas_clinicas --todos && python -m src.analysis.enriquecer_informe
+python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.informe_fichas_abiertas && python -m src.tools.crear_notas_clinicas --todos && python -m src.analysis.enriquecer_informe && python -m src.tools.mortadelo --todos
 ```
 
 1. (paso 4) Anita actualiza el mes -> data/analysis/fichas_completo.db
@@ -26,6 +26,8 @@ python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.in
    data/info_paciente/, data/anamnesis/
 4. (paso 6) Anita enriquece el informe (motivo, edad, Examenes,
    Interconsulta, Indicaciones)
+5. (paso 7) Mortadelo genera ficha completa + informe de trazabilidad
+   -> data/fichas_generadas/ y data/informes_trazabilidad/ (REQ-054..058)
 
 **Opt-in por paciente** (solo cuando Yadira envia examenes por Telegram):
 - (paso 1) Yadira manda fotos.

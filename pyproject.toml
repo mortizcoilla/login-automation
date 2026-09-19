@@ -33,7 +33,7 @@ markers = [
 # con drivers mockeados en los tests de extraccion) y queda fuera del
 # gate; crear_notas/main requiere login real.
 [tool.coverage.run]
-source = ["src/core", "src/notas", "src/informes", "src/examenes"]
+source = ["src/core", "src/notas", "src/informes", "src/examenes", "src/mortadelo"]
 omit = [
     # Orquestacion Selenium con login real (como rayen/*): su logica
     # deterministica vive en core/informes y si tiene tests.

@@ -4,15 +4,14 @@ Referencia visual del proyecto. Fuente de verdad de reglas:
 `docs/REQUISITOS.md`. Este archivo se ACTUALIZA EN CADA CAMBIO de flujo,
 estructura o comando (ver "Regla de mantenimiento" al final).
 
-Ultima actualizacion: 2026-09-18 (refactorizacion completa, commits
-9827b36..23c364e; mismo dia: anam_<pac>_<fecha>.md ahora SIN frontmatter,
-REQ-027).
+Ultima actualizacion: 2026-09-18 (refactorizacion + paso 7 Mortadelo
+implementado en el pipeline: cadena 4->5->3->6->7).
 
 ---
 
 ## 1. El pipeline diario (flujo de datos)
 
-Orden real de dependencias 4 -> 5 -> 3 -> 6 (REQ-008).
+Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
 
 ```
                         ┌─────────────────────────────────────────────────┐
@@ -68,7 +67,23 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 (REQ-008).
         informe_fichas_abiertas_<MM-YYYY>.txt  (AHORA ENRIQUECIDO, 8 columnas)
                            │
                            ▼
-                     Yadira lo revisa
++---------------------------------------------------------------+
+| (7) python -m src.tools.mortadelo --todos            [LLM]    |
+|     src/mortadelo/: 2 llamadas por paciente (opencode CLI,    |
+|     cascada de modelos)                                       |
+|     1) prompt ficha -> ENSAMBLADOR: el CODIGO arma con        |
+|        garantias (base byte-identica + llenados + ortografia  |
+|        validada + trigger fuera + INDICACIONES/INTERCONSULTA  |
+|        si el trigger las pidio) -> validacion (5 reglas)      |
+|     2) prompt informe -> encabezado con MODELO USADO por      |
+|        codigo                                                 |
++----------------------------+---------------------------------+
+                             v
+   data/fichas_generadas/ficha_<pac>_<fecha>.md          (producto 1)
+   data/informes_trazabilidad/informe_trazabilidad_*.md (producto 2)
+                             |
+                             v
+                     Yadira revisa y supervisa
 ```
 
 ## 2. El flujo opt-in de examenes (por paciente, cuando hay fotos)
