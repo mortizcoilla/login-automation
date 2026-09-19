@@ -114,3 +114,10 @@ Thumbs.db
 
 # Plantillas Yadira (INMUTABLES, no se commitean).
 data/plantillas/
+
+# Fichas generadas por Mortadelo (paso 7) - PII clinica, local-only
+data/fichas_generadas/
+data/informes_trazabilidad/
+
+# Dependencias del proyecto opencode (CLI)
+.opencode/node_modules/
