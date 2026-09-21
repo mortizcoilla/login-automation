@@ -4,8 +4,14 @@ Referencia visual del proyecto. Fuente de verdad de reglas:
 `docs/REQUISITOS.md`. Este archivo se ACTUALIZA EN CADA CAMBIO de flujo,
 estructura o comando (ver "Regla de mantenimiento" al final).
 
-Ultima actualizacion: 2026-09-18 (refactorizacion + paso 7 Mortadelo
-implementado en el pipeline: cadena 4->5->3->6->7).
+Ultima actualizacion: 2026-09-21 (REQ-059: las rutas `data/...` de los
+diagramas son los defaults configurables desde `.env`, bloque "Rutas de
+productos"; fuente unica `src/core/rutas.py`. REQ-060: cron del flujo
+diario en `src/scheduler/` — tarea de Windows cada 30 min + calendario
+configurable en `config/calendario.json`. REQ-061: el bot de Rubicita
+consolida automaticamente los examenes en un unico `exam_<pac>_<fecha>.md`
+tras archivar las fotos). Anterior: 2026-09-18
+(refactorizacion + paso 7 Mortadelo, cadena 4->5->3->6->7).
 
 ---
 
