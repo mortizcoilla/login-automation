@@ -29,6 +29,11 @@ python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.in
 5. (paso 7) Mortadelo genera ficha completa + informe de trazabilidad
    -> data/fichas_generadas/ y data/informes_trazabilidad/ (REQ-054..058)
 
+**Cron (REQ-060)**: `src/scheduler/` automatiza esta cadena por
+calendario (`config/calendario.json`, por doctor). Tarea de Windows
+"LoginAutomation-FlujoDiario" dispara cada 30 min y el runner decide
+si corre. Modulo aislado: no modifica los pasos de arriba.
+
 **Opt-in por paciente** (solo cuando Yadira envia examenes por Telegram):
 - (paso 1) Yadira manda fotos.
 - (paso 2a) Rubicita archiva en data/examenes_crudos/ (SIN OCR local).

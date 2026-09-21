@@ -1,0 +1,16 @@
+{
+  "comentario": "Calendario del flujo diario (REQ-060). Cambiar horarios o agregar doctores NO requiere re-registrar la tarea de Windows: el runner re-lee este archivo en cada disparo (cada 30 min). Dias: lunes..domingo, con o sin tilde. Hora HH:MM 24h local.",
+  "max_intentos_por_dia": 3,
+  "doctores": [
+    {
+      "usuario": "yadira",
+      "horarios": [
+        { "dia": "lunes", "hora": "17:30" },
+        { "dia": "martes", "hora": "17:30" },
+        { "dia": "miercoles", "hora": "20:30" },
+        { "dia": "jueves", "hora": "17:30" },
+        { "dia": "viernes", "hora": "16:30" }
+      ]
+    }
+  ]
+}
