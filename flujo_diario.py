@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 PY = ROOT / "venv" / "Scripts" / "python.exe"
-if not PY.exists():  # Linux / mini PC
+if not PY.exists():  # fallback por compatibilidad si algun dia corre en Linux
     PY = ROOT / "venv" / "bin" / "python"
 
 PASOS = [

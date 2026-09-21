@@ -1,6 +1,7 @@
 """Cron runner para el reporte diario.
 
-Uso desde cron de la mini PC Ubuntu (a las 19:00):
+Uso programado a las 19:00 en la mini PC (Windows: Programador de
+Tareas; el ejemplo cron queda por compatibilidad):
 
     0 19 * * * cd /opt/login-automation && /opt/login-automation/venv/bin/python -m src.anita.cron_runner
 

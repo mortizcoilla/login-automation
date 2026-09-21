@@ -22,7 +22,7 @@ Notas:
 
 ## 2. Clonar y preparar el entorno
 
-PowerShell (Windows):
+PowerShell (Windows y mini PC):
 
 ```powershell
 git clone https://github.com/mortizcoilla/login-automation.git
@@ -33,15 +33,9 @@ pip install -e .          # runtime: selenium, requests, python-dotenv
 pip install -e .[dev]     # + pytest, ruff, mypy (recomendado)
 ```
 
-Linux (mini PC Ubuntu):
-
-```bash
-git clone https://github.com/mortizcoilla/login-automation.git
-cd login-automation
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .[dev]
-```
+La mini PC tambien usa Windows (mismo procedimiento). El runner
+`flujo_diario.py` resuelve solo la ruta del venv de cualquiera de las
+dos plataformas, por si algun dia vuelve a Linux.
 
 ## 3. Configuracion que NO viene en el repo (gitignored)
 
