@@ -35,6 +35,7 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from src.telegram_bot.services.consolidar_service import consolidar_desde_telegram
 from src.telegram_bot.services.recibir_foto_service import (
     archivar_foto_desde_telegram,
 )
@@ -179,6 +180,31 @@ async def cmd_archivar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if resultado.get("fecha_input_descartada"):
             lineas.append("")
             lineas.append(f"Aviso: {resultado.get('motivo_descarte', '')}")
+
+        # Mision 2 (REQ-061): transcribir con vision y consolidar TODAS las
+        # imagenes archivadas del paciente en un unico exam_<pac>_<fecha>.md.
+        # El archivado ya esta hecho: un fallo aqui es un aviso, no un error.
+        try:
+            consolidado = await asyncio.to_thread(
+                consolidar_desde_telegram,
+                nombre_paciente=paciente,
+                fecha_atencion=fecha,
+                crudos_dir=destino_dir_override,
+            )
+        except Exception as exc:
+            logger.exception("Error inesperado en consolidacion OCR")
+            consolidado = {"ok": False, "error": f"error inesperado: {exc}"}
+        lineas.append("")
+        if consolidado.get("ok"):
+            lineas.append(
+                f"Examenes transcritos a: {Path(str(consolidado.get('path', ''))).name} "
+                f"({consolidado.get('fotos', 0)} imagen/es)"
+            )
+        else:
+            lineas.append(
+                f"Aviso: la transcripcion automatica no corrio "
+                f"({consolidado.get('error', 'motivo desconocido')})"
+            )
         await message.reply_text("\n".join(lineas))
     else:
         await message.reply_text(f"Error: {resultado.get('error', 'sin detalle')}")

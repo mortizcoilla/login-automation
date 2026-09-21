@@ -11,15 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 WELCOME = (
-    "Hola! Soy Rubicita, la que recibe tus examenes.\n\n"
-    "Envia una foto o PDF con un caption asi:\n\n"
-    "  /archivar <paciente> [dd-mm-yyyy]\n\n"
-    "Ejemplos:\n"
-    "  /archivar Benedicto Alfonso Martin Colimil 16-09-2026\n"
-    "  /archivar Benedicto Martin\n"
-    "    (busca el nombre completo y la fecha en notas_clinicas/)\n\n"
-    "v1: una foto por mensaje. Para varias, envialas una a una.\n"
-    "Si me mandas video o audio, no los proceso; avisame con foto o PDF."
+    "Hola mama yadira, mandame los examenes en el formato\n"
+    " /archivar <paciente> [dd-mm-yyyy]\n"
+    "una foto por mensaje. Para varias, envialas una a una."
 )
 
 

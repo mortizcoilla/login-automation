@@ -40,7 +40,7 @@ def test_texto_libre_responde_con_welcome():
     update = _make_update("hola")
     asyncio.run(cmd_text_fallback(update, MagicMock()))
     reply = _reply_text_of(update)
-    assert "Rubicita" in reply
+    assert WELCOME in reply
     assert WELCOME[:50] in reply
 
 
@@ -49,7 +49,7 @@ def test_comando_desconocido_responde_con_welcome_y_nombre_del_comando():
     asyncio.run(cmd_text_fallback(update, MagicMock()))
     reply = _reply_text_of(update)
     assert "/foo" in reply  # menciona el comando no reconocido
-    assert "Rubicita" in reply  # y la bienvenida
+    assert WELCOME in reply  # y la bienvenida
 
 
 def test_archivar_sin_foto_responde_con_hint_de_foto():
@@ -81,4 +81,4 @@ def test_text_vacio_cae_en_welcome():
     update = _make_update("")
     asyncio.run(cmd_text_fallback(update, MagicMock()))
     reply = _reply_text_of(update)
-    assert "Rubicita" in reply
+    assert WELCOME in reply

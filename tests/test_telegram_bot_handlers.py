@@ -66,7 +66,7 @@ def test_cmd_start_envia_bienvenida_con_instrucciones():
     asyncio.run(cmd_start(update, context))
 
     reply = update.effective_message.reply_text.await_args.args[0]
-    assert "Rubicita" in reply
+    assert WELCOME in reply
     assert "/archivar" in reply
     assert "dd-mm-yyyy" in reply
 
