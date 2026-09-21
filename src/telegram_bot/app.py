@@ -39,6 +39,7 @@ from telegram.ext import (
 )
 
 from src.telegram_bot.config import BotConfig, ConfigurationError
+from src.telegram_bot.handlers.debug import register as register_debug_handler
 from src.telegram_bot.handlers.photo import cmd_archivar
 from src.telegram_bot.handlers.start import cmd_start
 from src.telegram_bot.handlers.text import cmd_text_fallback
@@ -73,6 +74,11 @@ def build_application(config: BotConfig) -> Application:
     )
     application.bot_data["config"] = config
 
+    # Diagnostico: loggea TODO mensaje que llega, antes del grupo 0, sin
+    # consumirlo. Si /archivar con foto no llega al handler, esta linea
+    # muestra lo que Telegram mando de verdad (caption crudo, user_id).
+    register_debug_handler(application)
+
     auth = authorized_only(config.allowed_user_ids)
 
     # /start y /help: bienvenida + instrucciones.
@@ -83,12 +89,13 @@ def build_application(config: BotConfig) -> Application:
     # filters.Document.ALL incluye PDFs, imagenes-enviadas-como-archivo, y
     # tambien videos/audios. Filtramos v1 por: PHOTO o IMAGE-doc o PDF.
     media_filter = filters.PHOTO | filters.Document.IMAGE | filters.Document.PDF
-    _archivar_pattern = re.compile(r"^/archivar", re.IGNORECASE | re.DOTALL)
+    _archivar_pattern = re.compile(r"^\s*/archivar", re.IGNORECASE | re.DOTALL)
     application.add_handler(
         MessageHandler(
             # IGNORECASE: el autofirm del teclado en iOS/Android puede
             # poner mayuscula a la primera letra, produciendo "/Archivar".
             # Sin este flag, el filtro rechaza y el handler no se llama.
+            # ^\s*: algunos teclados dejan espacios al inicio del caption.
             filters.CaptionRegex(_archivar_pattern) & media_filter,
             auth(cmd_archivar),
         )

@@ -17,8 +17,17 @@ from src.telegram_bot.config import BotConfig, ConfigurationError
 
 @pytest.fixture(autouse=True)
 def _disable_dotenv(monkeypatch):
-    """No leer .env real durante estos tests."""
+    """No leer .env real durante estos tests.
+
+    Ademas de neutralizar load_dotenv, borra TELEGRAM_* ya presentes en
+    os.environ: otros modulos del proyecto (credentials, core.rutas)
+    hacen load_dotenv al importarse y dejan las vars del .env real en el
+    proceso, lo que contaminaria estos tests.
+    """
     monkeypatch.setattr("src.telegram_bot.config.load_dotenv", lambda: None)
+    for var in list(__import__("os").environ):
+        if var.startswith("TELEGRAM_"):
+            monkeypatch.delenv(var, raising=False)
 
 
 def _set_minimo(monkeypatch):

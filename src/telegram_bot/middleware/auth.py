@@ -15,20 +15,21 @@ Comportamiento:
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
 
+# PTB exige Coroutine (no basta Awaitable) en la firma de sus handlers.
+Handler = Callable[[Update, ContextTypes.DEFAULT_TYPE], Coroutine[Any, Any, None]]
+
 
 def authorized_only(
     allowed_ids: frozenset[int],
-) -> Callable[
-    [Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]]],
-    Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]],
-]:
+) -> Callable[[Handler], Handler]:
     """Decorador: rechaza updates de usuarios no autorizados.
 
     Args:
@@ -43,9 +44,7 @@ def authorized_only(
         async def mi_handler(update, context): ...
     """
 
-    def decorator(
-        func: Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]],
-    ) -> Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]]:
+    def decorator(func: Handler) -> Handler:
         async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             user = update.effective_user
             if user is None:
