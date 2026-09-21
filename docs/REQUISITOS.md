@@ -91,7 +91,7 @@ Convencion de fechas: dd-mm-yyyy.
 | ID | Requisito | Origen | Estado | Implementacion | Tests |
 |----|-----------|--------|--------|----------------|-------|
 | REQ-044 | NUNCA commitear `data/` con PII (nombres, RUN, fotos, examenes). DBs y CSVs viven gitignored en disco local. | COMANDOS.txt / politica | VIGENTE | `.gitignore` (incluye examenes_crudos ambos casings) | — (politica) |
-| REQ-045 | Credenciales por `config/users.json` (gitignored) o variables de entorno `USERS_<ID>_*` con precedencia env > json. Nunca en el repo. | Sesion 2026-08 | VIGENTE | `src/credentials.py` | `test_credentials.py` (9) |
+| REQ-045 | Credenciales por `config/users.json` (gitignored) o variables de entorno `USERS_<ID>_*` con precedencia env > json. Nunca en el repo. | Sesion 2026-08 | VIGENTE | `src/credentials.py` (consumers: `src/tools/crear_notas_clinicas.py`, `src/informes/mes.py`) | `test_credentials.py` (9) |
 | REQ-046 | En queue_store el RUT se persiste hasheado (SHA-256 truncado) y los tokens de aprobacion son de un solo uso con TTL 300s. | Sesion 2026-08 | VIGENTE | `src/queue_store.py` | `test_queue_store.py` (27) + `test_pancho_skills.py` |
 
 ## 7. Decisiones de scope y roadmap

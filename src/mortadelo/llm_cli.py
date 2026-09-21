@@ -14,7 +14,14 @@ import shutil
 import subprocess
 import sys
 
+from dotenv import load_dotenv
+
 from src.core.rutas import ROOT
+
+# Patron de src/credentials.py: el modulo que lee env del .env lo carga.
+# Sin esto, MORTADELO_MODELOS/MORTADELO_TIMEOUT del .env nunca llegan al
+# CLI (python -m src.tools.mortadelo no pasa por src.credentials).
+load_dotenv()
 
 # Cascada por defecto. Override: env MORTADELO_MODELOS="modelo1,modelo2".
 MODELOS_DEFAULT = ["opencode/nemotron-3-ultra-free"]

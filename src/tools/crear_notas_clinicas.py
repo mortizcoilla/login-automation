@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import json
 import logging
 import sys
 from datetime import datetime
@@ -39,6 +38,7 @@ from src.core.rutas import ROOT
 sys.path.insert(0, str(ROOT))
 
 from src.core.rutas import INFO_PACIENTE_DIR
+from src.credentials import load_credentials
 from src.notas.anamnesis import guardar_respaldo_anamnesis
 from src.notas.info_paciente import guardar_info_paciente
 from src.notas.modelos import PacienteObjetivo
@@ -99,29 +99,6 @@ def _informe_mes_actual_path() -> Path:
 
 
 INFORME_DEFAULT = _informe_mes_actual_path()
-USERS_CONFIG = ROOT / "config" / "users.json"
-
-
-# ---- Carga de credenciales (reutiliza patron de main.py) ----
-
-
-def load_credentials(user_id: str) -> dict[str, str]:
-    """Carga credenciales desde config/users.json."""
-    if not USERS_CONFIG.exists():
-        raise FileNotFoundError(f"No existe {USERS_CONFIG}")
-    data = json.loads(USERS_CONFIG.read_text(encoding="utf-8"))
-    users = data.get("users", {})
-    if user_id not in users:
-        raise ValueError(f"Usuario '{user_id}' no esta en {USERS_CONFIG}")
-    credenciales: dict[str, str] = users[user_id]
-    return credenciales
-
-
-def list_known_users() -> list[str]:
-    if not USERS_CONFIG.exists():
-        return []
-    data = json.loads(USERS_CONFIG.read_text(encoding="utf-8"))
-    return list(data.get("users", {}).keys())
 
 
 # ---- Parser del informe de fichas abiertas ----
@@ -465,7 +442,7 @@ def main() -> int:
         "--user",
         type=str,
         default="yadira",
-        help="Usuario de config/users.json (default: yadira)",
+        help="Usuario de config/users.json o .env USERS_<ID>_* (default: yadira)",
     )
     parser.add_argument(
         "--log-level",
@@ -503,7 +480,7 @@ def main() -> int:
     # 1. Cargar credenciales
     try:
         credentials = load_credentials(args.user)
-    except (FileNotFoundError, ValueError) as e:
+    except (KeyError, ValueError) as e:
         logger.error(f"Error cargando credenciales: {e}")
         return 2
     logger.info(f"[crear_notas] Credenciales cargadas para usuario: {args.user}")
