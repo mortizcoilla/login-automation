@@ -42,7 +42,9 @@ dos plataformas, por si algun dia vuelve a Linux.
 El repo trae `config/selectors.json` (selectores de Rayen) y
 `.env.example` (plantilla). Faltan dos cosas por crear a mano:
 
-### 3.1 Credenciales de Rayen — `config/users.json` (OBLIGATORIO pasos 3-4)
+### 3.1 Credenciales de Rayen (OBLIGATORIO pasos 3-4 — users.json O .env)
+
+Opcion A — `config/users.json`:
 
 ```json
 {
@@ -56,9 +58,16 @@ El repo trae `config/selectors.json` (selectores de Rayen) y
 }
 ```
 
-Alternativa sin archivo: variables de entorno
-`USERS_YADIRA_LOCATION`, `USERS_YADIRA_USERNAME`, `USERS_YADIRA_PASSWORD`
-(env tiene prioridad sobre el JSON).
+Opcion B — en `.env` (ya viene de plantilla, solo rellenar):
+
+```
+USERS_YADIRA_LOCATION=...
+USERS_YADIRA_USERNAME=...
+USERS_YADIRA_PASSWORD=...
+```
+
+Si existen ambas fuentes, env tiene prioridad sobre el JSON
+(REQ-045, cargador unico `src/credentials.py`).
 
 ### 3.2 `.env` (OPCIONAL — copiar de .env.example)
 
