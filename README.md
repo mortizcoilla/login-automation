@@ -70,6 +70,8 @@ CI (.github/workflows/ci.yml) corre todo esto en Python 3.10/3.11/3.12.
 
 ## Documentacion
 
+- `INSTALACION.md` — guia completa para instalar en otro PC tras clonar (Python, Chrome, opencode CLI, users.json, .env).
+
 - `docs/DIAGRAMAS.md` — pipeline y arquitectura en diagramas (se actualiza en cada cambio).
 - `docs/REQUISITOS.md` — matriz de trazabilidad REQ <-> codigo <-> tests.
 
