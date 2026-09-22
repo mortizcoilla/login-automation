@@ -35,6 +35,7 @@ from logging.handlers import RotatingFileHandler
 from telegram.ext import (
     Application,
     CommandHandler,
+    ContextTypes,
     MessageHandler,
     filters,
 )
@@ -48,6 +49,40 @@ from src.telegram_bot.handlers.text import cmd_text_fallback
 from src.telegram_bot.middleware.auth import authorized_only
 
 logger = logging.getLogger(__name__)
+
+
+class _FiltroConflict(logging.Filter):
+    """Colapsa la lluvia de tracebacks por instancia duplicada.
+
+    Cuando otra instancia del bot compite por getUpdates, PTB loggea un
+    traceback de ~20 lineas POR POLL (1/seg). Este filtro traga esos
+    registros y emite UNA linea propia por minuto con el aviso claro.
+    """
+
+    _CADA_SEGUNDOS = 60
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._ultimo_aviso = 0.0
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if "terminated by other getUpdates request" not in record.getMessage():
+            return True
+        import time
+
+        ahora = time.monotonic()
+        if ahora - self._ultimo_aviso >= self._CADA_SEGUNDOS:
+            self._ultimo_aviso = ahora
+            logger.warning(
+                "Otra instancia del bot con el mismo token esta compitiendo "
+                "por los updates (repite cada minuto). Revisar otros PCs."
+            )
+        return False
+
+
+async def _log_error_ptb(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handler de errores PTB: una linea limpia en vez de traceback."""
+    logger.error("Error de PTB en update: %s", context.error)
 
 
 def build_application(config: BotConfig) -> Application:
@@ -84,6 +119,10 @@ def build_application(config: BotConfig) -> Application:
     auth = authorized_only(config.allowed_user_ids)
 
     # /start y /help: bienvenida + instrucciones.
+    # Errores de handlers/PTB -> una linea limpia en vez de traceback
+    # completo en el log (los tracebacks crudos rara vez aportan aqui).
+    application.add_error_handler(_log_error_ptb)
+
     application.add_handler(CommandHandler("start", auth(cmd_start)))
     application.add_handler(CommandHandler("help", auth(cmd_start)))
 
@@ -136,10 +175,17 @@ def main(argv: list[str] | None = None) -> int:
         backupCount=3,
         encoding="utf-8",
     )
+    # Filtro de conflictos a nivel handler: aplica a TODOS los registros
+    # (PTB loggea en "telegram.ext.Application", los filtros de logger
+    # raiz no los alcanzarian).
+    filtro_conflict = _FiltroConflict()
+    consola = logging.StreamHandler()
+    consola.addFilter(filtro_conflict)
+    file_handler.addFilter(filtro_conflict)
     logging.basicConfig(
         level=getattr(logging, config.log_level, logging.INFO),
         format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
-        handlers=[logging.StreamHandler(), file_handler],
+        handlers=[consola, file_handler],
     )
     # PTB spamea mucho por default; bajar a WARNING salvo el propio logger.
     logging.getLogger("httpx").setLevel(logging.WARNING)
