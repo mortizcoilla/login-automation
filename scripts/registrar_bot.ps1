@@ -24,13 +24,14 @@ if (-not (Test-Path $pythonw)) {
 switch ($Accion) {
 
     "instalar" {
-        # Al iniciar sesion + cada 5 min por si muere (StartWhenAvailable
-        # + MultipleInstances IgnoreNew evita duplicados).
+        # Patron "latido" (mismo del cron REQ-060): dispara cada 5 min;
+        # MultipleInstances IgnoreNew ignora el disparo si ya corre, y
+        # StartWhenAvailable lo reviva tras un reinicio del PC. Sin
+        # trigger AtLogOn a proposito: ese requiere permisos de admin.
         $action = New-ScheduledTaskAction -Execute $pythonw `
             -Argument "-m src.telegram_bot.app" `
             -WorkingDirectory $repo
-        $trigger = New-ScheduledTaskTrigger -AtLogOn
-        $repetir = New-ScheduledTaskTrigger -Once -At (Get-Date) `
+        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
             -RepetitionInterval (New-TimeSpan -Minutes 5) `
             -RepetitionDuration (New-TimeSpan -Days 3650)
         $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
@@ -38,8 +39,8 @@ switch ($Accion) {
             -MultipleInstances IgnoreNew `
             -ExecutionTimeLimit (New-TimeSpan -Days 3650)
         Register-ScheduledTask -TaskName $taskName -Action $action `
-            -Trigger $trigger, $repetir -Settings $settings -Force | Out-Null
-        Write-Host "Tarea '$taskName' creada (arranque al iniciar sesion + latido cada 5 min)."
+            -Trigger $trigger -Settings $settings -Force | Out-Null
+        Write-Host "Tarea '$taskName' creada (latido cada 5 min; revive el bot si muere)."
     }
 
     "arrancar" {
