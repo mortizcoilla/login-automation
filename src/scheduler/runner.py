@@ -25,13 +25,14 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 if __package__ in (None, ""):  # script directo: bootstrap para `from src...`
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from src.core.rutas import DATA_DIR, LOGS_DIR, ROOT
+from src.core.rutas import DATA_DIR, LOGS_DIR, ROOT, informe_mes_actual_path
+from src.scheduler import avisos
 from src.scheduler.calendario import (
     CalendarioError,
     EntradaHorario,
@@ -113,8 +114,9 @@ def _cadena(usuario: str) -> list[list[str]]:
     ]
 
 
-def ejecutar_cadena(usuario: str) -> bool:
-    """Corre los 5 pasos del usuario. True si todos terminan en 0.
+def ejecutar_cadena(usuario: str) -> int:
+    """Corre los 5 pasos del usuario. 0 si todos terminan en 0; si uno
+    falla, el numero de ese paso (semantica &&).
 
     La salida de los pasos va al log (la tarea corre con pythonw: no hay
     consola donde caer).
@@ -139,22 +141,53 @@ def ejecutar_cadena(usuario: str) -> bool:
                 f"[{usuario}] FALLO en paso {numero}/5 (codigo {resultado.returncode}). "
                 f"La cadena se detiene; reintento en el proximo disparo si hay cupo."
             )
-            return False
+            return numero
     _log(f"[{usuario}] cadena completa OK")
-    return True
+    return 0
+
+
+def _contar_pacientes_informe() -> int | None:
+    """Cuantos pacientes trae el informe del mes (para el aviso de inicio)."""
+    try:
+        from src.informes.parser import parsear_pacientes_objetivo
+
+        return len(parsear_pacientes_objetivo(informe_mes_actual_path()))
+    except Exception as e:  # el aviso no puede romper la cadena
+        _log(f"aviso inicio: no pude contar pacientes del informe: {e}")
+        return None
 
 
 def _correr_vencidas(
     vencidas_hoy: list[EntradaHorario], estado: dict[str, dict[str, object]]
 ) -> int:
-    """Corre cada entrada vencida. Devuelve codigo de salida."""
+    """Corre cada entrada vencida. Devuelve codigo de salida.
+
+    Paso 9 (REQ-076): aviso de inicio antes de la cadena y resumen de
+    cierre despues. Un fallo del aviso no afecta la corrida.
+    """
     fallidas = 0
+    n_pacientes = _contar_pacientes_informe()
     for entrada in vencidas_hoy:
         _marcar_intento(entrada.usuario, estado)
-        if ejecutar_cadena(entrada.usuario):
+        avisos.enviar(avisos.armar_mensaje_inicio(date.today(), n_pacientes))
+        paso_fallido = ejecutar_cadena(entrada.usuario)
+        if paso_fallido == 0:
             _marcar_ok(entrada.usuario, estado)
+            conteo = avisos.contar_fichas_del_log(LOG_PATH)
+            avisos.enviar(
+                avisos.armar_mensaje_fin(
+                    ok=True,
+                    fichas_ok=conteo[0] if conteo else None,
+                    paso_fallido=0,
+                )
+            )
         else:
             fallidas += 1
+            avisos.enviar(
+                avisos.armar_mensaje_fin(
+                    ok=False, fichas_ok=None, paso_fallido=paso_fallido
+                )
+            )
     return 1 if fallidas else 0
 
 
@@ -192,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
             _log(f"ERROR: '{usuario}' no esta en el calendario (conocidos: {', '.join(sorted(conocidos))})")
             return 2
         _marcar_intento(usuario, estado)
-        if ejecutar_cadena(usuario):
+        if ejecutar_cadena(usuario) == 0:
             _marcar_ok(usuario, estado)
             return 0
         return 1

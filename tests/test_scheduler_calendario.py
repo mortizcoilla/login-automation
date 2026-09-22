@@ -168,7 +168,7 @@ def runner_aislado(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
 
 
 def test_cadena_ok_corre_5_pasos(runner_aislado, tmp_path: Path) -> None:
-    assert runner.ejecutar_cadena("yadira") is True
+    assert runner.ejecutar_cadena("yadira") == 0
     assert len(runner_aislado) == 5
     assert runner_aislado[0] == ["-m", "src.analysis.actualizar_mes_actual", "yadira"]
     assert runner_aislado[2][-2:] == ["--user", "yadira"]
@@ -190,7 +190,7 @@ def test_cadena_con_fallo_se_detiene_en_el_primer_paso(
         return _Falla()
 
     monkeypatch.setattr(runner.subprocess, "run", _fake_run_fail)
-    assert runner.ejecutar_cadena("yadira") is False
+    assert runner.ejecutar_cadena("yadira") != 0
     assert len(llamadas) == 1  # corto en el paso 1, semantica &&
 
 

@@ -110,6 +110,12 @@ Convencion de fechas: dd-mm-yyyy.
 
 ---
 
+## 9. Paso 9 — avisos Telegram del cron (REQ-076)
+
+| ID | Requisito | Origen | Estado | Implementacion | Tests |
+|----|-----------|--------|--------|----------------|-------|
+| REQ-076 | El scheduler avisa a Yadira por Telegram al INICIO de la cadena diaria (mensaje jugueton que rota por dia de semana) y al FINAL con resumen corto ("Listo mama, X fichas procesadas y guardadas"); el conteo sale del resumen que Mortadelo escribe en scheduler.log. Envio por sendMessage directo (sin pasar por el bot en polling: sin conflicto de instancias). Chat destino: `TELEGRAM_CHAT_AVISOS` (default: ID personal de Yadira). Un fallo de aviso NUNCA afecta la cadena ni el exit code. | Yadira 22-09-2026 | VIGENTE | `src/scheduler/avisos.py` + wiring en `runner._correr_vencidas` | `test_scheduler_avisos.py` (11) |
+
 ## Reglas de mantenimiento de esta matriz
 
 0. Los diagramas de `docs/DIAGRAMAS.md` se actualizan en el mismo commit
