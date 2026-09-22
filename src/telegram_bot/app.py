@@ -30,6 +30,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from logging.handlers import RotatingFileHandler
 
 from telegram.ext import (
     Application,
@@ -38,6 +39,7 @@ from telegram.ext import (
     filters,
 )
 
+from src.core.rutas import LOGS_DIR
 from src.telegram_bot.config import BotConfig, ConfigurationError
 from src.telegram_bot.handlers.debug import register as register_debug_handler
 from src.telegram_bot.handlers.photo import cmd_archivar
@@ -124,9 +126,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[telegram_bot] {exc}", file=sys.stderr)
         return 2
 
+    # Log dual: consola (cuando hay) + archivo rotativo. El archivo es
+    # imprescindible cuando corre como tarea de Windows con pythonw (sin
+    # consola): es la unica forma de diagnosticar lo que llega.
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    file_handler = RotatingFileHandler(
+        LOGS_DIR / "telegram_bot.log",
+        maxBytes=2_000_000,
+        backupCount=3,
+        encoding="utf-8",
+    )
     logging.basicConfig(
         level=getattr(logging, config.log_level, logging.INFO),
         format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
+        handlers=[logging.StreamHandler(), file_handler],
     )
     # PTB spamea mucho por default; bajar a WARNING salvo el propio logger.
     logging.getLogger("httpx").setLevel(logging.WARNING)
