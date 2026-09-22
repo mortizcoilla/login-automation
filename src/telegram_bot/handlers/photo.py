@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 # - paciente: cualquier texto, no vacio
 # - fecha: opcional, formato dd-mm-yyyy al final
 ARCHIVAR_RE = re.compile(
-    r"^/\s*archivar\s+(?P<paciente>.+?)(?:\s+(?P<fecha>\d{2}-\d{2}-\d{4}))?\s*$",
+    r"^\s*/\s*archivar\s+(?P<paciente>.+?)(?:\s+(?P<fecha>\d{2}-\d{2}-\d{4}))?\s*$",
     re.IGNORECASE | re.DOTALL,
 )
 
