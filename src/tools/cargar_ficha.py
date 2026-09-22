@@ -313,6 +313,28 @@ def main() -> int:
         help="Directorio con los .md del paso 7 (default: data/fichas_generadas).",
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "NO abre Rayen. Solo verifica que existan los archivos del "
+            "paso 7 para los pacientes del modo elegido, simula el "
+            "resultado del pegado como 'pendiente_selector' (REQ-059) y "
+            "escribe la misma trazabilidad JSON. Util para probar el "
+            "CLI y la trazabilidad sin browser."
+        ),
+    )
+    parser.add_argument(
+        "--solo-apertura",
+        action="store_true",
+        help=(
+            "Hace login, abre la ficha del paciente y verifica que "
+            "aparezca el <div>Atencion actual</div> (limite del flujo "
+            "compartido con paso 3). NO intenta pegar. Util para "
+            "validar visualmente que el flujo llega al limite sin "
+            "tocar el editor de Rayen."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         type=str,
         default="INFO",
@@ -367,19 +389,111 @@ def main() -> int:
         )
         modo = "un_paciente"
 
-    # Login + iteracion
+    # Login + iteracion (salteado en --dry-run).
     driver = None
-    try:
-        driver = run_login(credentials, logger, headless=False)
-    except Exception as e:
-        logger.exception(f"[cargar_ficha] login fallo: {e}")
-        return 3
+    if not args.dry_run:
+        try:
+            driver = run_login(credentials, logger, headless=False)
+        except Exception as e:
+            logger.exception(f"[cargar_ficha] login fallo: {e}")
+            return 3
 
     resultados: list[ResultadoCarga] = []
     try:
-        resultados = iterar_pacientes(
-            driver, logger, pacientes, fichas_dir=args.fichas_dir
-        )
+        if args.dry_run:
+            logger.info("[cargar_ficha] DRY-RUN: sin Rayen, sin pegado real")
+            for p in pacientes:
+                path = _path_ficha_generada(p.nombre, p.fecha, args.fichas_dir)
+                texto = leer_ficha_generada(p.nombre, p.fecha, args.fichas_dir)
+                if texto is None:
+                    resultados.append(
+                        ResultadoCarga(
+                            nombre=p.nombre,
+                            fecha=p.fecha,
+                            estado="skip",
+                            motivo=f"sin insumo: {path.name}",
+                            timestamp=datetime.now().isoformat(timespec="seconds"),
+                        )
+                    )
+                else:
+                    resultados.append(
+                        ResultadoCarga(
+                            nombre=p.nombre,
+                            fecha=p.fecha,
+                            ficha_path=str(path),
+                            estado="pendiente_selector",
+                            motivo="dry-run: REQ-059 pendiente",
+                            tipo_editor="",
+                            caracteres_pegados=0,
+                            timestamp=datetime.now().isoformat(timespec="seconds"),
+                        )
+                    )
+        elif args.solo_apertura:
+            logger.info(
+                "[cargar_ficha] SOLO-APERTURA: login + abrir ficha hasta "
+                "<div>Atencion actual</div>; sin pegado"
+            )
+            for p in pacientes:
+                path = _path_ficha_generada(p.nombre, p.fecha, args.fichas_dir)
+                texto = leer_ficha_generada(p.nombre, p.fecha, args.fichas_dir)
+                if texto is None:
+                    resultados.append(
+                        ResultadoCarga(
+                            nombre=p.nombre,
+                            fecha=p.fecha,
+                            estado="skip",
+                            motivo=f"sin insumo: {path.name}",
+                            timestamp=datetime.now().isoformat(timespec="seconds"),
+                        )
+                    )
+                    continue
+                try:
+                    ok = abrir_ficha_por_nombre(driver, logger, p)
+                except Exception as e:
+                    resultados.append(
+                        ResultadoCarga(
+                            nombre=p.nombre,
+                            fecha=p.fecha,
+                            ficha_path=str(path),
+                            estado="error",
+                            motivo=f"apertura_ficha: {type(e).__name__}: {e}",
+                            timestamp=datetime.now().isoformat(timespec="seconds"),
+                        )
+                    )
+                    continue
+                if not ok:
+                    resultados.append(
+                        ResultadoCarga(
+                            nombre=p.nombre,
+                            fecha=p.fecha,
+                            ficha_path=str(path),
+                            estado="skip",
+                            motivo="paciente no encontrado en tabla del dia",
+                            timestamp=datetime.now().isoformat(timespec="seconds"),
+                        )
+                    )
+                    continue
+                estado = "panel_logrado" if p.panel_cargo else "panel_no_cargo"
+                motivo = (
+                    "limite del flujo compartido (<div>Atencion actual</div>) "
+                    "visible; paso 8 se detendria aqui sin pegar"
+                    if p.panel_cargo
+                    else "limite NO visible (panel no cargo en 60s)"
+                )
+                resultados.append(
+                    ResultadoCarga(
+                        nombre=p.nombre,
+                        fecha=p.fecha,
+                        ficha_path=str(path),
+                        estado=estado,
+                        motivo=motivo,
+                        timestamp=datetime.now().isoformat(timespec="seconds"),
+                    )
+                )
+        else:
+            resultados = iterar_pacientes(
+                driver, logger, pacientes, fichas_dir=args.fichas_dir
+            )
     finally:
         if driver is not None:
             with contextlib.suppress(Exception):
@@ -390,6 +504,7 @@ def main() -> int:
         "user": args.user,
         "informe": str(args.informe),
         "fichas_dir": str(args.fichas_dir),
+        "dry_run": args.dry_run,
     }
     path_traz = _escribir_trazabilidad(resultados, modo, args_extras)
     logger.info(f"[cargar_ficha] trazabilidad -> {path_traz}")
