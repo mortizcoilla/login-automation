@@ -119,5 +119,9 @@ data/plantillas/
 data/fichas_generadas/
 data/informes_trazabilidad/
 
+# Trazabilidad de carga en Rayen (paso 8 cargar_ficha). Local-only:
+# contiene nombre/fecha del paciente + estado del pegado.
+data/trazabilidad_carga/
+
 # Dependencias del proyecto opencode (CLI)
 .opencode/node_modules/

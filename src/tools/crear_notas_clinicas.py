@@ -63,23 +63,16 @@ from src.rayen.extraccion.estratificacion import (
 from src.rayen.extraccion.historial import (
     extraer_historial,
 )
-from src.rayen.extraccion.identificacion import _wait_visible, extraer_identificacion
+from src.rayen.extraccion.identificacion import extraer_identificacion
 from src.rayen.extraccion.plan import (
     _filtrar_receta_mas_reciente,
     _tipo_atencion_es_recetas,
     extraer_laboratorio,
     extraer_recetas,
 )
-from src.rayen.navegacion import (
-    select_date,
-    sort_by_estado,
-    volver_a_pacientes_citados,
-)
+from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
+from src.rayen.navegacion import volver_a_pacientes_citados
 from src.rayen.navegador import ensure_session_alive, run_login, safe_quit
-from src.rayen.tabla import (
-    _buscar_paciente_en_tabla,
-    _doble_click_en_paciente,
-)
 from src.tools.informe_tecnico import (
     PacienteInforme,
     WarningsCollector,
@@ -291,87 +284,10 @@ def re_extraer_bloque(
 
 
 # REQ-030: timeout panel 60s; sin carga -> placeholders + panel_cargo=false.
-def paso_4_1_abrir_ficha(
-    driver: WebDriver,
-    logger: logging.Logger,
-    paciente: PacienteObjetivo,
-) -> bool:
-    """Paso 4.1: filtra por fecha, busca al paciente por nombre, doble click.
-
-    Devuelve True si abrio la ficha, False si no encontro al paciente.
-    """
-    logger.info(
-        f"[crear_notas] 4.1 Paciente: {paciente.nombre} "
-        f"| fecha={paciente.fecha} | tipo={paciente.tipo_atencion}"
-    )
-
-    # 4.1.a: filtrar por fecha
-    select_date(driver, logger, fecha_str=paciente.fecha)
-    sort_by_estado(driver, logger)
-
-    # 4.1.b: buscar al paciente por nombre completo
-    resultado_busqueda = _buscar_paciente_en_tabla(driver, logger, paciente.nombre)
-    if resultado_busqueda is None:
-        logger.warning(
-            f"[crear_notas] No se encontro a '{paciente.nombre}' en la tabla del {paciente.fecha}"
-        )
-        return False
-    row, nombre_rayen = resultado_busqueda
-    # Si hubo match parcial, guardar el nombre real de Rayen como
-    # metadato para que Mortadelo pueda matchear despues.
-    if nombre_rayen is not None:
-        paciente.nombre_rayen = nombre_rayen
-
-    # 4.1.c: doble click en la fila para abrir la ficha
-    _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
-
-    # Esperar a que el panel del paciente se cargue. Senal inequivoca:
-    # la tabla de identificacion del paciente tiene <th> en <tbody>
-    # (par label:valor). La tabla de Pacientes citados tiene <th> solo
-    # en <thead>, asi que el xpath con [.//tbody/th] filtra
-    # especificamente la del paciente.
-    #
-    # Sesion 2026-09-09: timeout subido de 15s a 30s. Caso Ana Patricia
-    # Vivanco Munoz: el panel tarda >15s en cargar y el script
-    # seguia con extraccion sobre un panel vacio, generando una nota
-    # con placeholders "(no se pudo extraer...)". Con 30s cubrimos el
-    # percentil alto de paginas lentas de Rayen sin penalizar el caso
-    # normal (las paginas rapidas cargan en <5s).
-    panel_xpath = (
-        "//table[.//tbody/th] | "
-        "//li[@id='anamnesis'] | "
-        "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')] | "
-        # ECICEP-g3 a veces no tiene tabla de identificacion visible
-        # (la estratificacion carga primero). Esperar el card tambien.
-        "//*[contains(@class, 'stratification-card')]"
-    )
-    # Sesion 2026-09-16: 30s -> 60s para ECICEP-g3.
-    # IMPORTANTE: NO hacer retry del doble-click aqui. El primer click
-    # ya nos llevo a la ficha del paciente. Si el panel no cargo,
-    # un segundo click no ayuda (la fila ya esta stale y ademas
-    # get_pacientes_del_dia espera 15s por div.rt-tr-group que ya
-    # no existe -> TimeoutException). Mejor: 1 sola espera de 60s,
-    # si falla -> placeholder, navegar manualmente al siguiente.
-    panel_timeout = 60
-    panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
-
-    if panel is None:
-        # Panel no cargo en 60s. NO re-clickamos. Marcamos el flag y
-        # dejamos que la extraccion proceda (devuelve vacios). La nota
-        # se guarda con placeholders + flag REVISION.
-        logger.warning(
-            f"[crear_notas] Panel no aparecio en {panel_timeout}s. "
-            f"Extraccion procedera sobre lo que haya; "
-            f"guardar_nota_clinica() escribira placeholder con flag REVISION."
-        )
-        paciente.panel_cargo = False
-    else:
-        logger.info(f"[crear_notas] Panel del paciente cargado ({panel.tag_name})")
-
-    logger.info(
-        f"[crear_notas] Ficha abierta para {paciente.nombre} (URL actual: {driver.current_url})"
-    )
-    return True
+# Sesion 2026-09-21 (paso 8): la apertura de ficha se extrae a
+# `src.rayen.flujos.apertura_ficha.aprir_ficha_por_nombre()` para
+# compartirla con el paso 8 (cargar_ficha). Paso 3 sigue siendo el
+# caller principal; el contrato del flujo no cambia.
 
 
 # ---- Iterador principal (paso 4.6: sigue con el siguiente) ----
@@ -545,8 +461,9 @@ def main() -> int:
                 fecha=paciente.fecha,
             )
             try:
-                # Paso 4.1
-                ok = paso_4_1_abrir_ficha(driver, logger, paciente)
+                # Paso 4.1 (flujo compartido con paso 8; ver
+                # `src.rayen.flujos.apertura_ficha`).
+                ok = abrir_ficha_por_nombre(driver, logger, paciente)
                 if not ok:
                     logger.warning(
                         f"[crear_notas] No se encontro a {paciente.nombre} en la tabla. Saltando."

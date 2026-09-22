@@ -4,8 +4,9 @@ Referencia visual del proyecto. Fuente de verdad de reglas:
 `docs/REQUISITOS.md`. Este archivo se ACTUALIZA EN CADA CAMBIO de flujo,
 estructura o comando (ver "Regla de mantenimiento" al final).
 
-Ultima actualizacion: 2026-09-18 (refactorizacion + paso 7 Mortadelo
-implementado en el pipeline: cadena 4->5->3->6->7).
+Ultima actualizacion: 2026-09-21 (paso 8 cargar_ficha como opt-in
+independiente; limite del flujo compartido paso 3/paso 8 en
+`<div>Atencion actual</div>`).
 
 ---
 
@@ -82,9 +83,40 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
    data/fichas_generadas/ficha_<pac>_<fecha>.md          (producto 1)
    data/informes_trazabilidad/informe_trazabilidad_*.md (producto 2)
                              |
+                             |  (opt-in independiente, paso 8)
                              v
-                     Yadira revisa y supervisa
++---------------------------------------------------------------+
+| (8) python -m src.tools.cargar_ficha --todos / --paciente...  |
+|     Lee data/fichas_generadas/ficha_<pac>_<fecha>.md (paso 7) |
+|     Login Rayen -> box -> Pacientes citados -> filtrar fecha   |
+|     -> buscar nombre -> doble click -> abre ficha             |
+|     (flujo compartido con paso 3 via src/rayen/flujos/        |
+|     apertura_ficha.py; limite: <div>Atencion actual</div>)     |
+|     Detecta editor interno de Rayen -> pega el contenido      |
+|     NO auto-envia: Yadira revisa y aprieta Guardar ella misma  |
++----------------------------+---------------------------------+
+                             v
+   data/trazabilidad_carga/carga_<ts>.json  (carga por paciente)
+                             |
+                             v
+                     Yadira revisa y guarda
 ```
+
+## 4. Regla del limite compartido paso 3 vs paso 8
+
+Ambos flujos comparten la apertura de ficha (login, box, Pacientes
+citados, filtrar fecha, doble click sobre el nombre). El limite del
+flujo compartido es:
+
+    <li class="verticalnav-tab verticalnav-tab-active">
+      <div>Atencion actual</div>
+    </li>
+
+A partir de ese punto:
+- **Paso 3** hace click en "Atencion actual" y entra al panel de
+  evaluacion para extraer motivo/anamnesis/etc.
+- **Paso 8** NO hace click: pega el contenido de la ficha generada
+  en el editor asociado y se detiene.
 
 ## 2. El flujo opt-in de examenes (por paciente, cuando hay fotos)
 

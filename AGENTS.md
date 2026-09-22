@@ -27,7 +27,17 @@ python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.in
 4. (paso 6) Anita enriquece el informe (motivo, edad, Examenes,
    Interconsulta, Indicaciones)
 5. (paso 7) Mortadelo genera ficha completa + informe de trazabilidad
-   -> data/fichas_generadas/ y data/informes_trazabilidad/ (REQ-054..058)
+   -> data/fichas_generadas/ y data/informes_trazabilidad/
+
+**Opt-in independiente** (Yadira lo invoca cuando quiere, REQ-054):
+- (paso 8) `python -m src.tools.cargar_ficha --paciente "..." --fecha dd-mm-yyyy`
+  o `--todos`: pega la ficha generada (paso 7) en el editor interno de
+  Rayen. Comparte el flujo de apertura de ficha con paso 3
+  (`src/rayen/flujos/apertura_ficha.py`) hasta el
+  `<div>Atencion actual</div>`; a partir de ahi, paso 8 NO hace click
+  (no entra al panel de evaluacion), pega el contenido y se detiene.
+  Yadira revisa y aprieta Guardar ella misma. Trazabilidad en
+  `data/trazabilidad_carga/carga_<ts>.json`.
 
 **Opt-in por paciente** (solo cuando Yadira envia examenes por Telegram):
 - (paso 1) Yadira manda fotos.
@@ -59,6 +69,8 @@ python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.in
 src/
   core/            kernel compartido: fechas, nombres, tipos_atencion, rutas
   rayen/           capa Selenium: navegador, navegacion, tabla,
+                   flujos/ (apertura_ficha; compartido paso 3 y paso 8),
+                   escritura/ (editor_anamnesis; paso 8 unico),
                    extraccion/ (identificacion, historial, atencion_actual,
                    diagnosticos, plan, estratificacion)
   notas/           escritura de documentos: modelos, nota_clinica,
@@ -68,14 +80,15 @@ src/
   examenes/        paso 2b: vision_api.py (z.ai), consolidar.py
   analysis/        CLIs finos (paths estables): actualizar_mes_actual,
                    informe_fichas_abiertas, enriquecer_informe
-  tools/           CLIs: crear_notas_clinicas, recibir_foto_examen,
-                   consolidar_examenes, informe_tecnico
+  tools/           CLIs: crear_notas_clinicas, cargar_ficha,
+                   recibir_foto_examen, consolidar_examenes, informe_tecnico
   pancho_skills/   capa skills sobre rayen/
-  queue_store.py + anita/  subsistema de aprobaciones (futuro paso 7)
+  queue_store.py + anita/  subsistema de aprobaciones (futuro flujo
+                            de aprobaciones Telegram)
 docs/REQUISITOS.md  matriz de trazabilidad REQ <-> codigo <-> tests
 ```
 
-Detalles y reglas por requisito: `docs/REQUISITOS.md` (REQ-001..053).
+Detalles y reglas por requisito: `docs/REQUISITOS.md` (REQ-001..058).
 Referencia inmutable de comportamiento:
 `C:\Workspace\Login-Automation_BACKUP_2026-09-18\` (solo lectura).
 
@@ -122,6 +135,11 @@ python -m src.analysis.informe_fichas_abiertas
 
 # Paso 6: Anita enriquece el informe
 python -m src.analysis.enriquecer_informe
+
+# Paso 8: Yadira carga la ficha generada en Rayen (opt-in independiente)
+python -m src.tools.cargar_ficha --paciente "Nombre Apellido" --fecha dd-mm-yyyy
+# o batch desde el informe del mes en curso:
+python -m src.tools.cargar_ficha --todos
 ```
 
 ---

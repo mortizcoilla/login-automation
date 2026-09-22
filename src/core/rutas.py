@@ -20,6 +20,12 @@ EXAMENES_CRUDOS_DIR = DATA_DIR / "examenes_crudos"
 EXAMENES_DIR = DATA_DIR / "examenes"
 ADJUNTOS_DIR = DATA_DIR / "adjuntos"
 ANALISIS_DIR = DATA_DIR / "analysis"
+# Sesion 2026-09-21 (paso 8 / cargar_ficha): salida del paso 7
+# (Mortadelo), fuente del pegado en Rayen.
+FICHAS_GENERADAS_DIR = DATA_DIR / "fichas_generadas"
+# Trazabilidad de la carga en Rayen (paso 8): un .json por corrida con
+# que pacientes se procesaron, que se pego y que se salto.
+TRAZABILIDAD_CARGA_DIR = DATA_DIR / "trazabilidad_carga"
 LOGS_DIR = ROOT / "logs"
 SCREENSHOTS_DIR = DATA_DIR / "logs" / "screenshots"
 
