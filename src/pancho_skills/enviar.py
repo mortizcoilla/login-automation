@@ -36,12 +36,14 @@ class ResultadoEnvio:
     estado: str  # "ENVIADO" cuando esté implementado
 
 
-_DB_PATH_DEFAULT = "data/queue.db"
+# REQ-059: la DB de la cola sigue a DATA_DIR (configurable en .env).
+from src.core.rutas import DATA_DIR
 
 
 def _get_db_path() -> str:
-    """Permite override por env var para tests; default apunta a la DB real."""
-    return os.environ.get("LOGIN_AUTOMATION_DB", _DB_PATH_DEFAULT)
+    """Permite override por env var para tests; default sigue a DATA_DIR."""
+    override = os.environ.get("LOGIN_AUTOMATION_DB", "").strip()
+    return override or str(DATA_DIR / "queue.db")
 
 
 def enviar_ficha(

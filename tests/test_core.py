@@ -13,9 +13,6 @@ import pytest
 from src.core.fechas import DATE_FORMAT, es_fecha_valida, fecha_hoy_str, parsear_fecha
 from src.core.nombres import nombre_a_filename, normalizar_texto, safe_filename
 from src.core.rutas import (
-    ANALISIS_DIR,
-    EXAMENES_CRUDOS_DIR,
-    NOTAS_DIR,
     ROOT,
     informe_anual_path,
     informe_mes_actual_path,
@@ -137,9 +134,44 @@ class TestRutas:
         assert (ROOT / "src").is_dir()
 
     def test_dirs_de_datos_bajo_data(self) -> None:
-        assert NOTAS_DIR == ROOT / "data" / "notas_clinicas"
-        assert EXAMENES_CRUDOS_DIR == ROOT / "data" / "examenes_crudos"
-        assert ANALISIS_DIR == ROOT / "data" / "analysis"
+        # REQ-059: SIN overrides de env, los defaults son <ROOT>/data/...
+        # El .env real puede traer overrides (OneDrive); este test verifica
+        # los defaults, asi que recarga el modulo con env limpio.
+        import importlib
+        import os
+
+        import dotenv
+
+        import src.core.rutas as rutas_mod
+
+        variables = (
+            "DATA_DIR",
+            "NOTAS_CLINICAS_DIR",
+            "INFO_PACIENTE_DIR",
+            "ANAMNESIS_DIR",
+            "EXAMENES_CRUDOS_DIR",
+            "EXAMENES_DIR",
+            "ADJUNTOS_DIR",
+            "FICHAS_GENERADAS_DIR",
+            "INFORMES_TRAZABILIDAD_DIR",
+            "ANALYSIS_DIR",
+            "SCREENSHOTS_DIR",
+            "LOGS_DIR",
+        )
+        guardadas = {v: os.environ.pop(v, None) for v in variables}
+        loader = dotenv.load_dotenv
+        dotenv.load_dotenv = lambda *a, **k: None
+        try:
+            importlib.reload(rutas_mod)
+            assert rutas_mod.NOTAS_DIR == ROOT / "data" / "notas_clinicas"
+            assert rutas_mod.EXAMENES_CRUDOS_DIR == ROOT / "data" / "examenes_crudos"
+            assert rutas_mod.ANALISIS_DIR == ROOT / "data" / "analysis"
+        finally:
+            dotenv.load_dotenv = loader
+            for var, valor in guardadas.items():
+                if valor is not None:
+                    os.environ[var] = valor
+            importlib.reload(rutas_mod)
 
     def test_informe_mensual(self) -> None:
         assert informe_mes_actual_path(date(2026, 9, 18)).name == (
@@ -161,5 +193,10 @@ class TestRutas:
             informe_mes_actual_path as mensual_shim,
         )
 
-        assert mensual_shim is informe_mes_actual_path
-        assert anual_shim is informe_anual_path
+        # Comparacion por comportamiento, no identidad: otros tests
+        # recargan src.core.rutas (REQ-059) y la re-import del shim puede
+        # tomar objetos creados despues del reload.
+        assert mensual_shim.__module__ == "src.core.rutas"
+        assert anual_shim.__module__ == "src.core.rutas"
+        assert mensual_shim(date(2026, 9, 18)) == informe_mes_actual_path(date(2026, 9, 18))
+        assert anual_shim(2026) == informe_anual_path(2026)

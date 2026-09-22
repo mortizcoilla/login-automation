@@ -29,7 +29,12 @@ from src.core.rutas import (
     EXAMENES_DIR,
     INFO_PACIENTE_DIR,
     NOTAS_DIR,
-    ROOT,
+)
+from src.core.rutas import (
+    FICHAS_GENERADAS_DIR as FICHAS_DIR,
+)
+from src.core.rutas import (
+    INFORMES_TRAZABILIDAD_DIR as INFORMES_DIR,
 )
 from src.informes.enriquecer import KEYWORDS_REQUERIMIENTOS, TRIGGER_RE
 from src.informes.parser import parsear_pacientes_objetivo
@@ -37,9 +42,6 @@ from src.mortadelo.ensamblador import ensamblar_ficha
 from src.mortadelo.llm_cli import LLMError, llm_run
 from src.mortadelo.prompt import Pedidos, construir_prompt_ficha, construir_prompt_informe
 from src.mortadelo.validacion import validar_ficha, validar_informe
-
-FICHAS_DIR = ROOT / "data" / "fichas_generadas"
-INFORMES_DIR = ROOT / "data" / "informes_trazabilidad"
 
 _ESPECIALIDAD_RE = re.compile(r"interconsulta(?:\s+a|\s+de)?\s+([a-záéíóúñ]+)", re.IGNORECASE)
 
