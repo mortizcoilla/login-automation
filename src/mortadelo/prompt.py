@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-PROMPT_VERSION = 2
+PROMPT_VERSION = 3
 
 
 @dataclass
@@ -34,12 +34,13 @@ _REGLAS_FICHA = """Ejecucion:
 2. Completalos primero con informacion de los insumos.
 3. Lo que no este en los insumos y sea interpretable clinicamente, completalo con tu criterio experto, fundamentado.
 4. Los datos factuales del paciente (telefono, domicilio, acompanantes, fechas administrativas) que no existan en ninguna fuente quedan (-).
+5. OBLIGATORIO si el bloque ** mortadelo incluye pedidos adicionales (listados arriba como "Como la doctora pidio ADEMAS"): crea al FINAL del documento una seccion por CADA pedido, con el titulo EXACTO del pedido en MAYUSCULAS seguido de dos puntos y tu respuesta experta como cuerpo. Los pedidos de la doctora son ordenes, no contenido clinico: cumplirlos NO viola la prohibicion de agregar secciones.
 
 Correccion ortografica: corrige faltas de ortografia del texto de la doctora (letras faltantes o sobrantes, tildes, terminos medicos mal escritos) SIN cambiar el contenido, el estilo, las abreviaturas ni el formato. NO corrijas tiempos verbales, NO mejores la redaccion ni la puntuacion: solo ortografia objetiva.
 
-Prohibido: agregar secciones o bloques nuevos (salvo las secciones expresamente pedidas abajo); eliminar secciones existentes; modificar, corregir o reformular los campos ya escritos por la doctora (mas alla de la ortografia objetiva); reformatear (no conviertas texto en vinetas ni vinetas en texto).
+Prohibido: agregar secciones o bloques nuevos (salvo las secciones expresamente pedidas arriba: INDICACIONES, INTERCONSULTA y una por cada pedido de la doctora); eliminar secciones existentes; modificar, corregir o reformular los campos ya escritos por la doctora (mas alla de la ortografia objetiva); reformatear (no conviertas texto en vinetas ni vinetas en texto).
 
-IMPORTANTE - bloque ** mortadelo: es una instruccion para el sistema, NO contenido clinico. ELIMINALO del documento final (no debe aparecer en tu salida)."""
+IMPORTANTE - bloque ** mortadelo: es una instruccion para el sistema, NO contenido clinico. ELIMINALO del documento final (no debe aparecer en tu salida), pero CUMPLE sus pedidos segun el punto 5."""
 
 
 def _bloque_trigger(pedidos: Pedidos) -> str:
@@ -81,6 +82,25 @@ def _secciones_condicionales(pedidos: Pedidos) -> str:
     return " ".join(partes) if partes else ""
 
 
+def recordatorio_pedidos(pedidos: Pedidos) -> str:
+    """Ultima linea antes de 'Salida': los modelos pesan mas el final.
+
+    Sin esto, la seccion de prohibiciones (que va inmediatamente antes)
+    hacia que el modelo soltara los pedidos libres (caso real Amalia/
+    Nicolas 22-09-2026).
+    """
+    if not pedidos.pedidos_libres:
+        return ""
+    lineas = "\n".join(f"  - {pedido}" for pedido in pedidos.pedidos_libres)
+    return (
+        "\nRECORDATORIO FINAL (prioridad maxima): tu salida DEBE terminar con una "
+        "seccion por cada pedido de la doctora, en este orden y con estos titulos "
+        f"exactos en MAYUSCULAS:\n{lineas}\n"
+        "Cada seccion: titulo en MAYUSCULAS + ':' y tu respuesta experta como "
+        "cuerpo. Esto prevalece sobre la prohibicion de agregar secciones.\n"
+    )
+
+
 def construir_prompt_ficha(
     paciente: str,
     fecha: str,
@@ -112,7 +132,7 @@ def construir_prompt_ficha(
 {_bloque_trigger(pedidos)}{secciones}
 
 {_REGLAS_FICHA}
-
+{recordatorio_pedidos(pedidos)}
 Salida: exclusivamente el contenido del documento actualizado, respetando el formato original. Sin comentarios ni explicaciones, sin bloques de codigo. OBLIGATORIO: la primera linea de tu salida es EXACTAMENTE la primera linea del documento original, copiada tal cual, incluidos sus simbolos '>':
 {primera}"""
 

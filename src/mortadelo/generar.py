@@ -167,6 +167,7 @@ def generar_paciente(
         salida_llm,
         pedir_indicaciones=pedidos.indicaciones,
         especialidad_interconsulta=pedidos.interconsulta_especialidad,
+        pedidos_libres=pedidos.pedidos_libres,
     )
     for adv in validar_ficha(ensamblada.texto, base, info):
         resultado.advertencias.append(f"{adv.codigo}: {adv.mensaje}")

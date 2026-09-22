@@ -366,7 +366,7 @@ class TestPrompts:
         from src.mortadelo.prompt import Pedidos
 
         sin_pedidos = construir_prompt_ficha("P", "10-09-2026", BASE, "I", None, Pedidos())
-        assert "INDICACIONES" not in sin_pedidos
+        assert "Como la doctora pidio INDICACIONES" not in sin_pedidos
         con = construir_prompt_ficha(
             "P",
             "10-09-2026",
@@ -446,3 +446,56 @@ def test_prompt_informe_menciona_pedidos_libres() -> None:
 def test_sin_pedidos_libres_prompt_sin_cambios() -> None:
     prompt = construir_prompt_ficha("X", "22-09-2026", "base", "info", None, Pedidos())
     assert "una seccion por cada pedido" not in prompt
+
+
+def test_ensamblador_agrega_secciones_de_pedidos_libres() -> None:
+    """REQ-077: el ensamblador ya NO descarta las secciones libres."""
+    from src.mortadelo.ensamblador import ensamblar_ficha
+
+    base = "anamnesis\nCampo: (-)\n** mortadelo\n- Dame sugerencias para la psicologa"
+    salida = (
+        "anamnesis\nCampo: llenado experto\n"
+        "DAME SUGERENCIAS PARA LA PSICOLOGA:\n"
+        "- Trabajo de adherencia con encuadre claro\n"
+        "- Coordinar derivacion a psiquiatria infantil\n"
+    )
+    r = ensamblar_ficha(base, salida, pedidos_libres=["Dame sugerencias para la psicologa"])
+    assert "DAME SUGERENCIAS PARA LA PSICOLOGA:" in r.texto
+    assert "Trabajo de adherencia" in r.texto
+    assert "Dame sugerencias para la psicologa".upper() in r.secciones_agregadas[0].upper()
+    assert "** mortadelo" not in r.texto
+
+
+def test_ensamblador_sin_respuesta_del_llm_no_inventa() -> None:
+    from src.mortadelo.ensamblador import ensamblar_ficha
+
+    base = "anamnesis\n** mortadelo\n- Dame sugerencias para la psicologa"
+    salida = "anamnesis"
+    r = ensamblar_ficha(base, salida, pedidos_libres=["Dame sugerencias para la psicologa"])
+    assert "DAME SUGERENCIAS" not in r.texto
+
+
+def test_ensamblador_indicaciones_siguieren_funcionando() -> None:
+    from src.mortadelo.ensamblador import ensamblar_ficha
+
+    base = "anamnesis\n** mortadelo\n- dar indicaciones"
+    salida = "anamnesis\nINDICACIONES:\n- Paracetamol sos"
+    r = ensamblar_ficha(base, salida, pedir_indicaciones=True)
+    assert "INDICACIONES:" in r.texto
+    assert "Paracetamol" in r.texto
+
+
+def test_ensamblador_no_duplica_seccion_libre_repetida() -> None:
+    """Algunos modelos emiten la seccion dos veces: queda una sola."""
+    from src.mortadelo.ensamblador import ensamblar_ficha
+
+    base = "anamnesis\n** mortadelo\n- Dame sugerencias de como cerrar el GES"
+    salida = (
+        "anamnesis\n"
+        "DAME SUGERENCIAS DE COMO CERRAR EL GES:\n- primera version\n"
+        "DAME SUGERENCIAS DE COMO CERRAR EL GES:\n- segunda version\n"
+    )
+    r = ensamblar_ficha(
+        base, salida, pedidos_libres=["Dame sugerencias de como cerrar el GES"]
+    )
+    assert r.texto.count("DAME SUGERENCIAS DE COMO CERRAR EL GES:") == 1
