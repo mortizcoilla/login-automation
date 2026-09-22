@@ -1,48 +1,42 @@
-"""Pegado de la ficha generada (paso 7) en el editor interno de Rayen.
+"""Pegado de la ficha generada (paso 7) en el editor de anamnesis de Rayen.
 
-Sesion 2026-09-21 (paso 8 / cargar_ficha): esta capa es la primera del
-proyecto que ESCRIBE en Rayen (todos los `src.rayen.extraccion.*` solo
-leen). Por lo tanto, los selectores y la mecanica del pegado son
-NUEVOS y dependen del UI concreto de Rayen que Yadira nos indique.
+Selectores REALES, entregados por Yadira (sesion 2026-09-22, ejemplo
+Rosa Davila Luengo 22-09-2026):
 
-Estado actual: stub. La funcion publica `pegar_en_editor()` detecta el
-tipo de editor y delega a un pegador especifico. Los pegadores
-especificos estan todos en `NotImplementedError` con un mensaje claro
-de que Yadira debe entregar el selector.
+1. En la ficha abierta (limite: <div>Atencion actual</div> activo), el
+   item de anamnesis es <li id="anamnesis" ...> y su boton de edicion
+   es el lapiz: <button id="anamnesis-edit-<id>" aria-label="Modificar">.
+2. El click abre el editor lateral con DOS textareas:
+   - #motivoConsulta (maxlength 500): NO lo tocamos, Yadira lo escribe.
+   - #historiaEnfermedad: LA ANAMNESIS. Ahi se pega la ficha generada
+     (reemplaza todo el texto previo).
+3. Guardar es el boton .add-header-button ("Guardar"). REGLA DURA
+   (REQ-073): este modulo NUNCA lo toca. Yadira revisa y guarda ella.
 
-Regla dura del proyecto (mantener en cualquier implementacion futura):
-- NUNCA auto-enviar. La aprobacion humana es de Yadira: el script
-  pega el texto y se detiene; Yadira revisa visualmente y aprieta
-  Guardar ella misma.
-
-Convencion de retorno:
-- `ResultadoPegado.ok = True`  -> el texto quedo en el campo del editor.
-- `ResultadoPegado.ok = False` -> fallo (selector no encontrado, etc.).
-  `motivo` tiene detalle para que `cargar_ficha.main()` lo registre en
-  la trazabilidad.
+Regla dura del proyecto (REQ-001): el texto pegado es la ficha que
+construimos; no se interpreta ni se completa nada aqui.
 """
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.ui import WebDriverWait
 
 
 class TipoEditor(Enum):
-    """Tipo de editor que Rayen esta mostrando para el campo de anamnesis."""
+    """Tipo de editor detectado. Hoy Rayen usa el editor de textareas."""
 
     DESCONOCIDO = "desconocido"
-    TEXTAREA = "textarea"  # <textarea name=...>
-    CONTENTEDITABLE = "contenteditable"  # <div contenteditable="true">
-    CKEDITOR = "ckeditor"  # iframe + CKEditor (versiones viejas)
-    TINYMCE = "tinymce"  # iframe + TinyMCE
-    NINGUNO = "ninguno"  # no se encontro campo de anamnesis
+    TEXTAREA = "textarea"  # #historiaEnfermedad / #motivoConsulta
+    NINGUNO = "ninguno"
 
 
 @dataclass
@@ -55,144 +49,64 @@ class ResultadoPegado:
     caracteres_pegados: int = 0
 
 
-# Selectores candidatos para el campo donde se escribe la anamnesis /
-# atencion. Sesion 2026-09-21 con Yadira: el limite del flujo
-# compartido es el <div>Atencion actual</div>; el editor donde se pega
-# la ficha generada esta ASOCIADO a ese div (es el campo de evolucion
-# / atencion actual que Yadira usa para escribir la nota del dia).
-#
-# El orden refleja la probabilidad:
-# 1. Textarea hermano del <div>Atencion actual</div> (caso normal).
-# 2. ContentEditable hermano del div.
-# 3. Textarea plano (caso fallback, versiones viejas).
-# 4. CKEditor / TinyMCE (versiones legacy con iframe).
-#
-# Cuando Yadira entregue el selector exacto, este listado se reduce al
-# caso real y los demas quedan como fallback comentado.
-_SELECTORES_CANDIDATOS: list[tuple[TipoEditor, tuple[str, str]]] = [
-    # Caso normal (sesion 2026-09-21): el campo es hermano/adyacente al
-    # <div>Atencion actual</div>. Probamos varias relaciones DOM.
-    (
-        TipoEditor.TEXTAREA,
-        (
-            "xpath",
-            # textarea inmediatamente siguiente al div "Atencion actual".
-            "//div[normalize-space()='Atencion actual']/following::textarea[1]",
-        ),
-    ),
-    (
-        TipoEditor.CONTENTEDITABLE,
-        (
-            "xpath",
-            # contenteditable inmediatamente siguiente al div "Atencion actual".
-            "//div[normalize-space()='Atencion actual']/following::*[@contenteditable='true'][1]",
-        ),
-    ),
-    (
-        TipoEditor.TEXTAREA,
-        (
-            "xpath",
-            # textarea hijo del contenedor padre del div.
-            "//div[normalize-space()='Atencion actual']/ancestor::*[1]//textarea[1]",
-        ),
-    ),
-    # Fallbacks por si la UI cambia o hay versiones viejas.
-    (TipoEditor.TEXTAREA, ("css", "textarea#anamnesis")),
-    (TipoEditor.TEXTAREA, ("css", "textarea[name='anamnesis']")),
-    (TipoEditor.TEXTAREA, ("css", "textarea[name*='anamnesis' i]")),
-    (TipoEditor.CONTENTEDITABLE, ("css", "div[contenteditable='true']")),
-    (TipoEditor.CKEDITOR, ("css", "iframe.cke_wysiwyg_frame")),
-    (TipoEditor.TINYMCE, ("css", "iframe#mce_0_ifr")),
-]
+# El lapiz de la anamnesis: el id lleva sufijo numerico variable
+# (anamnesis-edit-13094892), por eso el prefijo.
+_LAPIZ_SELECTOR = (
+    By.CSS_SELECTOR,
+    "li#anamnesis button[id^='anamnesis-edit-']",
+)
+# Fallback por aria-label (el tooltip "Modificar"), por si el prefijo
+# del id cambia en alguna version de Rayen.
+_LAPIZ_ARIA = (
+    By.XPATH,
+    "//li[@id='anamnesis']//button[@aria-label='Modificar']",
+)
+_HISTORIA_SELECTOR = (By.CSS_SELECTOR, "textarea#historiaEnfermedad")
+_EDITOR_TIMEOUT_S = 15
+
+# Set + eventos: reemplaza TODO el texto (corrar y pegar) y dispara
+# input/change para que el UI de Rayen reaccione (auto-height, contador).
+_JS_PEGAR = """
+const el = arguments[0], texto = arguments[1];
+el.focus();
+el.value = texto;
+el.dispatchEvent(new Event('input', {bubbles: true}));
+el.dispatchEvent(new Event('change', {bubbles: true}));
+return el.value.length;
+"""
 
 
-def _by_string(by_str: str):
-    """Resuelve el By de Selenium a partir de su nombre."""
-    from selenium.webdriver.common.by import By
+def abrir_editor_anamnesis(
+    driver: WebDriver, logger: logging.Logger, timeout: int = _EDITOR_TIMEOUT_S
+) -> WebElement | None:
+    """Abre el editor de anamnesis (click en el lapiz) y devuelve el
+    textarea de historia. None si el lapiz o el editor no aparecen.
 
-    return {
-        "id": By.ID,
-        "css": By.CSS_SELECTOR,
-        "xpath": By.XPATH,
-        "name": By.NAME,
-        "class": By.CLASS_NAME,
-    }[by_str]
-
-
-def detectar_tipo_editor(driver: WebDriver, logger: logging.Logger) -> TipoEditor:
-    """Inspecciona el DOM y devuelve el primer tipo de editor que matchee.
-
-    No levanta excepciones: si ninguno matchea devuelve `NINGUNO`.
+    NO modifica nada: solo abre el editor.
     """
-    for tipo, (by_str, value) in _SELECTORES_CANDIDATOS:
-        by = _by_string(by_str)
+    wait = WebDriverWait(driver, timeout)
+    try:
+        lapiz = wait.until(
+            EC.element_to_be_clickable(_LAPIZ_SELECTOR)
+        )
+    except TimeoutException:
         try:
-            elements = driver.find_elements(by, value)
-        except Exception as e:
-            logger.debug(f"[editor_anamnesis] detectar_tipo_editor: error con {by_str}={value}: {e}")
-            continue
-        if elements:
-            logger.info(f"[editor_anamnesis] editor detectado: {tipo.value} ({by_str}={value})")
-            return tipo
-    logger.warning("[editor_anamnesis] no se detecto ningun editor candidato")
-    return TipoEditor.NINGUNO
+            lapiz = wait.until(EC.element_to_be_clickable(_LAPIZ_ARIA))
+        except TimeoutException:
+            logger.warning("[editor_anamnesis] lapiz de anamnesis no aparecio")
+            return None
+    try:
+        lapiz.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", lapiz)
 
-
-def pegar_en_textarea(driver: WebDriver, texto: str, logger: logging.Logger) -> ResultadoPegado:
-    """Stub: pega en un <textarea> plano.
-
-    PENDIENTE de selector concreto. Yadira debe entregar el selector
-    exacto del campo de anamnesis en Rayen (id, name o css path).
-    Mientras tanto, este stub lanza NotImplementedError explicito para
-    que `cargar_ficha.main()` lo registre en trazabilidad.
-    """
-    raise NotImplementedError(
-        "pegar_en_textarea: pendiente selector del campo de anamnesis en Rayen. "
-        "Yadira debe confirmar el id/name/css del <textarea> donde escribe la evolucion."
-    )
-
-
-def pegar_en_contenteditable(driver: WebDriver, texto: str, logger: logging.Logger) -> ResultadoPegado:
-    """Stub: pega en un <div contenteditable>.
-
-    PENDIENTE de selector concreto.
-    """
-    raise NotImplementedError(
-        "pegar_en_contenteditable: pendiente selector del campo de anamnesis en Rayen. "
-        "Yadira debe confirmar el css path del <div contenteditable>."
-    )
-
-
-def pegar_en_ckeditor(driver: WebDriver, texto: str, logger: logging.Logger) -> ResultadoPegado:
-    """Stub: pega en el iframe de CKEditor.
-
-    PENDIENTE de selector concreto.
-    """
-    raise NotImplementedError(
-        "pegar_en_ckeditor: pendiente selector del iframe + cuerpo del CKEditor."
-    )
-
-
-def pegar_en_tinymce(driver: WebDriver, texto: str, logger: logging.Logger) -> ResultadoPegado:
-    """Stub: pega en el iframe de TinyMCE.
-
-    PENDIENTE de selector concreto.
-    """
-    raise NotImplementedError(
-        "pegar_en_tinymce: pendiente selector del iframe + cuerpo de TinyMCE."
-    )
-
-
-# Mapeo tipo -> nombre del pegador. Resolucion por `globals()` para
-# que los tests puedan parchear `pegar_en_textarea` y otros (si
-# guardasemos la referencia en el dict, el patch no surtiria efecto
-# porque la referencia se captura al importar el modulo).
-_PEGADORES_POR_NOMBRE: dict[TipoEditor, str] = {
-    TipoEditor.TEXTAREA: "pegar_en_textarea",
-    TipoEditor.CONTENTEDITABLE: "pegar_en_contenteditable",
-    TipoEditor.CKEDITOR: "pegar_en_ckeditor",
-    TipoEditor.TINYMCE: "pegar_en_tinymce",
-}
+    try:
+        return WebDriverWait(driver, timeout).until(
+            EC.visibility_of_element_located(_HISTORIA_SELECTOR)
+        )
+    except TimeoutException:
+        logger.warning("[editor_anamnesis] el editor (#historiaEnfermedad) no aparecio")
+        return None
 
 
 def pegar_en_editor(
@@ -200,76 +114,51 @@ def pegar_en_editor(
     texto: str,
     logger: logging.Logger,
     *,
-    wait_timeout: int = 30,
+    wait_timeout: int = _EDITOR_TIMEOUT_S,
 ) -> ResultadoPegado:
-    """Punto de entrada unico: detecta el tipo y delega al pegador especifico.
+    """Abre el editor de anamnesis y reemplaza su contenido por `texto`.
 
-    Args:
-        driver: WebDriver posicionado en la ficha del paciente, con el
-            panel ya cargado.
-        texto: contenido completo del archivo
-            `data/fichas_generadas/ficha_<pac>_<fecha>.md` a pegar.
-        logger: logger del caller.
-        wait_timeout: segundos a esperar a que el editor sea visible.
+    Pega SOLO en #historiaEnfermedad (la anamnesis). #motivoConsulta no
+    se toca. NUNCA presiona Guardar (REQ-073): Yadira revisa y guarda.
 
     Returns:
-        ResultadoPegado con `ok=True` y `caracteres_pegados=len(texto)`
-        si el pegado tuvo exito; `ok=False` y `motivo` detallado si
-        fallo (incluyendo el caso "selector pendiente").
+        ResultadoPegado con ok=True y caracteres_pegados=len(texto) si
+        el textarea quedo con el texto; ok=False y motivo detallado si
+        no (lapiz/editor no aparecieron, verificacion fallida).
     """
-    logger.info(
-        f"[editor_anamnesis] pegar_en_editor: {len(texto)} caracteres"
-    )
+    logger.info(f"[editor_anamnesis] pegando {len(texto)} caracteres en la anamnesis")
 
-    # Esperar a que el editor sea visible antes de detectarlo (Rayen a
-    # veces renderiza la ficha en dos cargas).
-    try:
-        WebDriverWait(driver, wait_timeout).until(
-            lambda d: detectar_tipo_editor(d, logger) != TipoEditor.NINGUNO
-        )
-    except TimeoutException:
-        logger.error(
-            f"[editor_anamnesis] tras {wait_timeout}s no aparecio ningun editor candidato"
-        )
+    textarea = abrir_editor_anamnesis(driver, logger, timeout=wait_timeout)
+    if textarea is None:
         return ResultadoPegado(
             ok=False,
             tipo_editor=TipoEditor.NINGUNO,
-            motivo=f"timeout {wait_timeout}s sin editor visible",
+            motivo="lapiz o editor de anamnesis no aparecieron",
             caracteres_pegados=0,
         )
 
-    tipo = detectar_tipo_editor(driver, logger)
-    if tipo == TipoEditor.NINGUNO:
-        return ResultadoPegado(
-            ok=False,
-            tipo_editor=tipo,
-            motivo="ningun editor candidato matchea",
-            caracteres_pegados=0,
-        )
-
-    nombre_pegador = _PEGADORES_POR_NOMBRE[tipo]
-    # globals() devuelve Any: anotamos el tipo para que mypy valide el
-    # retorno de pegar_en_editor.
-    pegador: Callable[[WebDriver, str, logging.Logger], ResultadoPegado] = globals()[
-        nombre_pegador
-    ]
     try:
-        resultado = pegador(driver, texto, logger)
-    except NotImplementedError as e:
-        logger.error(f"[editor_anamnesis] {e}")
-        return ResultadoPegado(
-            ok=False,
-            tipo_editor=tipo,
-            motivo=str(e),
-            caracteres_pegados=0,
-        )
+        largo_final = driver.execute_script(_JS_PEGAR, textarea, texto)
     except Exception as e:
-        logger.exception(f"[editor_anamnesis] fallo inesperado en pegador {tipo.value}: {e}")
+        logger.exception(f"[editor_anamnesis] fallo el pegado: {e}")
         return ResultadoPegado(
             ok=False,
-            tipo_editor=tipo,
-            motivo=f"excepcion {type(e).__name__}: {e}",
+            tipo_editor=TipoEditor.TEXTAREA,
+            motivo=f"error pegando: {type(e).__name__}: {e}",
             caracteres_pegados=0,
         )
 
-    return resultado
+    if largo_final != len(texto):
+        return ResultadoPegado(
+            ok=False,
+            tipo_editor=TipoEditor.TEXTAREA,
+            motivo=f"verificacion fallo: el campo quedo con {largo_final} de {len(texto)} chars",
+            caracteres_pegados=largo_final or 0,
+        )
+
+    logger.info(f"[editor_anamnesis] pegado verificado: {largo_final} chars en la anamnesis")
+    return ResultadoPegado(
+        ok=True,
+        tipo_editor=TipoEditor.TEXTAREA,
+        caracteres_pegados=largo_final,
+    )

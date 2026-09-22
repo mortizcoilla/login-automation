@@ -473,10 +473,29 @@ def main() -> int:
                 estado = "panel_logrado" if p.panel_cargo else "panel_no_cargo"
                 motivo = (
                     "limite del flujo compartido (<div>Atencion actual</div>) "
-                    "visible; paso 8 se detendria aqui sin pegar"
+                    "visible"
                     if p.panel_cargo
                     else "limite NO visible (panel no cargo en 60s)"
                 )
+                # Llegar hasta el EDITOR: click en el lapiz de la anamnesis
+                # y verificar #historiaEnfermedad. Sin pegar, sin guardar.
+                editor = None
+                if p.panel_cargo:
+                    from src.rayen.escritura.editor_anamnesis import (
+                        abrir_editor_anamnesis,
+                    )
+
+                    editor = abrir_editor_anamnesis(driver, logger)
+                    if editor is not None:
+                        estado = "editor_logrado"
+                        motivo = (
+                            "editor de anamnesis abierto (#historiaEnfermedad "
+                            "visible); paso 8 pegaria aqui y se detendria "
+                            "antes de Guardar"
+                        )
+                    else:
+                        estado = "editor_no_logrado"
+                        motivo = "el lapiz o el editor de anamnesis no aparecieron"
                 resultados.append(
                     ResultadoCarga(
                         nombre=p.nombre,
@@ -519,7 +538,9 @@ def main() -> int:
     # Exit code: 0 si todo OK; 1 si hubo pendientes/errores. En
     # --solo-apertura, "panel_logrado" tambien es exito (ese era el
     # objetivo del modo).
-    exitosos = resumen["ok"] + sum(1 for r in resultados if r.estado == "panel_logrado")
+    exitosos = resumen["ok"] + sum(
+        1 for r in resultados if r.estado in ("panel_logrado", "editor_logrado")
+    )
     return 0 if exitosos == resumen["total"] else 1
 
 
