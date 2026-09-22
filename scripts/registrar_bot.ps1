@@ -7,7 +7,7 @@
 # se puede arrancar/detener a mano sin cerrar sesion.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("instalar", "activar", "desactivar", "desinstalar", "estado", "arrancar")]
+    [ValidateSet("instalar", "activar", "desactivar", "detener", "desinstalar", "estado", "arrancar")]
     [string]$Accion
 )
 
@@ -57,6 +57,16 @@ switch ($Accion) {
     "desactivar" {
         Disable-ScheduledTask -TaskName $taskName | Out-Null
         Write-Host "Tarea '$taskName' desactivada."
+    }
+
+    "detener" {
+        # Para la instancia que corre (para poder lanzar el bot a mano
+        # en una terminal visible sin conflicto de getUpdates).
+        Stop-ScheduledTask -TaskName $taskName
+        Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
+            Where-Object { $_.CommandLine -match 'telegram_bot' } |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+        Write-Host "Bot detenido. Para volver al modo servicio: -Accion arrancar"
     }
 
     "desinstalar" {
