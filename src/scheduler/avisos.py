@@ -24,6 +24,12 @@ from datetime import date
 from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
+
+# Patron del proyecto (credentials, rutas, llm_cli): quien lee env del
+# .env lo carga. Sin esto, un import directo de este modulo no ve el
+# token/chat y los avisos se omiten en silencio.
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 _API = "https://api.telegram.org/bot{token}/sendMessage"
