@@ -80,7 +80,7 @@ def cargar_base_anamnesis(nombre: str, fecha: str) -> str | None:
 
 
 def detectar_pedidos(base_anamnesis: str) -> Pedidos:
-    """Extrae el trigger y sus keywords (reuso de informes.enriquecer)."""
+    """Extrae el trigger, las keywords y los pedidos libres (REQ-077)."""
     pedidos = Pedidos()
     texto_trigger = _texto_trigger(base_anamnesis)
     if not texto_trigger:
@@ -93,7 +93,28 @@ def detectar_pedidos(base_anamnesis: str) -> Pedidos:
         pedidos.interconsulta_especialidad = m.group(1).lower() if m else "especialidad"
     if KEYWORDS_REQUERIMIENTOS["indicaciones"].search(texto_trigger):
         pedidos.indicaciones = True
+    pedidos.pedidos_libres = _pedidos_libres(texto_trigger)
     return pedidos
+
+
+def _pedidos_libres(texto_trigger: str) -> list[str]:
+    """Lineas del bloque ** mortadelo que no calzan en las categorias
+    estructuradas (examenes/interconsulta/indicaciones): p. ej. "Dame
+    sugerencias para la psicologa", "como cerrar el GES". Cada una se
+    convierte en seccion explicita del prompt (REQ-077).
+    """
+    libres: list[str] = []
+    for bloque in texto_trigger.split("\n---\n"):
+        for linea in bloque.splitlines():
+            linea = linea.strip()
+            if not linea or "mortadelo" in linea.lower():
+                continue
+            if any(regex.search(linea) for regex in KEYWORDS_REQUERIMIENTOS.values()):
+                continue  # pedido estructurado: tiene su propio manejo
+            linea = re.sub(r"^[-*•]\s*", "", linea).strip()
+            if linea and linea not in libres:
+                libres.append(linea)
+    return libres
 
 
 def _texto_trigger(anamnesis: str) -> str:

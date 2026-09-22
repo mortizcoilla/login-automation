@@ -22,7 +22,11 @@ from src.mortadelo.generar import (
     generar_paciente,
 )
 from src.mortadelo.llm_cli import _limpiar_salida, modelos_cascada
-from src.mortadelo.prompt import construir_prompt_ficha, construir_prompt_informe
+from src.mortadelo.prompt import (
+    Pedidos,
+    construir_prompt_ficha,
+    construir_prompt_informe,
+)
 from src.mortadelo.validacion import validar_ficha, validar_informe
 
 BASE = """> **Motivo de atencion:** control sm
@@ -384,3 +388,61 @@ class TestPrompts:
             "Sin informacion suficiente",
         ):
             assert seccion in p
+
+
+# ---------------------------------------------------------------------------
+# REQ-077: pedidos libres del bloque ** mortadelo
+# ---------------------------------------------------------------------------
+
+
+def test_pedidos_libres_caso_amalia() -> None:
+    """Caso real: indicaciones + sugerencias para la psicologa (sin keywords)."""
+    base = (
+        "anamnesis de control sm\n\n"
+        "** mortadelo\n"
+        "- Dame indicaciones para darle al paciente\n"
+        "- Dame sugerencias para la psicologa en el siguiente control\n"
+    )
+    pedidos = detectar_pedidos(base)
+    assert pedidos.pedidos_libres == [
+        "Dame indicaciones para darle al paciente",
+        "Dame sugerencias para la psicologa en el siguiente control",
+    ]
+
+
+def test_pedidos_libres_caso_nicolas_interconsulta_no_duplica() -> None:
+    """La linea estructurada (interconsulta) NO va a libres; la otra si."""
+    base = (
+        "anamnesis\n\n"
+        "** mortadelo\n"
+        "- Dame sugerencias de como cerrar el GES\n"
+        "- Genera interconsulta a psiquiatria\n"
+    )
+    pedidos = detectar_pedidos(base)
+    assert pedidos.interconsulta_especialidad == "psiquiatria"
+    assert pedidos.pedidos_libres == ["Dame sugerencias de como cerrar el GES"]
+
+
+def test_prompt_ficha_incluye_secciones_por_pedido_libre() -> None:
+    pedidos = Pedidos(
+        pedidos_libres=[
+            "Dame indicaciones para darle al paciente",
+            "Dame sugerencias para la psicologa en el siguiente control",
+        ]
+    )
+    prompt = construir_prompt_ficha("X", "22-09-2026", "base", "info", None, pedidos)
+    assert "una seccion por cada pedido" in prompt
+    assert "- Dame indicaciones para darle al paciente" in prompt
+    assert "- Dame sugerencias para la psicologa en el siguiente control" in prompt
+
+
+def test_prompt_informe_menciona_pedidos_libres() -> None:
+    pedidos = Pedidos(pedidos_libres=["Dame sugerencias de como cerrar el GES"])
+    prompt = construir_prompt_informe("X", "22-09-2026", "ficha", "info", None, pedidos)
+    assert "Dame sugerencias de como cerrar el GES" in prompt
+    assert "Llenados realizados" in prompt
+
+
+def test_sin_pedidos_libres_prompt_sin_cambios() -> None:
+    prompt = construir_prompt_ficha("X", "22-09-2026", "base", "info", None, Pedidos())
+    assert "una seccion por cada pedido" not in prompt

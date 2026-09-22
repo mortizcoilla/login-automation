@@ -7,19 +7,26 @@ agente (.opencode/agent/mortadelo.md, rol v2 aprobado).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-PROMPT_VERSION = 1
+PROMPT_VERSION = 2
 
 
 @dataclass
 class Pedidos:
-    """Lo que Yadira pidio en el bloque ** mortadelo (mas el trigger crudo)."""
+    """Lo que Yadira pidio en el bloque ** mortadelo (mas el trigger crudo).
+
+    pedidos_libres: los pedidos que NO calzan en las categorias
+    estructuradas (examenes/interconsulta/indicaciones) — p. ej. "Dame
+    sugerencias para la psicologa" o "como cerrar el GES". Cada uno se
+    convierte en una seccion explicita del prompt (REQ-077).
+    """
 
     trigger_texto: str = ""
     examenes: bool = False
     interconsulta_especialidad: str | None = None
     indicaciones: bool = False
+    pedidos_libres: list[str] = field(default_factory=list)
 
 
 _REGLAS_FICHA = """Ejecucion:
@@ -61,6 +68,15 @@ def _secciones_condicionales(pedidos: Pedidos) -> str:
             "(mayusculas y dos puntos), con el texto de la interconsulta completo y "
             "listo para copiar en Rayen: antecedentes relevantes, motivo, hallazgos "
             "que la justifican y solicitud concreta."
+        )
+    if pedidos.pedidos_libres:
+        lineas = "\n".join(f"  - {pedido}" for pedido in pedidos.pedidos_libres)
+        partes.append(
+            "Como la doctora pidio ADEMAS lo siguiente, agrega AL FINAL del documento "
+            "(despues de INDICACIONES e INTERCONSULTA si tambien fueron pedidas) una "
+            "seccion por cada pedido: el titulo de la seccion es el pedido EXACTO en "
+            "MAYUSCULAS seguido de dos puntos, y el cuerpo es tu respuesta experta "
+            f"(fundamentada en los insumos y en tu criterio clinico):\n{lineas}"
         )
     return " ".join(partes) if partes else ""
 
@@ -111,6 +127,15 @@ def construir_prompt_informe(
 ) -> str:
     """Prompt de la LLAMADA 2 (informe de trazabilidad)."""
     bloque_exam = examenes if examenes else "(sin examenes consolidados)"
+    nota_libres = ""
+    if pedidos.pedidos_libres:
+        lineas = "\n".join(f"  - {pedido}" for pedido in pedidos.pedidos_libres)
+        nota_libres = (
+            "\nLa doctora pidio ademas estos pedidos libres (deben estar respondidos "
+            f"como secciones al final de la ficha generada):\n{lineas}\n"
+            "Verifica que la ficha los responda y registrá cada uno en la seccion "
+            "'Llenados realizados'."
+        )
     return f"""Genera el INFORME DE TRAZABILIDAD de {paciente} ({fecha}), documento de supervision para la Dra. Yadira. Markdown claro, sencillo y profesional, con EXACTAMENTE estas secciones en este orden:
 
 ## ALERTAS
@@ -143,6 +168,6 @@ def construir_prompt_informe(
 {bloque_exam}
 === FIN INSUMO 2 ===
 
-{_bloque_trigger(pedidos)}
+{_bloque_trigger(pedidos)}{nota_libres}
 
 Salida: exclusivamente el informe markdown, sin comentarios ni bloques de codigo."""
