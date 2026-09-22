@@ -147,11 +147,18 @@ def ejecutar_cadena(usuario: str) -> int:
 
 
 def _contar_pacientes_informe() -> int | None:
-    """Cuantos pacientes trae el informe del mes (para el aviso de inicio)."""
+    """Cuantos pacientes trae el informe del mes (para el aviso de inicio).
+
+    None si el informe aun no existe (paso 5 lo genera DENTRO de la
+    cadena): en ese caso el aviso de inicio no menciona conteo.
+    """
     try:
+        ruta = informe_mes_actual_path()
+        if not ruta.exists():
+            return None
         from src.informes.parser import parsear_pacientes_objetivo
 
-        return len(parsear_pacientes_objetivo(informe_mes_actual_path()))
+        return len(parsear_pacientes_objetivo(ruta))
     except Exception as e:  # el aviso no puede romper la cadena
         _log(f"aviso inicio: no pude contar pacientes del informe: {e}")
         return None
