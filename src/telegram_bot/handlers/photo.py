@@ -43,13 +43,26 @@ from src.telegram_bot.services.recibir_foto_service import (
 logger = logging.getLogger(__name__)
 
 
-# /archivar <paciente> [dd-mm-yyyy]
+# /archivar <paciente> [dd-mm-yyyy] — tolerante a "/ archivar" (gap entre
+# la barra y el verbo, caso real de Yadira 2026-09-22) y a mayusculas.
 # - paciente: cualquier texto, no vacio
 # - fecha: opcional, formato dd-mm-yyyy al final
 ARCHIVAR_RE = re.compile(
-    r"^/archivar\s+(?P<paciente>.+?)(?:\s+(?P<fecha>\d{2}-\d{2}-\d{4}))?\s*$",
+    r"^/\s*archivar\s+(?P<paciente>.+?)(?:\s+(?P<fecha>\d{2}-\d{2}-\d{4}))?\s*$",
     re.IGNORECASE | re.DOTALL,
 )
+
+# Muletilla descriptiva que Yadira usa al nombrar el examen:
+# "examenes de Paulina Tapia" -> paciente "Paulina Tapia".
+_PREFIJO_DESCRIPTIVO_RE = re.compile(
+    r"^(?:ex[aá]menes|examen|an[aá]lisis|analisis)\s+(?:de|del|para)\s+",
+    re.IGNORECASE,
+)
+
+
+def _limpiar_paciente(paciente: str) -> str:
+    """Quita la muletilla 'examenes de' del nombre dado por Yadira."""
+    return _PREFIJO_DESCRIPTIVO_RE.sub("", paciente).strip()
 
 
 def _tmp_dir(context: ContextTypes.DEFAULT_TYPE) -> Path:
@@ -98,7 +111,13 @@ async def cmd_archivar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
-    paciente = match.group("paciente").strip()
+    paciente = _limpiar_paciente(match.group("paciente").strip())
+    if not paciente:
+        await message.reply_text(
+            "No me quedo un nombre de paciente despues de limpiar el caption. "
+            "Ejemplo: /archivar Paulina Tapia 22-09-2026"
+        )
+        return
     fecha = match.group("fecha")  # puede ser None
 
     # Si Yadira dio una fecha, validar formato dd-mm-yyyy estrictamente.
@@ -214,3 +233,29 @@ def _cleanup(tmp_path: Path) -> None:
     """Borra el archivo temporal. Silenciosamente, no es critico."""
     with contextlib.suppress(OSError):
         tmp_path.unlink(missing_ok=True)
+
+
+async def cmd_foto_sin_match(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Red de seguridad: foto/doc cuyo caption NO calzo con /archivar.
+
+    Sin este handler, un caption mal escrito se traga en silencio y
+    Yadira siente que "el bot no funciona" (caso real 2026-09-22:
+    "/ archivar examenes de X"). SIEMPRE responde con el formato.
+    """
+    message = update.effective_message
+    if message is None:
+        return
+    caption = (message.caption or "").strip()
+    if not caption:
+        await message.reply_text(
+            "📸 Recibi tu foto, mama! Pero le faltó el caption:\n\n"
+            "/archivar <paciente> [dd-mm-yyyy]\n\n"
+            "Reenviamela con ese caption y la archivo ✨"
+        )
+        return
+    await message.reply_text(
+        f"📸 Recibi tu foto con el caption:\n{caption}\n\n"
+        "Pero no pude leerlo. El formato es:\n"
+        "/archivar <paciente> [dd-mm-yyyy]\n\n"
+        "Ejemplo: /archivar Paulina Tapia 22-09-2026"
+    )
