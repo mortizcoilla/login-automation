@@ -25,12 +25,12 @@ Convencion de retorno:
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.ui import WebDriverWait
 
 
@@ -248,7 +248,11 @@ def pegar_en_editor(
         )
 
     nombre_pegador = _PEGADORES_POR_NOMBRE[tipo]
-    pegador = globals()[nombre_pegador]
+    # globals() devuelve Any: anotamos el tipo para que mypy valide el
+    # retorno de pegar_en_editor.
+    pegador: Callable[[WebDriver, str, logging.Logger], ResultadoPegado] = globals()[
+        nombre_pegador
+    ]
     try:
         resultado = pegador(driver, texto, logger)
     except NotImplementedError as e:

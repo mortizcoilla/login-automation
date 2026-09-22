@@ -34,7 +34,6 @@ from src.rayen.extraccion.identificacion import _wait_visible
 from src.rayen.navegacion import select_date, sort_by_estado
 from src.rayen.tabla import _buscar_paciente_en_tabla, _doble_click_en_paciente
 
-
 # Senal inequivoca de que la ficha del paciente esta abierta: aparece
 # el <div>Atencion actual</div> dentro de un <li> de la navegacion
 # vertical (clases `verticalnav-tab verticalnav-tab-active`), segun

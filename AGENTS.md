@@ -29,7 +29,7 @@ python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.in
 5. (paso 7) Mortadelo genera ficha completa + informe de trazabilidad
    -> data/fichas_generadas/ y data/informes_trazabilidad/
 
-**Opt-in independiente** (Yadira lo invoca cuando quiere, REQ-054):
+**Opt-in independiente** (Yadira lo invoca cuando quiere, REQ-070):
 - (paso 8) `python -m src.tools.cargar_ficha --paciente "..." --fecha dd-mm-yyyy`
   o `--todos`: pega la ficha generada (paso 7) en el editor interno de
   Rayen. Comparte el flujo de apertura de ficha con paso 3

@@ -311,7 +311,7 @@ def test_main_rechaza_informe_anual_con_todos(
     """REFUSADO: informe _completo no se puede usar con --todos."""
     fake_args = ["--todos", "--informe", "informe_fichas_abiertas_2026_completo.txt"]
     with (
-        patch("sys.argv", ["cargar_ficha"] + fake_args),
+        patch("sys.argv", ["cargar_ficha", *fake_args]),
         pytest.raises(SystemExit),
     ):
         cargar_ficha.main()

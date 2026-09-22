@@ -30,7 +30,7 @@ import contextlib
 import json
 import logging
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -38,7 +38,8 @@ with contextlib.suppress(AttributeError, OSError):
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 from src.core.nombres import safe_filename
-from src.core.rutas import FICHAS_GENERADAS_DIR, ROOT, TRAZABILIDAD_CARGA_DIR
+from src.core.rutas import FICHAS_GENERADAS_DIR, TRAZABILIDAD_CARGA_DIR
+from src.credentials import load_credentials
 from src.notas.modelos import PacienteObjetivo
 from src.rayen.escritura.editor_anamnesis import (
     ResultadoPegado,
@@ -46,6 +47,7 @@ from src.rayen.escritura.editor_anamnesis import (
     pegar_en_editor,
 )
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
+from src.rayen.navegacion import volver_a_pacientes_citados
 from src.rayen.navegador import run_login, safe_quit
 
 
@@ -68,25 +70,6 @@ def pegador_fake_pendiente_selector() -> ResultadoPegado:
         motivo="pegar_en_textarea: pendiente selector",
         caracteres_pegados=0,
     )
-
-sys.path.insert(0, str(ROOT))
-
-USERS_CONFIG = ROOT / "config" / "users.json"
-
-
-# ---- Carga de credenciales (mismo patron que crear_notas_clinicas) ----
-
-
-def load_credentials(user_id: str) -> dict[str, str]:
-    """Carga credenciales desde config/users.json."""
-    if not USERS_CONFIG.exists():
-        raise FileNotFoundError(f"No existe {USERS_CONFIG}")
-    data = json.loads(USERS_CONFIG.read_text(encoding="utf-8"))
-    users = data.get("users", {})
-    if user_id not in users:
-        raise ValueError(f"Usuario '{user_id}' no esta en {USERS_CONFIG}")
-    credenciales: dict[str, str] = users[user_id]
-    return credenciales
 
 
 def _informe_mes_actual_path() -> Path:
@@ -235,6 +218,11 @@ def iterar_pacientes(
             f"[cargar_ficha] ({i}/{len(pacientes)}) {p.nombre} ({p.fecha})"
         )
         try:
+            # Volver a la lista de Pacientes citados antes de cada paciente
+            # distinto del primero: abrir_ficha_por_nombre filtra/busca en
+            # esa tabla (mismo patron que paso 3 tras pegar/extraer).
+            if i > 1:
+                volver_a_pacientes_citados(driver, logger)
             r = cargar_ficha_de_paciente(driver, logger, p, fichas_dir=fichas_dir)
         except Exception as e:
             logger.exception(
@@ -318,7 +306,7 @@ def main() -> int:
         help=(
             "NO abre Rayen. Solo verifica que existan los archivos del "
             "paso 7 para los pacientes del modo elegido, simula el "
-            "resultado del pegado como 'pendiente_selector' (REQ-059) y "
+            "resultado del pegado como 'pendiente_selector' (REQ-075) y "
             "escribe la misma trazabilidad JSON. Util para probar el "
             "CLI y la trazabilidad sin browser."
         ),
@@ -360,10 +348,10 @@ def main() -> int:
     )
     logger = logging.getLogger("cargar_ficha")
 
-    # Credenciales
+    # Credenciales (cargador unico: env USERS_<ID>_* > config/users.json)
     try:
         credentials = load_credentials(args.user)
-    except (FileNotFoundError, ValueError) as e:
+    except (KeyError, ValueError) as e:
         logger.error(f"Error cargando credenciales: {e}")
         return 2
     logger.info(f"[cargar_ficha] credenciales OK para {args.user}")
@@ -397,6 +385,9 @@ def main() -> int:
         except Exception as e:
             logger.exception(f"[cargar_ficha] login fallo: {e}")
             return 3
+        # run_login deja el driver en login + box + Pacientes citados;
+        # todo lo que sigue lo necesita no-None.
+        assert driver is not None
 
     resultados: list[ResultadoCarga] = []
     try:
@@ -422,18 +413,19 @@ def main() -> int:
                             fecha=p.fecha,
                             ficha_path=str(path),
                             estado="pendiente_selector",
-                            motivo="dry-run: REQ-059 pendiente",
+                            motivo="dry-run: REQ-075 pendiente",
                             tipo_editor="",
                             caracteres_pegados=0,
                             timestamp=datetime.now().isoformat(timespec="seconds"),
                         )
                     )
         elif args.solo_apertura:
+            assert driver is not None  # este modo siempre pasa por login
             logger.info(
                 "[cargar_ficha] SOLO-APERTURA: login + abrir ficha hasta "
                 "<div>Atencion actual</div>; sin pegado"
             )
-            for p in pacientes:
+            for idx, p in enumerate(pacientes, 1):
                 path = _path_ficha_generada(p.nombre, p.fecha, args.fichas_dir)
                 texto = leer_ficha_generada(p.nombre, p.fecha, args.fichas_dir)
                 if texto is None:
@@ -448,6 +440,11 @@ def main() -> int:
                     )
                     continue
                 try:
+                    # Volver a la lista antes de cada paciente distinto del
+                    # primero (mismo patron del iterador batch); el click
+                    # en el sidebar es seguro desde cualquier pagina.
+                    if idx > 1:
+                        volver_a_pacientes_citados(driver, logger)
                     ok = abrir_ficha_por_nombre(driver, logger, p)
                 except Exception as e:
                     resultados.append(
@@ -519,8 +516,11 @@ def main() -> int:
         ),
     }
     logger.info(f"[cargar_ficha] resumen: {resumen}")
-    # Exit code: 0 si todo OK; 1 si hubo pendientes/errores.
-    return 0 if resumen["ok"] == resumen["total"] else 1
+    # Exit code: 0 si todo OK; 1 si hubo pendientes/errores. En
+    # --solo-apertura, "panel_logrado" tambien es exito (ese era el
+    # objetivo del modo).
+    exitosos = resumen["ok"] + sum(1 for r in resultados if r.estado == "panel_logrado")
+    return 0 if exitosos == resumen["total"] else 1
 
 
 if __name__ == "__main__":

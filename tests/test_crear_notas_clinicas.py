@@ -928,3 +928,53 @@ class TestGuardarInfoPaciente:
         assert "## Notas" not in secciones
         # No debe haber '## Pautas' (tampoco es info del paciente)
         assert "## Pautas" not in secciones
+
+
+# ---------------------------------------------------------------------------
+# iterar_pacientes: flujo compartido de apertura (refactor paso 8)
+# ---------------------------------------------------------------------------
+
+
+class TestIterarPacientes:
+    """iterar_pacientes debe usar `abrir_ficha_por_nombre` (extraida a
+    src.rayen.flujos para compartirla con paso 8).
+
+    Regresion: el refactor 2026-09-21 dejo la llamada vieja
+    `paso_4_1_abrir_ficha` (eliminada) -> NameError atrapado por el
+    except del iterador -> TODOS los pacientes terminaban en
+    "errores" sin que el CLI fallara. Estos tests son los que faltaban
+    para atraparlo.
+    """
+
+    def test_usa_el_flujo_compartido_y_cuenta_stats(self, monkeypatch) -> None:
+        from unittest.mock import MagicMock
+
+        import src.tools.crear_notas_clinicas as cnn
+
+        llamadas: list[str] = []
+
+        def fake_abrir(driver, logger, paciente):
+            llamadas.append(paciente.nombre)
+            return True
+
+        monkeypatch.setattr(cnn, "abrir_ficha_por_nombre", fake_abrir)
+        pacientes = [
+            PacienteObjetivo(fecha="01-09-2026", nombre="Ana", tipo_atencion="", razon=""),
+            PacienteObjetivo(fecha="01-09-2026", nombre="Berta", tipo_atencion="", razon=""),
+        ]
+        stats = cnn.iterar_pacientes(driver=None, logger=MagicMock(), pacientes=pacientes)
+        assert stats == {"procesados": 2, "abiertos": 2, "no_encontrados": 0, "errores": 0}
+        assert llamadas == ["Ana", "Berta"]
+
+    def test_no_encontrado_no_cuenta_como_error(self, monkeypatch) -> None:
+        from unittest.mock import MagicMock
+
+        import src.tools.crear_notas_clinicas as cnn
+
+        monkeypatch.setattr(cnn, "abrir_ficha_por_nombre", lambda d, lg, p: False)
+        pacientes = [
+            PacienteObjetivo(fecha="01-09-2026", nombre="X", tipo_atencion="", razon=""),
+        ]
+        stats = cnn.iterar_pacientes(driver=None, logger=MagicMock(), pacientes=pacientes)
+        assert stats["no_encontrados"] == 1
+        assert stats["errores"] == 0

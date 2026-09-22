@@ -304,7 +304,7 @@ def iterar_pacientes(
         logger.info(f"[crear_notas] ({i}/{len(pacientes)}) Procesando: {p.nombre} ({p.fecha})")
         try:
             stats["procesados"] += 1
-            ok = paso_4_1_abrir_ficha(driver, logger, p)
+            ok = abrir_ficha_por_nombre(driver, logger, p)
             if ok:
                 stats["abiertos"] += 1
             else:
