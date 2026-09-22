@@ -148,9 +148,11 @@ def test_panel_no_carga_marca_panel_cargo_false(
     # precaucion (paso 3 sigue con extraccion; paso 8 aborta el pegado).
     assert ok is True
     assert paciente_exacto.panel_cargo is False
-    # Y se respeto el timeout de 60s.
-    _, kwargs = mock_wait.call_args
-    assert kwargs.get("timeout") == PANEL_TIMEOUT_S
+    # Primera espera: 60s. El reintento tras el badge 'Atencion actual'
+    # (caso real 22-09-2026, tutorial onboarding incluido) usa 30s.
+    timeouts = [c.kwargs.get("timeout") for c in mock_wait.call_args_list]
+    assert timeouts[0] == PANEL_TIMEOUT_S
+    assert timeouts[-1] == 30
 
 
 def test_apertura_delega_a_select_date_con_fecha_paciente(

@@ -478,20 +478,30 @@ def main() -> int:
                     else "limite NO visible (panel no cargo en 60s)"
                 )
                 # Llegar hasta el EDITOR: click en el lapiz de la anamnesis
-                # y verificar #historiaEnfermedad. Sin pegar, sin guardar.
+                # y verificar #historiaEnfermedad. Sin pegar contenido:
+                # se hace un ECO (el campo se re-escribe con su propio
+                # texto) para validar la via de escritura sin cambiar datos.
                 editor = None
                 if p.panel_cargo:
                     from src.rayen.escritura.editor_anamnesis import (
                         abrir_editor_anamnesis,
+                        pegar_en_editor,
                     )
 
                     editor = abrir_editor_anamnesis(driver, logger)
                     if editor is not None:
                         estado = "editor_logrado"
+                        actual = editor.get_attribute("value") or ""
+                        eco = pegar_en_editor(driver, actual, logger)
+                        detalle_eco = (
+                            f"; eco de escritura OK ({eco.caracteres_pegados} chars, sin cambios)"
+                            if eco.ok
+                            else f"; eco de escritura FALLO ({eco.motivo})"
+                        )
                         motivo = (
                             "editor de anamnesis abierto (#historiaEnfermedad "
                             "visible); paso 8 pegaria aqui y se detendria "
-                            "antes de Guardar"
+                            "antes de Guardar" + detalle_eco
                         )
                     else:
                         estado = "editor_no_logrado"
