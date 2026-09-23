@@ -46,6 +46,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
+import shutil
 import sqlite3
 import sys
 from collections import Counter
@@ -315,6 +316,21 @@ def main() -> int:
     except OSError as e:
         print(f"WARN: no se pudo guardar output: {e}", file=sys.stderr)
 
+    # REQ-078: el informe es para LEER - copia visible en OneDrive junto
+    # a los demas productos (el archivo canonico queda en analysis, junto
+    # a la DB). En tests no se toca el OneDrive real.
+    if "pytest" not in sys.modules:
+        try:
+            from src.core.rutas import FICHAS_GENERADAS_DIR
+
+            destino = FICHAS_GENERADAS_DIR.parent / out_path.name
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(out_path, destino)
+            print(f"[copia para lectura en: {destino}]")
+        except OSError as e:
+            print(f"WARN: copia a OneDrive fallo: {e}", file=sys.stderr)
+
+    return 0
     return 0
 
 
