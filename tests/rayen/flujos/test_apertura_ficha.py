@@ -58,7 +58,7 @@ def test_apertura_exitosa_panel_carga(
         ),
         patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
         patch(
-            "src.rayen.flujos.apertura_ficha._wait_visible",
+            "src.rayen.flujos.apertura_ficha._wait_present",
             return_value=fake_panel,
         ),
     ):
@@ -88,7 +88,7 @@ def test_apertura_con_match_parcial_guarda_nombre_rayen(
         ),
         patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
         patch(
-            "src.rayen.flujos.apertura_ficha._wait_visible",
+            "src.rayen.flujos.apertura_ficha._wait_present",
             return_value=fake_panel,
         ),
     ):
@@ -111,7 +111,7 @@ def test_paciente_no_encontrado_retorna_false(
             return_value=None,  # sin match
         ),
         patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente") as mock_dclick,
-        patch("src.rayen.flujos.apertura_ficha._wait_visible") as mock_wait,
+        patch("src.rayen.flujos.apertura_ficha._wait_present") as mock_wait,
     ):
         ok = abrir_ficha_por_nombre(fake_driver, logger, paciente_exacto)
 
@@ -137,7 +137,7 @@ def test_panel_no_carga_marca_panel_cargo_false(
         ),
         patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
         patch(
-            "src.rayen.flujos.apertura_ficha._wait_visible",
+            "src.rayen.flujos.apertura_ficha._wait_present",
             return_value=None,  # panel no cargo
         ) as mock_wait,
     ):
@@ -173,7 +173,7 @@ def test_apertura_delega_a_select_date_con_fecha_paciente(
         ),
         patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
         patch(
-            "src.rayen.flujos.apertura_ficha._wait_visible",
+            "src.rayen.flujos.apertura_ficha._wait_present",
             return_value=fake_panel,
         ),
     ):

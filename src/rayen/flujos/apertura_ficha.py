@@ -30,7 +30,6 @@ import logging
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.notas.modelos import PacienteObjetivo
-from src.rayen.extraccion.identificacion import _wait_visible
 from src.rayen.navegacion import select_date, sort_by_estado
 from src.rayen.tabla import _buscar_paciente_en_tabla, _doble_click_en_paciente
 
@@ -77,8 +76,12 @@ _PANEL_XPATH = (
     "//*[contains(@class, 'stratification-card')] | "
     # UI nueva G3 (23-09-2026): la vista de atencion tiene los paneles
     # 'Evaluacion' y 'Plan' y la seccion 'Anamnesis' (caso Natalie).
-    "//*[normalize-space(text())='Evaluación'] | "
-    "//*[normalize-space(text())='Anamnesis']"
+    "//h5[normalize-space()='Evaluación'] | "
+    "//h4[normalize-space()='Evaluación'] | "
+    "//h3[normalize-space()='Evaluación'] | "
+    "//div[normalize-space()='Evaluación'] | "
+    "//h5[normalize-space()='Anamnesis'] | "
+    "//div[normalize-space()='Anamnesis']"
 )
 PANEL_TIMEOUT_S = 60
 
@@ -212,6 +215,17 @@ def _cerrar_tutorial_onboarding(driver: WebDriver, logger: logging.Logger) -> bo
     return True
 
 
+def _wait_present(driver, xpath: str, timeout: int):
+    """Espera PRESENCIA en el DOM (a diferencia de _wait_visible)."""
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
+    from selenium.webdriver.support.ui import WebDriverWait
+
+    return WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((By.XPATH, xpath))
+    )
+
+
 def _esperar_panel_o_entrar(
     driver: WebDriver, logger: logging.Logger, budget_s: int, poll_s: float = 2.0
 ):
@@ -239,7 +253,9 @@ def _esperar_panel_o_entrar(
     fin = _time.monotonic() + budget_s
     tab_hecho = False
     while _time.monotonic() < fin:
-        panel = _wait_visible(driver, _PANEL_XPATH, timeout=8)
+        # PRESENCIA (no visibilidad): el UI nuevo tiene tab-panes ocultos
+        # con los mismos titulos delante del pane activo (caso Natalie).
+        panel = _wait_present(driver, _PANEL_XPATH, timeout=8)
         if panel is not None:
             return panel
         if not tab_hecho:
@@ -257,6 +273,19 @@ def _esperar_panel_o_entrar(
         # barato, 1 intento — el reintento lo da la vuelta del waiter.
         _cerrar_tutorial_onboarding(driver, logger)
         _time.sleep(poll_s)
+    # Diagnostico: volcar el HTML de la atencion para inspeccionar los
+    # selectores reales del UI nuevo.
+    try:
+        from src.core.rutas import LOGS_DIR as _LD
+
+        _LD.mkdir(parents=True, exist_ok=True)
+        driver.switch_to.default_content()
+        (_LD / "panel_timeout_main.html").write_text(
+            driver.page_source, encoding="utf-8"
+        )
+        logger.info("Dump del DOM en: logs/panel_timeout_main.html")
+    except Exception:
+        pass
     return None
 
 
