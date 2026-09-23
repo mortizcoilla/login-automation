@@ -30,6 +30,12 @@ from src.informes.enriquecer import TRIGGER_RE
 # Rotulo de campo vacio: "Campo:", "- Campo:", "> Campo:", "? Campo:"
 _LINEA_CAMPO_RE = re.compile(r"^\s*[-*?>\s]*[^:]{1,80}:\s*$")
 _ROTULO_RE = re.compile(r"^\s*[-*?>\s]*([^:]{1,80}):")
+_INDICACIONES_CON_CONTENIDO_RE = re.compile(
+    r"^\s*indicac\w*\s*:\s*\S", re.IGNORECASE
+)
+_SECCION_INDICACIONES_RE = re.compile(r"^\s*INDICACIONES\s*:?\s*$")
+
+
 @dataclass
 class FichaEnsamblada:
     """Resultado del ensamblado + trazabilidad de lo que se acepto."""
@@ -131,6 +137,15 @@ def _rotulo(linea: str) -> str | None:
     return _normalizar(m.group(1)) if m else None
 
 
+def _extraer_indicaciones(llm_lineas: list[str]) -> str | None:
+    """Cuerpo de la seccion INDICACIONES escrita por el LLM (o None)."""
+    for i, ln in enumerate(llm_lineas):
+        if _SECCION_INDICACIONES_RE.match(ln):
+            cuerpo = '\n'.join(llm_lineas[i + 1 :]).strip()
+            return cuerpo or None
+    return None
+
+
 def ensamblar_ficha(base: str, salida_llm: str) -> FichaEnsamblada:
     """Construye la ficha final con garantias estructurales.
 
@@ -191,6 +206,20 @@ def ensamblar_ficha(base: str, salida_llm: str) -> FichaEnsamblada:
                     break
 
         finales.append(aceptada if aceptada is not None else linea_base)
+
+    # REQ-079: indicaciones obligatorias al final del documento.
+    # - Si la base ya trae un campo indicac con contenido (escrito por la
+    #   doctora) o el LLM lleno el campo vacio en linea: no se agrega nada.
+    # - Si el LLM escribio una seccion INDICACIONES y la base no trae
+    #   campo con contenido: se agrega al final.
+    tiene_indicaciones = any(
+        _INDICACIONES_CON_CONTENIDO_RE.match(ln) for ln in finales
+    )
+    if not tiene_indicaciones:
+        cuerpo = _extraer_indicaciones(llm_lineas)
+        if cuerpo:
+            finales += ["", "INDICACIONES:", cuerpo]
+            resultado.secciones_agregadas.append("INDICACIONES")
 
     resultado.texto = "\n".join(finales).strip() + "\n"
     return resultado

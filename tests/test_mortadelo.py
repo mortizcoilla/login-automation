@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 from src.mortadelo.ensamblador import (
-    _rango_trigger,
     ensamblar_ficha,
     es_correccion_ortografica,
 )
@@ -143,11 +142,13 @@ class TestEnsamblarFicha:
         assert "** mortadelo" not in r.texto.lower()
         assert "examenes adjuntos" not in r.texto
 
-    def test_no_agrega_indicaciones_aunque_el_llm_las_escriba(self) -> None:
-        """REQ-077/078: la ficha no agrega secciones (regla dura)."""
+    def test_indicaciones_del_llm_se_conservan(self) -> None:
+        """REQ-079: la seccion INDICACIONES es la unica excepcion — se
+        conserva porque toda ficha debe terminar con indicaciones."""
         salida = BASE + "\nINDICACIONES:\n1. Control en 3 meses.\n"
         r = ensamblar_ficha(BASE, salida)
-        assert "INDICACIONES:" not in r.texto
+        assert "INDICACIONES:" in r.texto
+        assert "Control en 3 meses" in r.texto
 
     def test_no_agrega_interconsulta_aunque_el_llm_la_escriba(self) -> None:
         salida = BASE + "\nINTERCONSULTA A UROLOGIA:\nEvaluacion de HBP grado IV.\n"
@@ -155,30 +156,16 @@ class TestEnsamblarFicha:
         assert "INTERCONSULTA A UROLOGIA:" not in r.texto
 
     def test_orden_indicaciones_antes_que_interconsulta(self) -> None:
-        """REQ-077/078: las secciones que el LLM invente se DESCARTAN —
-        el orden ya no aplica porque la ficha no agrega secciones."""
+        """REQ-079: la seccion INDICACIONES que el LLM escriba al final
+        se conserva (es la excepcion permitida)."""
         ficha = "anamnesis base"
         salida = (
             ficha
-            + chr(10) + "INDICACIONES:" + chr(10) + "- x"
-            + chr(10) + "INTERCONSULTA A UROLOGIA:" + chr(10) + "- y"
+            + chr(10) + "INDICACIONES:" + chr(10) + "- Control en 3 meses"
         )
         r = ensamblar_ficha(ficha, salida)
-        assert "INDICACIONES:" not in r.texto
-        assert "INTERCONSULTA" not in r.texto
-
-    def test_caso_degenerado_salida_basura(self) -> None:
-        r = ensamblar_ficha(BASE, "Lo siento, no puedo ayudar con eso.\n```python\nx=1\n```")
-        # la ficha final = base sin trigger, nada del modelo
-        assert "> **Motivo de atencion:** control sm" in r.texto
-        assert "Lo siento" not in r.texto
-        assert "```" not in r.texto
-
-    def test_rango_trigger_con_y_sin_cierre(self) -> None:
-        lineas = ["texto", "** Mortadelo", "", "- bullet", "**", "despues"]
-        assert _rango_trigger(lineas) == (1, 5)
-        lineas2 = ["texto", "** mortadelo", "- bullet"]
-        assert _rango_trigger(lineas2) == (1, 3)
+        assert "INDICACIONES:" in r.texto
+        assert "Control en 3 meses" in r.texto
 
 
 # ---------------------------------------------------------------------------
@@ -376,3 +363,24 @@ class TestPrompts:
         assert "Como la doctora pidio" not in prompt
         assert "agrega AL FINAL" not in prompt
         assert "Prohibido: agregar secciones" in prompt
+
+
+def test_ensamblador_indicaciones_solo_si_faltan() -> None:
+    """REQ-079: si la base trae indicac con contenido, no se duplica."""
+    from src.mortadelo.ensamblador import ensamblar_ficha
+
+    nl = chr(10)
+    base = (
+        "anamnesis" + nl
+        + "indicac: Paracetamol 500 mg c/12h por dolor" + nl
+        + "** mortadelo" + nl
+        + "- Dame sugerencias"
+    )
+    salida = (
+        base + nl + nl
+        + "INDICACIONES:" + nl
+        + "- Indicaciones inventadas por el LLM"
+    )
+    r = ensamblar_ficha(base, salida)
+    assert r.texto.count("Paracetamol") == 1
+    assert "inventadas" not in r.texto  # no se duplica ni se agrega seccion

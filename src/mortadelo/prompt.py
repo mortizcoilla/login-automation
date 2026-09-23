@@ -34,10 +34,14 @@ _REGLAS_FICHA = """Ejecucion:
 2. Completalos primero con informacion de los insumos.
 3. Lo que no este en los insumos y sea interpretable clinicamente, completalo con tu criterio experto, fundamentado.
 4. Los datos factuales del paciente (telefono, domicilio, acompanantes, fechas administrativas) que no existan en ninguna fuente quedan (-).
+5. INDICACIONES (OBLIGATORIAS): todo documento DEBE terminar con indicaciones para el paciente.
+   - Si el documento trae el campo "indicac"/"indicaciones" CON contenido, dejalo exactamente como esta.
+   - Si trae el campo VACIO ("indicac:", "indicaciones:"), completalo EN ESA MISMA linea con las indicaciones para el paciente segun diagnosticos, tratamiento e insumos.
+   - Si el documento NO trae el campo, agregalo AL FINAL como una seccion "INDICACIONES:" con las indicaciones. Esta es la UNICA excepcion permitida a la prohibicion de agregar secciones.
 
 Correccion ortografica: corrige faltas de ortografia del texto de la doctora (letras faltantes o sobrantes, tildes, terminos medicos mal escritos) SIN cambiar el contenido, el estilo, las abreviaturas ni el formato. NO corrijas tiempos verbales, NO mejores la redaccion ni la puntuacion: solo ortografia objetiva.
 
-Prohibido: agregar secciones, bloques o titulos nuevos; eliminar secciones existentes; modificar, corregir o reformular los campos ya escritos por la doctora (mas alla de la ortografia objetiva); reformatear (no conviertas texto en vinetas ni vinetas en texto).
+Prohibido: agregar secciones, bloques o titulos nuevos (la UNICA excepcion es la seccion INDICACIONES de la regla 5); eliminar secciones existentes; modificar, corregir o reformular los campos ya escritos por la doctora (mas alla de la ortografia objetiva); reformatear (no conviertas texto en vinetas ni vinetas en texto).
 
 IMPORTANTE - bloque ** mortadelo: es una instruccion para el SISTEMA, no contenido clinico. ELIMINALO de tu salida (sus pedidos se responden en el INFORME de trazabilidad, NO en la ficha). La ficha queda exactamente con las secciones del documento original."""
 
