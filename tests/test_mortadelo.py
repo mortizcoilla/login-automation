@@ -25,7 +25,6 @@ from src.mortadelo.llm_cli import _limpiar_salida, modelos_cascada
 from src.mortadelo.prompt import (
     Pedidos,
     construir_prompt_ficha,
-    construir_prompt_informe,
 )
 from src.mortadelo.validacion import validar_ficha, validar_informe
 
@@ -144,30 +143,29 @@ class TestEnsamblarFicha:
         assert "** mortadelo" not in r.texto.lower()
         assert "examenes adjuntos" not in r.texto
 
-    def test_agrega_indicaciones_si_se_piden(self) -> None:
+    def test_no_agrega_indicaciones_aunque_el_llm_las_escriba(self) -> None:
+        """REQ-077/078: la ficha no agrega secciones (regla dura)."""
         salida = BASE + "\nINDICACIONES:\n1. Control en 3 meses.\n"
-        r = ensamblar_ficha(BASE, salida, pedir_indicaciones=True)
-        assert "INDICACIONES:" in r.texto
-        assert "Control en 3 meses" in r.texto
-        assert r.secciones_agregadas == ["INDICACIONES"]
-
-    def test_no_agrega_indicaciones_si_no_se_piden(self) -> None:
-        salida = BASE + "\nINDICACIONES:\n1. Control en 3 meses.\n"
-        r = ensamblar_ficha(BASE, salida, pedir_indicaciones=False)
+        r = ensamblar_ficha(BASE, salida)
         assert "INDICACIONES:" not in r.texto
 
-    def test_agrega_interconsulta_con_especialidad(self) -> None:
+    def test_no_agrega_interconsulta_aunque_el_llm_la_escriba(self) -> None:
         salida = BASE + "\nINTERCONSULTA A UROLOGIA:\nEvaluacion de HBP grado IV.\n"
-        r = ensamblar_ficha(BASE, salida, especialidad_interconsulta="urologia")
-        assert "INTERCONSULTA A UROLOGIA:" in r.texto
-        assert "HBP grado IV" in r.texto
+        r = ensamblar_ficha(BASE, salida)
+        assert "INTERCONSULTA A UROLOGIA:" not in r.texto
 
     def test_orden_indicaciones_antes_que_interconsulta(self) -> None:
-        salida = BASE + "\nINTERCONSULTA A UROLOGIA:\nTexto ic.\nINDICACIONES:\n1. Ind.\n"
-        r = ensamblar_ficha(
-            BASE, salida, pedir_indicaciones=True, especialidad_interconsulta="urologia"
+        """REQ-077/078: las secciones que el LLM invente se DESCARTAN —
+        el orden ya no aplica porque la ficha no agrega secciones."""
+        ficha = "anamnesis base"
+        salida = (
+            ficha
+            + chr(10) + "INDICACIONES:" + chr(10) + "- x"
+            + chr(10) + "INTERCONSULTA A UROLOGIA:" + chr(10) + "- y"
         )
-        assert r.texto.index("INDICACIONES:") < r.texto.index("INTERCONSULTA A UROLOGIA:")
+        r = ensamblar_ficha(ficha, salida)
+        assert "INDICACIONES:" not in r.texto
+        assert "INTERCONSULTA" not in r.texto
 
     def test_caso_degenerado_salida_basura(self) -> None:
         r = ensamblar_ficha(BASE, "Lo siento, no puedo ayudar con eso.\n```python\nx=1\n```")
@@ -293,7 +291,9 @@ class TestGenerarPaciente:
         assert Path(r.informe_path).exists()
         ficha = Path(r.ficha_path).read_text(encoding="utf-8")
         assert "MEDICAMENTOS: (-)" in ficha
-        assert "INTERCONSULTA A UROLOGIA:" in ficha  # trigger la pidio
+        # REQ-077/078: la ficha NO agrega secciones aunque el trigger las
+        # pida y aunque el LLM las escriba — se reconstruye desde la base.
+        assert "INTERCONSULTA A UROLOGIA:" not in ficha
         assert "** mortadelo" not in ficha.lower()
         informe = Path(r.informe_path).read_text(encoding="utf-8")
         assert "Modelo ficha: modelo-falso" in informe  # sello por codigo
@@ -362,140 +362,17 @@ class TestPrompts:
         p = construir_prompt_ficha("P", "10-09-2026", BASE, "I", None, Pedidos())
         assert "no tiene examenes consolidados" in p
 
-    def test_prompt_ficha_secciones_solo_si_se_piden(self) -> None:
-        from src.mortadelo.prompt import Pedidos
-
-        sin_pedidos = construir_prompt_ficha("P", "10-09-2026", BASE, "I", None, Pedidos())
-        assert "Como la doctora pidio INDICACIONES" not in sin_pedidos
-        con = construir_prompt_ficha(
-            "P",
-            "10-09-2026",
-            BASE,
-            "I",
-            None,
-            Pedidos(indicaciones=True, interconsulta_especialidad="urologia"),
+    def test_prompt_ficha_sin_instruccion_de_secciones(self) -> None:
+        """REQ-077/078: la ficha jamas recibe instrucciones de secciones
+        — los pedidos se responden en el informe de trazabilidad."""
+        pedidos_con_todo = Pedidos(
+            indicaciones=True,
+            interconsulta_especialidad="psiquiatria",
+            pedidos_libres=["Dame sugerencias"],
         )
-        assert "INDICACIONES" in con and "INTERCONSULTA A UROLOGIA" in con
-
-    def test_prompt_informe_secciones(self) -> None:
-        from src.mortadelo.prompt import Pedidos
-
-        p = construir_prompt_informe("P", "10-09-2026", "FICHA", "I", None, Pedidos())
-        for seccion in (
-            "ALERTAS",
-            "Llenados realizados",
-            "Correcciones ortograficas",
-            "Sin informacion suficiente",
-        ):
-            assert seccion in p
-
-
-# ---------------------------------------------------------------------------
-# REQ-077: pedidos libres del bloque ** mortadelo
-# ---------------------------------------------------------------------------
-
-
-def test_pedidos_libres_caso_amalia() -> None:
-    """Caso real: indicaciones + sugerencias para la psicologa (sin keywords)."""
-    base = (
-        "anamnesis de control sm\n\n"
-        "** mortadelo\n"
-        "- Dame indicaciones para darle al paciente\n"
-        "- Dame sugerencias para la psicologa en el siguiente control\n"
-    )
-    pedidos = detectar_pedidos(base)
-    assert pedidos.pedidos_libres == [
-        "Dame indicaciones para darle al paciente",
-        "Dame sugerencias para la psicologa en el siguiente control",
-    ]
-
-
-def test_pedidos_libres_caso_nicolas_interconsulta_no_duplica() -> None:
-    """La linea estructurada (interconsulta) NO va a libres; la otra si."""
-    base = (
-        "anamnesis\n\n"
-        "** mortadelo\n"
-        "- Dame sugerencias de como cerrar el GES\n"
-        "- Genera interconsulta a psiquiatria\n"
-    )
-    pedidos = detectar_pedidos(base)
-    assert pedidos.interconsulta_especialidad == "psiquiatria"
-    assert pedidos.pedidos_libres == ["Dame sugerencias de como cerrar el GES"]
-
-
-def test_prompt_ficha_incluye_secciones_por_pedido_libre() -> None:
-    pedidos = Pedidos(
-        pedidos_libres=[
-            "Dame indicaciones para darle al paciente",
-            "Dame sugerencias para la psicologa en el siguiente control",
-        ]
-    )
-    prompt = construir_prompt_ficha("X", "22-09-2026", "base", "info", None, pedidos)
-    assert "una seccion por cada pedido" in prompt
-    assert "- Dame indicaciones para darle al paciente" in prompt
-    assert "- Dame sugerencias para la psicologa en el siguiente control" in prompt
-
-
-def test_prompt_informe_menciona_pedidos_libres() -> None:
-    pedidos = Pedidos(pedidos_libres=["Dame sugerencias de como cerrar el GES"])
-    prompt = construir_prompt_informe("X", "22-09-2026", "ficha", "info", None, pedidos)
-    assert "Dame sugerencias de como cerrar el GES" in prompt
-    assert "Llenados realizados" in prompt
-
-
-def test_sin_pedidos_libres_prompt_sin_cambios() -> None:
-    prompt = construir_prompt_ficha("X", "22-09-2026", "base", "info", None, Pedidos())
-    assert "una seccion por cada pedido" not in prompt
-
-
-def test_ensamblador_agrega_secciones_de_pedidos_libres() -> None:
-    """REQ-077: el ensamblador ya NO descarta las secciones libres."""
-    from src.mortadelo.ensamblador import ensamblar_ficha
-
-    base = "anamnesis\nCampo: (-)\n** mortadelo\n- Dame sugerencias para la psicologa"
-    salida = (
-        "anamnesis\nCampo: llenado experto\n"
-        "DAME SUGERENCIAS PARA LA PSICOLOGA:\n"
-        "- Trabajo de adherencia con encuadre claro\n"
-        "- Coordinar derivacion a psiquiatria infantil\n"
-    )
-    r = ensamblar_ficha(base, salida, pedidos_libres=["Dame sugerencias para la psicologa"])
-    assert "DAME SUGERENCIAS PARA LA PSICOLOGA:" in r.texto
-    assert "Trabajo de adherencia" in r.texto
-    assert "Dame sugerencias para la psicologa".upper() in r.secciones_agregadas[0].upper()
-    assert "** mortadelo" not in r.texto
-
-
-def test_ensamblador_sin_respuesta_del_llm_no_inventa() -> None:
-    from src.mortadelo.ensamblador import ensamblar_ficha
-
-    base = "anamnesis\n** mortadelo\n- Dame sugerencias para la psicologa"
-    salida = "anamnesis"
-    r = ensamblar_ficha(base, salida, pedidos_libres=["Dame sugerencias para la psicologa"])
-    assert "DAME SUGERENCIAS" not in r.texto
-
-
-def test_ensamblador_indicaciones_siguieren_funcionando() -> None:
-    from src.mortadelo.ensamblador import ensamblar_ficha
-
-    base = "anamnesis\n** mortadelo\n- dar indicaciones"
-    salida = "anamnesis\nINDICACIONES:\n- Paracetamol sos"
-    r = ensamblar_ficha(base, salida, pedir_indicaciones=True)
-    assert "INDICACIONES:" in r.texto
-    assert "Paracetamol" in r.texto
-
-
-def test_ensamblador_no_duplica_seccion_libre_repetida() -> None:
-    """Algunos modelos emiten la seccion dos veces: queda una sola."""
-    from src.mortadelo.ensamblador import ensamblar_ficha
-
-    base = "anamnesis\n** mortadelo\n- Dame sugerencias de como cerrar el GES"
-    salida = (
-        "anamnesis\n"
-        "DAME SUGERENCIAS DE COMO CERRAR EL GES:\n- primera version\n"
-        "DAME SUGERENCIAS DE COMO CERRAR EL GES:\n- segunda version\n"
-    )
-    r = ensamblar_ficha(
-        base, salida, pedidos_libres=["Dame sugerencias de como cerrar el GES"]
-    )
-    assert r.texto.count("DAME SUGERENCIAS DE COMO CERRAR EL GES:") == 1
+        prompt = construir_prompt_ficha(
+            "X", "22-09-2026", "base", "info", None, pedidos_con_todo
+        )
+        assert "Como la doctora pidio" not in prompt
+        assert "agrega AL FINAL" not in prompt
+        assert "Prohibido: agregar secciones" in prompt

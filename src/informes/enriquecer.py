@@ -225,7 +225,7 @@ KEYWORDS_REQUERIMIENTOS = {
         re.IGNORECASE,
     ),
     "interconsulta": re.compile(
-        r"(?:genera[r]?|crea[r]?|crear)\s+interconsulta",  # generar/crear interconsulta
+        r"(?:genera[r]?|crea[r]?|realiza[r]?|solicita[r]?)\s+(?:la\s+)?interconsulta",  # generar/crear/realizar/solicitar
         re.IGNORECASE,
     ),
     "indicaciones": re.compile(

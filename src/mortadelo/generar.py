@@ -109,7 +109,13 @@ def _pedidos_libres(texto_trigger: str) -> list[str]:
     for bloque in texto_trigger.split("\n---\n"):
         for linea in bloque.splitlines():
             linea = linea.strip()
-            if not linea or "mortadelo" in linea.lower():
+            if not linea:
+                continue
+            # El pedido puede venir en la MISMA linea del marcador:
+            # "** MORTADELO:  REALIZA LA INTERCONSULTA A X" (caso real
+            # Natalie 22-09-2026). Quitar el marcador, no la linea.
+            linea = re.sub(r"^.*mortadelo\s*:?\s*", "", linea, flags=re.IGNORECASE)
+            if not linea or linea.lower() == "**":
                 continue
             if any(regex.search(linea) for regex in KEYWORDS_REQUERIMIENTOS.values()):
                 continue  # pedido estructurado: tiene su propio manejo
@@ -164,13 +170,7 @@ def generar_paciente(
         return resultado
     resultado.modelo_ficha = modelo
 
-    ensamblada = ensamblar_ficha(
-        base,
-        salida_llm,
-        pedir_indicaciones=pedidos.indicaciones,
-        especialidad_interconsulta=pedidos.interconsulta_especialidad,
-        pedidos_libres=pedidos.pedidos_libres,
-    )
+    ensamblada = ensamblar_ficha(base, salida_llm)
     for adv in validar_ficha(ensamblada.texto, base, info):
         resultado.advertencias.append(f"{adv.codigo}: {adv.mensaje}")
         logger.warning(f"[mortadelo] {nombre}: {adv.codigo} {adv.mensaje}")

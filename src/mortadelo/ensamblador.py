@@ -30,11 +30,6 @@ from src.informes.enriquecer import TRIGGER_RE
 # Rotulo de campo vacio: "Campo:", "- Campo:", "> Campo:", "? Campo:"
 _LINEA_CAMPO_RE = re.compile(r"^\s*[-*?>\s]*[^:]{1,80}:\s*$")
 _ROTULO_RE = re.compile(r"^\s*[-*?>\s]*([^:]{1,80}):")
-_TITULO_SECCION_RE = re.compile(
-    r"^\s*(INDICACIONES|INTERCONSULTA(?:\s+A\s+.+)?)\s*:?\s*$", re.IGNORECASE
-)
-
-
 @dataclass
 class FichaEnsamblada:
     """Resultado del ensamblado + trazabilidad de lo que se acepto."""
@@ -136,92 +131,22 @@ def _rotulo(linea: str) -> str | None:
     return _normalizar(m.group(1)) if m else None
 
 
-def _extraer_secciones(salida: list[str]) -> dict[str, str]:
-    """Extrae INDICACIONES / INTERCONSULTA de la salida del LLM."""
-    secciones: dict[str, str] = {}
-    actual: str | None = None
-    buffer: list[str] = []
-    for ln in salida:
-        m = _TITULO_SECCION_RE.match(ln)
-        if m:
-            if actual:
-                secciones[actual] = "\n".join(buffer).strip()
-            actual = m.group(1).upper().split(":")[0].strip()
-            buffer = []
-        elif actual:
-            buffer.append(ln)
-    if actual:
-        secciones[actual] = "\n".join(buffer).strip()
-    return secciones
-
-
-def _extraer_secciones_libres(
-    llm_lineas: list[str], pedidos_libres: list[str]
-) -> list[tuple[str, str]]:
-    """Extrae las secciones cuyo titulo coincide con un pedido libre.
-
-    El prompt ordena al modelo titular cada seccion con el pedido EXACTO
-    en mayusculas + ':'. El matching es tolerante (mayusculas, tildes,
-    prefijos markdown '#') y termina cuando aparece otro titulo.
-    """
-    if not pedidos_libres:
-        return []
-    titulo_a_libre = {_normalizar(libre): libre for libre in pedidos_libres}
-    titulos_generales = (_TITULO_SECCION_RE,)
-
-    def _titulo_de(ln: str) -> str | None:
-        limpio = ln.strip().lstrip("#").strip().rstrip(":").strip()
-        return titulo_a_libre.get(_normalizar(limpio))
-
-    secciones: list[tuple[str, str]] = []
-    actual: str | None = None
-    buffer: list[str] = []
-    for ln in llm_lineas:
-        libre = _titulo_de(ln)
-        es_general = any(r.match(ln) for r in titulos_generales)
-        if libre is not None:
-            if actual:
-                secciones.append((actual, "\n".join(buffer).strip()))
-            actual = libre
-            buffer = []
-        elif es_general:
-            if actual:
-                secciones.append((actual, "\n".join(buffer).strip()))
-                actual = None
-                buffer = []
-        elif actual:
-            buffer.append(ln)
-    if actual:
-        secciones.append((actual, "\n".join(buffer).strip()))
-    return secciones
-
-
-def ensamblar_ficha(
-    base: str,
-    salida_llm: str,
-    pedir_indicaciones: bool = False,
-    especialidad_interconsulta: str | None = None,
-    pedidos_libres: list[str] | None = None,
-) -> FichaEnsamblada:
+def ensamblar_ficha(base: str, salida_llm: str) -> FichaEnsamblada:
     """Construye la ficha final con garantias estructurales.
 
     Args:
         base: anamnesis cruda (motivo blockquote + texto de Yadira).
         salida_llm: lo que el LLM devolvio para la ficha.
-        pedir_indicaciones / especialidad_interconsulta: secciones que
-            el trigger pidio; si es None/False no se agregan aunque el
-            modelo las haya escrito.
-        pedidos_libres: pedidos adicionales de la doctora que no calzan
-            en las categorias estructuradas (REQ-077): p. ej. "Dame
-            sugerencias para la psicologa". Si el LLM respondio alguno
-            (titulo = el pedido en mayusculas), la seccion se agrega al
-            final; si no respondio, no se inventa nada.
+
+    REQ-077/078: la ficha NUNCA agrega secciones — cualquier bloque
+    extra que el LLM haya escrito se descarta al reconstruir desde la
+    base. Los pedidos de la doctora se responden en el informe de
+    trazabilidad (llamada 2).
 
     Returns:
         FichaEnsamblada con el texto final y la trazabilidad.
     """
     resultado = FichaEnsamblada(texto="")
-    pedidos_libres = pedidos_libres or []
     base_lineas = base.splitlines()
     llm_lineas = salida_llm.splitlines()
 
@@ -266,34 +191,6 @@ def ensamblar_ficha(
                     break
 
         finales.append(aceptada if aceptada is not None else linea_base)
-
-    # Secciones condicionales al final.
-    secciones_llm = _extraer_secciones(llm_lineas)
-    if pedir_indicaciones and secciones_llm.get("INDICACIONES"):
-        finales += ["", "INDICACIONES:", secciones_llm["INDICACIONES"]]
-        resultado.secciones_agregadas.append("INDICACIONES")
-    if especialidad_interconsulta:
-        titulo = f"INTERCONSULTA A {especialidad_interconsulta.upper()}:"
-        cuerpo = next(
-            (v for k, v in secciones_llm.items() if k.startswith("INTERCONSULTA")),
-            "",
-        )
-        if cuerpo:
-            finales += ["", titulo, cuerpo]
-            resultado.secciones_agregadas.append(titulo.rstrip(":"))
-
-    # REQ-077: secciones por cada pedido libre que el LLM respondio.
-    # Sin duplicados: algunos modelos repiten la seccion en su salida.
-    titulos_agregados = {s.upper() for s in resultado.secciones_agregadas}
-    for titulo, cuerpo in _extraer_secciones_libres(llm_lineas, pedidos_libres):
-        if not cuerpo:
-            continue
-        clave = titulo.upper()
-        if clave in titulos_agregados:
-            continue
-        finales += ["", f"{clave}:", cuerpo]
-        titulos_agregados.add(clave)
-        resultado.secciones_agregadas.append(clave)
 
     resultado.texto = "\n".join(finales).strip() + "\n"
     return resultado
