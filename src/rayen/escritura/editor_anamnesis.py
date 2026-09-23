@@ -87,14 +87,39 @@ def abrir_editor_anamnesis(
     """
     wait = WebDriverWait(driver, timeout)
     try:
+        # PRESENCIA (no clickeable): el lapiz vive dentro de la seccion
+        # colapsada ("...ver mas") y Selenium no lo ve como clicable;
+        # el click por JS funciona igual (caso Natalie 23-09).
         lapiz = wait.until(
-            EC.element_to_be_clickable(_LAPIZ_SELECTOR)
+            EC.presence_of_element_located(_LAPIZ_SELECTOR)
         )
     except TimeoutException:
         try:
-            lapiz = wait.until(EC.element_to_be_clickable(_LAPIZ_ARIA))
+            lapiz = wait.until(EC.presence_of_element_located(_LAPIZ_ARIA))
         except TimeoutException:
             logger.warning("[editor_anamnesis] lapiz de anamnesis no aparecio")
+            try:
+                from selenium.webdriver.common.by import By
+
+                from src.core.rutas import LOGS_DIR as _LD
+
+                _LD.mkdir(parents=True, exist_ok=True)
+                driver.switch_to.default_content()
+                (_LD / "editor_sin_lapiz.html").write_text(
+                    driver.page_source, encoding="utf-8"
+                )
+                for j, frame in enumerate(driver.find_elements(By.XPATH, "//iframe")):
+                    try:
+                        driver.switch_to.frame(frame)
+                        (_LD / f"editor_sin_lapiz_frame_{j}.html").write_text(
+                            driver.page_source, encoding="utf-8"
+                        )
+                    except Exception:
+                        continue
+                    finally:
+                        driver.switch_to.default_content()
+            except Exception:
+                pass
             return None
     try:
         lapiz.click()
