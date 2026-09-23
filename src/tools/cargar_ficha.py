@@ -29,6 +29,7 @@ import argparse
 import contextlib
 import json
 import logging
+import re
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -44,6 +45,7 @@ from src.notas.modelos import PacienteObjetivo
 from src.rayen.escritura.editor_anamnesis import (
     ResultadoPegado,
     TipoEditor,
+    abrir_editor_anamnesis,
     guardar_editor_anamnesis,
     pegar_en_editor,
 )
@@ -109,6 +111,11 @@ class ResultadoCarga:
 
 
 # ---- Loader del archivo del paso 7 ----
+
+
+def _normalizar_contenido(texto: str) -> str:
+    """Colapsa espacios y saltos: comparacion tolerante de contenidos."""
+    return re.sub(r"\s+", " ", texto).strip()
 
 
 def _path_ficha_generada(nombre: str, fecha: str, fichas_dir: Path) -> Path:
@@ -201,6 +208,39 @@ def cargar_ficha_de_paciente(
         resultado.motivo = "guardar: el editor no cerro tras presionar Guardar"
         logger.error(f"[cargar_ficha] {resultado.motivo}")
         return resultado
+
+    # Verificacion post-guardado: reabrir el editor y comparar el
+    # contenido contra la ficha generada (la anamnesis completa debe
+    # quedar cargada en Rayen). Solo lectura: no se vuelve a guardar.
+    textarea = abrir_editor_anamnesis(driver, logger)
+    if textarea is not None:
+        contenido_rayen = textarea.get_attribute("value") or ""
+        if _normalizar_contenido(contenido_rayen) != _normalizar_contenido(texto):
+            resultado.estado = "error"
+            resultado.motivo = (
+                "verificacion post-guardado: el contenido de Rayen difiere "
+                "de la ficha generada"
+            )
+            logger.error(f"[cargar_ficha] {resultado.motivo}")
+            return resultado
+        logger.info("[cargar_ficha] verificacion post-guardado OK")
+        # Cerrar el editor reabierto (el contenido ya esta guardado):
+        # quedarse en modo edicion puede disparar el dialogo de
+        # "salir sin guardar" al navegar al siguiente paciente.
+        try:
+            from selenium.webdriver.common.by import By
+
+            back = driver.find_element(
+                By.XPATH, "//button[.//*[contains(@class, 'arrow-left')]]"
+            )
+            driver.execute_script("arguments[0].click();", back)
+        except Exception:
+            logger.warning("[cargar_ficha] no se pudo cerrar el editor reabierto")
+    else:
+        logger.warning(
+            "[cargar_ficha] no se pudo reabrir el editor para verificar; "
+            "el guardado se asume OK por el cierre del editor"
+        )
 
     resultado.estado = "ok"
     resultado.caracteres_pegados = pegado.caracteres_pegados or len(texto)

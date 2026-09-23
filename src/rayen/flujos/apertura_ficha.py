@@ -123,7 +123,7 @@ def _buscar_en_cualquier_frame(driver: WebDriver, xpath: str):
     raise NoSuchElementException(f"no encontrado en ningun frame: {xpath}")
 
 
-def _cerrar_tutorial_onboarding(driver: WebDriver, logger: logging.Logger) -> None:
+def _cerrar_tutorial_onboarding(driver: WebDriver, logger: logging.Logger) -> bool:
     """Cierra el tutorial de Rayen si esta presente (hasta 7 clicks).
 
     Caso real 22-09-2026: al entrar por primera vez a Atencion actual,
@@ -165,12 +165,35 @@ def _cerrar_tutorial_onboarding(driver: WebDriver, logger: logging.Logger) -> No
                 btn = driver.execute_script(_JS_BUSCAR_SHADOW, "listo")
             if btn is None:
                 logger.info("Tutorial onboarding: no quedan botones (cerrado o ausente).")
+            # Evidencia: volcar el HTML de cada contexto del tutorial.
+            try:
+                from selenium.webdriver.common.by import By
+
+                from src.core.rutas import LOGS_DIR as _LD
+
+                _LD.mkdir(parents=True, exist_ok=True)
                 driver.switch_to.default_content()
-                return
+                (_LD / "tutorial_main.html").write_text(
+                    driver.page_source, encoding="utf-8"
+                )
+                for j, frame in enumerate(driver.find_elements(By.XPATH, "//iframe")):
+                    try:
+                        driver.switch_to.frame(frame)
+                        (_LD / f"tutorial_frame_{j}.html").write_text(
+                            driver.page_source, encoding="utf-8"
+                        )
+                    except Exception:
+                        continue
+                    finally:
+                        driver.switch_to.default_content()
+            except Exception:
+                pass
+                driver.switch_to.default_content()
+                return False
             driver.execute_script("arguments[0].click();", btn)
             logger.info(f"Cerrando tutorial onboarding via shadow DOM (click {paso})...")
             time.sleep(0.5)
-            continue
+            return True
         logger.info(f"Cerrando tutorial onboarding (click {paso})...")
         try:
             btn.click()
@@ -178,6 +201,51 @@ def _cerrar_tutorial_onboarding(driver: WebDriver, logger: logging.Logger) -> No
             driver.execute_script("arguments[0].click();", btn)
         time.sleep(0.5)
     driver.switch_to.default_content()
+    return True
+
+
+def _esperar_panel_o_entrar(
+    driver: WebDriver, logger: logging.Logger, budget_s: int, poll_s: float = 2.0
+):
+    """Espera el panel de la ficha manejando los obstaculos conocidos.
+
+    Ciclo hasta agotar el presupuesto:
+      1. panel visible -> devolverlo.
+      2. tutorial onboarding presente -> cerrarlo (frames + shadow DOM;
+         aparece de forma asincrona tras entrar a la atencion).
+      3. badge 'NN Atencion actual' presente -> click (el doble click
+         aterriza en 'Historia clinica' y hay que entrar a la atencion).
+    """
+    import time as _time
+
+    from selenium.webdriver.common.by import By
+
+    fin = _time.monotonic() + budget_s
+    tutoriales_cerrados = 0
+    badge_hecho = False
+    while _time.monotonic() < fin:
+        panel = _wait_visible(driver, _PANEL_XPATH, timeout=8)
+        if panel is not None:
+            return panel
+        if tutoriales_cerrados < 2 and _cerrar_tutorial_onboarding(driver, logger):
+            tutoriales_cerrados += 1
+            continue
+        if not badge_hecho:
+            try:
+                badge = driver.find_element(
+                    By.XPATH,
+                    "//*[contains(normalize-space(text()), 'Atención actual')]",
+                )
+                driver.execute_script("arguments[0].click();", badge)
+                badge_hecho = True
+                logger.info(
+                    "[crear_notas] Click en badge 'Atencion actual' "
+                    "(entrada a la atencion)."
+                )
+            except Exception:
+                pass  # no esta aun: se reintenta en la proxima vuelta
+        _time.sleep(poll_s)
+    return None
 
 
 def abrir_ficha_por_nombre(
@@ -236,32 +304,14 @@ def abrir_ficha_por_nombre(
     # 3) Doble click en la fila para abrir la ficha
     _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
 
-    # 4) Esperar a que el panel del paciente se cargue
-    panel = _wait_visible(driver, _PANEL_XPATH, timeout=PANEL_TIMEOUT_S)
-
-    if panel is None:
-        # Caso real 22-09-2026 (Rosa Davila): el doble click aterriza en
-        # la vista "Historia clinica" (Identificacion/Historial), con un
-        # badge "NN Atencion actual" en la cabecera. Entrar ahi: click
-        # al badge y re-esperar el panel (30s mas).
-        logger.info("Panel ausente; intentando click en el badge 'Atencion actual'...")
-        try:
-            from selenium.webdriver.common.by import By
-
-            badge = driver.find_element(
-                By.XPATH,
-                "//*[contains(normalize-space(text()), 'Atención actual')]",
-            )
-            driver.execute_script("arguments[0].click();", badge)
-            _cerrar_tutorial_onboarding(driver, logger)
-            panel = _wait_visible(driver, _PANEL_XPATH, timeout=30)
-        except Exception as e:  # el badge no estaba o fallo el click
-            logger.warning(f"Badge 'Atencion actual' no encontrado: {e}")
-
+    # 4) Esperar el panel manejando los obstaculos conocidos (REQ-030):
+    #    tutorial onboarding asincrono y aterrizaje en 'Historia clinica'
+    #    con badge 'NN Atencion actual' (se clickea para entrar).
+    panel = _esperar_panel_o_entrar(driver, logger, PANEL_TIMEOUT_S + 30)
     if panel is None:
         # REQ-030: no re-clickear. Marcar flag y seguir.
         logger.warning(
-            f"Panel no aparecio en {PANEL_TIMEOUT_S}s. "
+            f"Panel no aparecio en {PANEL_TIMEOUT_S + 30}s. "
             f"El flujo procedera sobre lo que haya. "
             f"El caller debera decidir si esto es aceptable."
         )

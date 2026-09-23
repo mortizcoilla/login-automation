@@ -148,11 +148,12 @@ def test_panel_no_carga_marca_panel_cargo_false(
     # precaucion (paso 3 sigue con extraccion; paso 8 aborta el pegado).
     assert ok is True
     assert paciente_exacto.panel_cargo is False
-    # Primera espera: 60s. El reintento tras el badge 'Atencion actual'
-    # (caso real 22-09-2026, tutorial onboarding incluido) usa 30s.
+    # El esperador combinado (REQ-081) pollea con esperas cortas dentro
+    # de un presupuesto total de 60s + 30s del reintento del badge.
     timeouts = [c.kwargs.get("timeout") for c in mock_wait.call_args_list]
-    assert timeouts[0] == PANEL_TIMEOUT_S
-    assert timeouts[-1] == 30
+    assert timeouts
+    assert set(timeouts) <= {8, PANEL_TIMEOUT_S}
+    assert len(timeouts) >= 2  # hubo al menos un reintento tras el badge
 
 
 def test_apertura_delega_a_select_date_con_fecha_paciente(
