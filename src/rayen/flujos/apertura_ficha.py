@@ -74,7 +74,11 @@ _PANEL_XPATH = (
     "//table[.//tbody/th] | "
     "//li[@id='anamnesis'] | "
     "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')] | "
-    "//*[contains(@class, 'stratification-card')]"
+    "//*[contains(@class, 'stratification-card')] | "
+    # UI nueva G3 (23-09-2026): la vista de atencion tiene los paneles
+    # 'Evaluacion' y 'Plan' y la seccion 'Anamnesis' (caso Natalie).
+    "//*[normalize-space(text())='Evaluación'] | "
+    "//*[normalize-space(text())='Anamnesis']"
 )
 PANEL_TIMEOUT_S = 60
 
@@ -241,7 +245,8 @@ def _esperar_panel_o_entrar(
         if not tab_hecho:
             try:
                 tab = driver.find_element(*tab_atencion)
-                driver.execute_script("arguments[0].click();", tab)
+                _ = tab.location_once_scrolled_into_view  # scroll al tab
+                tab.click()  # click nativo: mismo metodo del paso 3
                 tab_hecho = True
                 logger.info(
                     "[apertura] Click en pestaña 'Atención actual' del nav."
@@ -314,7 +319,7 @@ def abrir_ficha_por_nombre(
     # 4) Esperar el panel manejando los obstaculos conocidos (REQ-030):
     #    tutorial onboarding asincrono y aterrizaje en 'Historia clinica'
     #    con badge 'NN Atencion actual' (se clickea para entrar).
-    panel = _esperar_panel_o_entrar(driver, logger, PANEL_TIMEOUT_S + 30)
+    panel = _esperar_panel_o_entrar(driver, logger, PANEL_TIMEOUT_S + 60)
     if panel is None:
         # REQ-030: no re-clickear. Marcar flag y seguir.
         logger.warning(
