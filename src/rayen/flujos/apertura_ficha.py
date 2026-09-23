@@ -224,30 +224,33 @@ def _esperar_panel_o_entrar(
 
     from selenium.webdriver.common.by import By
 
+    # Selector PROBADO del paso 3 (click_atencion_actual): la pestaña
+    # 'Atencion actual' del nav vertical. El doble click puede aterrizar
+    # en 'Historia clinica' (pestaña activa) y hay que entrar a la atencion.
+    tab_atencion = (
+        By.XPATH,
+        "//li[contains(@class, 'verticalnav-tab')]"
+        "[.//div[normalize-space(text())='Atención actual']]",
+    )
     fin = _time.monotonic() + budget_s
-    tutoriales_cerrados = 0
-    badge_hecho = False
+    tab_hecho = False
     while _time.monotonic() < fin:
         panel = _wait_visible(driver, _PANEL_XPATH, timeout=8)
         if panel is not None:
             return panel
-        if tutoriales_cerrados < 2 and _cerrar_tutorial_onboarding(driver, logger):
-            tutoriales_cerrados += 1
-            continue
-        if not badge_hecho:
+        if not tab_hecho:
             try:
-                badge = driver.find_element(
-                    By.XPATH,
-                    "//*[contains(normalize-space(text()), 'Atención actual')]",
-                )
-                driver.execute_script("arguments[0].click();", badge)
-                badge_hecho = True
+                tab = driver.find_element(*tab_atencion)
+                driver.execute_script("arguments[0].click();", tab)
+                tab_hecho = True
                 logger.info(
-                    "[crear_notas] Click en badge 'Atencion actual' "
-                    "(entrada a la atencion)."
+                    "[apertura] Click en pestaña 'Atención actual' del nav."
                 )
-            except Exception:
-                pass  # no esta aun: se reintenta en la proxima vuelta
+            except Exception as e:
+                logger.debug(f"[apertura] pestaña no disponible aun: {e}")
+        # El tutorial (si aparece) sale tras entrar a la atencion: chequeo
+        # barato, 1 intento — el reintento lo da la vuelta del waiter.
+        _cerrar_tutorial_onboarding(driver, logger)
         _time.sleep(poll_s)
     return None
 
