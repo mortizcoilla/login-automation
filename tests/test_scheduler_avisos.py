@@ -146,3 +146,53 @@ def test_aviso_fichas_abiertas_ordenado_por_conteo() -> None:
     pos_b = mensaje.index("Tipo B")
     pos_a = mensaje.index("Tipo A")
     assert pos_a < pos_b  # el mayor conteo primero
+
+
+# --- REQ-080: horario del saludo (mie 11:00, resto 8:00) --------------------
+
+
+def test_saludo_miercoles_a_las_11_no_a_las_8(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Miercoles Yadira inicia 11:00: el saludo NO sale a las 8, SI a las 11."""
+    from datetime import datetime
+
+    import src.scheduler.runner as runner
+
+    enviados: list[str] = []
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN_RUBICITA", "t")
+    monkeypatch.setenv("TELEGRAM_CHAT_AVISOS", "1")
+    monkeypatch.setattr(
+        runner.avisos, "enviar", lambda texto: enviados.append(texto) or True
+    )
+
+    miercoles_8 = datetime(2026, 9, 23, 8, 10)  # miercoles
+    miercoles_11 = datetime(2026, 9, 23, 11, 10)
+    estado: dict = {}
+
+    runner._quizas_saludo_matutino(miercoles_8, estado)
+    assert enviados == [], "miercoles 8:10 no debe saludar"
+    assert "__saludo__" not in estado
+
+    runner._quizas_saludo_matutino(miercoles_11, estado)
+    assert len(enviados) == 1, "miercoles 11:10 si debe saludar"
+    assert estado["__saludo__"]["fecha"] == "2026-09-23"
+
+
+def test_saludo_resto_de_semana_a_las_8(monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import datetime
+
+    import src.scheduler.runner as runner
+
+    enviados: list[str] = []
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN_RUBICITA", "t")
+    monkeypatch.setenv("TELEGRAM_CHAT_AVISOS", "1")
+    monkeypatch.setattr(
+        runner.avisos, "enviar", lambda texto: enviados.append(texto) or True
+    )
+
+    jueves_8 = datetime(2026, 9, 24, 8, 5)  # jueves
+    estado: dict = {}
+    runner._quizas_saludo_matutino(jueves_8, estado)
+    assert len(enviados) == 1
+    # segunda vez el mismo dia: no repite
+    runner._quizas_saludo_matutino(jueves_8, estado)
+    assert len(enviados) == 1

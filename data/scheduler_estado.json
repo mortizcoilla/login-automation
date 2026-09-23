@@ -1,7 +1,5 @@
 {
-  "yadira": {
-    "fecha_ultimo_intento": "2026-09-22",
-    "fallos_hoy": 3,
-    "ok": false
+  "__saludo__": {
+    "fecha": "2026-09-24"
   }
 }

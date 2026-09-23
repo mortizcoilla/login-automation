@@ -260,14 +260,19 @@ def _distribucion_fichas_informe() -> tuple[int, list[tuple[str, int]]] | None:
 def _quizas_saludo_matutino(
     ahora: datetime, estado: dict[str, dict[str, object]]
 ) -> None:
-    """Saludo de buenos dias (REQ-080): 8:00-8:29, lunes a viernes.
+    """Saludo de buenos dias (REQ-080): L/M/J/V 8:00-8:29, miercoles
+    11:00-11:29 (Yadira inicia su jornada a las 11 los miercoles).
 
     Se apoya en el latido de 30 min de la tarea del cron (una sola vez
     por dia, marcado en el estado). Un fallo no rompe nada.
     """
     if ahora.weekday() > 4:  # sabado/domingo no hay saludo
         return
-    if not (dt_time(8, 0) <= ahora.time() < dt_time(8, 30)):
+    # Miercoles (weekday 2): jornada tardia -> saludo a las 11.
+    if ahora.weekday() == 2:
+        if not (dt_time(11, 0) <= ahora.time() < dt_time(11, 30)):
+            return
+    elif not (dt_time(8, 0) <= ahora.time() < dt_time(8, 30)):
         return
     hoy = ahora.date().isoformat()
     registro = estado.get("__saludo__", {})
