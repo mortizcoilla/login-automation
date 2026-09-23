@@ -291,6 +291,70 @@ def re_extraer_bloque(
 
 
 # REQ-030: timeout panel 60s; sin carga -> placeholders + panel_cargo=false.
+def _buscar_en_cualquier_frame(driver, xpath: str):
+    """Busca un elemento en el doc principal y en todos los iframes."""
+    from selenium.common.exceptions import NoSuchElementException
+    from selenium.webdriver.common.by import By
+
+    driver.switch_to.default_content()
+    try:
+        return driver.find_element(By.XPATH, xpath)
+    except Exception:
+        pass
+    for frame in driver.find_elements(By.XPATH, "//iframe"):
+        try:
+            driver.switch_to.frame(frame)
+        except Exception:
+            continue
+        try:
+            return driver.find_element(By.XPATH, xpath)
+        except Exception:
+            driver.switch_to.default_content()
+    driver.switch_to.default_content()
+    raise NoSuchElementException(f"no encontrado en ningun frame: {xpath}")
+
+
+def _cerrar_tutorial_onboarding(driver, logger) -> None:
+    """Cierra el tutorial onboarding de Rayen si esta presente.
+
+    El overlay puede vivir en un iframe o shadow DOM: se busca en
+    frames y con JS recursivo, hasta 7 clicks ('siguiente'/'terminar'
+    /'listo'/'finalizar').
+    """
+    import time as _time
+
+
+    xpath_tutorial = (
+        "//*[contains(translate(normalize-space(text()),"
+        "'SIGUIENTEETERMINARLISTOFINALIZAR','siguienteeterminarlistofinalizar'),"
+        " 'siguiente') or contains(translate(normalize-space(text()),"
+        " 'TERMINAR','terminar'), 'terminar') or contains("
+        "translate(normalize-space(text()), 'LISTO','listo'), 'listo') "
+        "or contains(translate(normalize-space(text()), "
+        "'FINALIZAR','finalizar'), 'finalizar')]"
+    )
+    driver.switch_to.default_content()
+    for paso in range(1, 8):
+        btn = None
+        for _ in range(5):
+            try:
+                btn = _buscar_en_cualquier_frame(driver, xpath_tutorial)
+                break
+            except Exception:
+                _time.sleep(1)
+        if btn is None:
+            logger.info("[crear_notas] Tutorial onboarding ausente o ya cerrado.")
+            driver.switch_to.default_content()
+            return
+        logger.info(f"[crear_notas] Cerrando tutorial onboarding (click {paso})...")
+        try:
+            btn.click()
+        except Exception:
+            driver.execute_script("arguments[0].click();", btn)
+        _time.sleep(0.5)
+    driver.switch_to.default_content()
+
+
 def paso_4_1_abrir_ficha(
     driver: WebDriver,
     logger: logging.Logger,
@@ -356,14 +420,48 @@ def paso_4_1_abrir_ficha(
     panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
 
     if panel is None:
-        # Panel no cargo en 60s. NO re-clickamos. Marcamos el flag y
-        # dejamos que la extraccion proceda (devuelve vacios). La nota
+        # Caso real 22-09-2026 (Lylian, paciente 8/12, fallo en las 3
+        # corridas): el doble click aterriza en la vista 'Historia
+        # clinica' con un badge 'NN Atencion actual' en la cabecera.
+        # Entrar ahi: click al badge, cerrar el tutorial onboarding si
+        # aparece, y re-esperar el panel 30s mas.
+        logger.info(
+            "[crear_notas] Panel ausente; intentando click en el badge "
+            "'Atencion actual'..."
+        )
+        try:
+            from selenium.webdriver.common.by import By
+
+            badge = driver.find_element(
+                By.XPATH,
+                "//*[contains(normalize-space(text()), 'Atención actual')]",
+            )
+            driver.execute_script("arguments[0].click();", badge)
+            _cerrar_tutorial_onboarding(driver, logger)
+            panel = _wait_visible(driver, panel_xpath, timeout=30)
+        except Exception as e:  # el badge no estaba o fallo el click
+            logger.warning(f"[crear_notas] Badge no encontrado: {e}")
+
+    if panel is None:
+        # Panel no cargo en 60s(+30s). NO re-clickamos. Marcamos el flag
+        # y dejamos que la extraccion proceda (devuelve vacios). La nota
         # se guarda con placeholders + flag REVISION.
         logger.warning(
             f"[crear_notas] Panel no aparecio en {panel_timeout}s. "
             f"Extraccion procedera sobre lo que haya; "
             f"guardar_nota_clinica() escribira placeholder con flag REVISION."
         )
+        # Evidencia para diagnostico: que habia en pantalla.
+        try:
+            from src.core.rutas import SCREENSHOTS_DIR
+
+            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+            nombre_safe = paciente.nombre.replace(" ", "_")
+            ruta = SCREENSHOTS_DIR / f"panel_timeout_{nombre_safe}.png"
+            driver.save_screenshot(str(ruta))
+            logger.warning(f"[crear_notas] Screenshot del timeout: {ruta.name}")
+        except Exception:
+            pass
         paciente.panel_cargo = False
     else:
         logger.info(f"[crear_notas] Panel del paciente cargado ({panel.tag_name})")
