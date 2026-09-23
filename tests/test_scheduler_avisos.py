@@ -113,3 +113,36 @@ def test_envio_sin_config_devuelve_false(monkeypatch: pytest.MonkeyPatch) -> Non
     with patch.object(avisos.requests, "post") as mock_post:
         assert avisos.enviar("hola") is False
     mock_post.assert_not_called()
+
+
+# --- REQ-080: saludo matutino y aviso de fichas abiertas ---------------------
+
+
+def test_saludo_matutino_rotativo_y_determinista() -> None:
+    a = avisos.armar_saludo_matutino(_LUNES)
+    b = avisos.armar_saludo_matutino(_LUNES)
+    assert a == b  # mismo dia, mismo saludo
+    c = avisos.armar_saludo_matutino(_MARTES)
+    assert c != a  # otro dia, otro saludo
+
+
+def test_aviso_fichas_abiertas_formato_pedido() -> None:
+    distribucion = [
+        ("Morbilidad telefonica", 5),
+        ("Control integral ecicep-g3", 4),
+        ("Control cronico descompensado", 2),
+        ("Ingreso integral ecicep-g3", 1),
+    ]
+    mensaje = avisos.armar_aviso_fichas_abiertas(12, distribucion)
+    assert "TOTAL FICHAS ABIERTAS:12" in mensaje
+    assert "Distribucion por tipo de atencion:" in mensaje
+    for tipo, _ in distribucion:
+        assert tipo in mensaje
+
+
+def test_aviso_fichas_abiertas_ordenado_por_conteo() -> None:
+    distribucion = [("Tipo B", 2), ("Tipo A", 9)]
+    mensaje = avisos.armar_aviso_fichas_abiertas(11, distribucion)
+    pos_b = mensaje.index("Tipo B")
+    pos_a = mensaje.index("Tipo A")
+    assert pos_a < pos_b  # el mayor conteo primero

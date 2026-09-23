@@ -77,6 +77,33 @@ MENSAJES_FIN_FALLO = [
     "🥺 Mama, la cadena terminó con problemas: {detalle}. Quedó todo en el log, no te preocupes 🙏",
 ]
 
+# Saludo matutino 8:00 L-V (REQ-080). Rubicita: tierna, con garra.
+SALUDOS_MATINALES = [
+    "🐈‍⬛ Miau! Buenos dias mama! Rubicita ya estiró las patas y afiló las "
+    "garras... tranquila, hoy solo ronroneo fichas 💛",
+    "🌅 Buenos dias mama! Pasé la noche velando el sofá... ahora toca cazar "
+    "el dia juntas 🐾 Te deseo una jornada hermosa 💛",
+    "🐱 Miau mama! Desayuné y estoy lista: te doy pata (con garra, como "
+    "siempre) para que hoy sea un gran dia ✨",
+    "😼 Rrrr... buenos dias mama! Si alguien te molesta hoy, avisame: saco "
+    "las garras 🐾 Te deseo un dia liguito 💛",
+    "🌞 Miau! A despertar mama! Te dejé un mordisquito de suerte en la "
+    "almohada 🐈‍⬛ Ahora, ¡a volar! 💛",
+    "🐾 Buenos dias mama! Bigotes listos, arenera limpia y paciencia "
+    "recargada. Vamos con todo 😸",
+    "🌙 Miau mama! Hoy el dia deberia seguir el hilo... y si se "
+    "enreda, jalo de la pata contigo 🐾✨",
+]
+
+# Frases de portada para el conteo de fichas abiertas.
+FRASES_FICHAS_ABIERTAS = [
+    "🐈 Miau mama! Contando las presas del mes... te doy pata con garra 🐾",
+    "📋 Rrrr... mision de conteo completada. Mira lo que hay que cazar "
+    "hoy, mama 😼",
+    "🐾 Mama, hojeé el mes con mis bigotes: esto es lo que hay 🐈",
+    "🐱 Contando con garra y cariño, mama. He aqui el inventario felino 📋✨",
+]
+
 _RESUMEN_MORTADELO_RE = re.compile(
     r"\[mortadelo\] === Resumen: (\d+)/(\d+) pacientes completos ==="
 )
@@ -132,6 +159,26 @@ def armar_mensaje_fin(ok: bool, fichas_ok: int | None, paso_fallido: int = 0) ->
     return MENSAJES_FIN_FALLO[date.today().toordinal() % len(MENSAJES_FIN_FALLO)].format(
         detalle=detalle
     )
+
+
+def armar_saludo_matutino(ahora: date) -> str:
+    """Saludo de inicio del dia (8:00 L-V, REQ-080)."""
+    return elegir_mensaje(SALUDOS_MATINALES, ahora)
+
+
+def armar_aviso_fichas_abiertas(
+    total: int, distribucion: list[tuple[str, int]]
+) -> str:
+    """Conteo de fichas abiertas con su distribucion (REQ-080).
+
+    Formato pedido por la usuaria, en bloque monoespaciado para que las
+    columnas queden alineadas en Telegram.
+    """
+    lineas = [f"TOTAL FICHAS ABIERTAS:{total}", "Distribucion por tipo de atencion:"]
+    for tipo, n in sorted(distribucion, key=lambda x: x[1], reverse=True):
+        lineas.append(f"  {tipo}{' ' * max(1, 45 - len(tipo))}{n}")
+    portada = elegir_mensaje(FRASES_FICHAS_ABIERTAS, date.today())
+    return f"{portada}\n```{chr(10)}{chr(10).join(lineas)}{chr(10)}```"
 
 
 def enviar(texto: str) -> bool:

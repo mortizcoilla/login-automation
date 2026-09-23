@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 from datetime import date, datetime
+from datetime import time as dt_time
 from pathlib import Path
 
 if __package__ in (None, ""):  # script directo: bootstrap para `from src...`
@@ -202,6 +203,17 @@ def ejecutar_cadena(usuario: str) -> int:
             return numero
         if numero == 2:
             _copiar_informe_a_onedrive()
+            # REQ-080: aviso de fichas abiertas con su distribucion.
+            conteo_fichas = _distribucion_fichas_informe()
+            if conteo_fichas is not None:
+                total, distribucion = conteo_fichas
+                enviado = avisos.enviar(
+                    avisos.armar_aviso_fichas_abiertas(total, distribucion)
+                )
+                _log(
+                    f"aviso fichas abiertas ({total}): "
+                    f"{'enviado' if enviado else 'NO ENVIADO'}"
+                )
     _log(f"[{usuario}] cadena completa OK")
     return 0
 
@@ -222,6 +234,52 @@ def _contar_pacientes_informe() -> int | None:
     except Exception as e:  # el aviso no puede romper la cadena
         _log(f"aviso inicio: no pude contar pacientes del informe: {e}")
         return None
+
+
+def _distribucion_fichas_informe() -> tuple[int, list[tuple[str, int]]] | None:
+    """Total de fichas abiertas + conteo por tipo de atencion (REQ-080).
+
+    None si el informe no existe todavia o no se puede leer.
+    """
+    try:
+        from collections import Counter
+
+        from src.informes.parser import parsear_pacientes_objetivo
+
+        ruta = informe_mes_actual_path()
+        if not ruta.exists():
+            return None
+        pacientes = parsear_pacientes_objetivo(ruta)
+        conteo = Counter(p.tipo_atencion for p in pacientes)
+        return len(pacientes), conteo.most_common()
+    except Exception as e:  # el aviso no puede romper la cadena
+        _log(f"aviso fichas abiertas: no pude armar la distribucion: {e}")
+        return None
+
+
+def _quizas_saludo_matutino(
+    ahora: datetime, estado: dict[str, dict[str, object]]
+) -> None:
+    """Saludo de buenos dias (REQ-080): 8:00-8:29, lunes a viernes.
+
+    Se apoya en el latido de 30 min de la tarea del cron (una sola vez
+    por dia, marcado en el estado). Un fallo no rompe nada.
+    """
+    if ahora.weekday() > 4:  # sabado/domingo no hay saludo
+        return
+    if not (dt_time(8, 0) <= ahora.time() < dt_time(8, 30)):
+        return
+    hoy = ahora.date().isoformat()
+    registro = estado.get("__saludo__", {})
+    if registro.get("fecha") == hoy:
+        return
+    try:
+        avisos.enviar(avisos.armar_saludo_matutino(ahora.date()))
+        estado["__saludo__"] = {"fecha": hoy}
+        _guardar_estado(estado)
+        _log("saludo matutino enviado.")
+    except Exception as e:  # el saludo no puede romper el latido
+        _log(f"saludo matutino fallo (no es critico): {e}")
 
 
 def _correr_vencidas(
@@ -278,6 +336,9 @@ def main(argv: list[str] | None = None) -> int:
 
     estado = _leer_estado()
     ahora = datetime.now()
+
+    # REQ-080: saludo matutino 8:00-8:29 L-V (aprovecha el latido).
+    _quizas_saludo_matutino(ahora, estado)
 
     if args.listar:
         pendientes = vencidas(calendario, ahora, estado)
