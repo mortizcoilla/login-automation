@@ -164,33 +164,37 @@ def _cerrar_tutorial_onboarding(driver: WebDriver, logger: logging.Logger) -> bo
             if btn is None:
                 btn = driver.execute_script(_JS_BUSCAR_SHADOW, "listo")
             if btn is None:
+                # No hay tutorial (o ya cerro): salir limpio. El volcado
+                # HTML queda como evidencia de diagnostico.
                 logger.info("Tutorial onboarding: no quedan botones (cerrado o ausente).")
-            # Evidencia: volcar el HTML de cada contexto del tutorial.
-            try:
-                from selenium.webdriver.common.by import By
+                try:
+                    from selenium.webdriver.common.by import By
 
-                from src.core.rutas import LOGS_DIR as _LD
+                    from src.core.rutas import LOGS_DIR as _LD
 
-                _LD.mkdir(parents=True, exist_ok=True)
-                driver.switch_to.default_content()
-                (_LD / "tutorial_main.html").write_text(
-                    driver.page_source, encoding="utf-8"
-                )
-                for j, frame in enumerate(driver.find_elements(By.XPATH, "//iframe")):
-                    try:
-                        driver.switch_to.frame(frame)
-                        (_LD / f"tutorial_frame_{j}.html").write_text(
-                            driver.page_source, encoding="utf-8"
-                        )
-                    except Exception:
-                        continue
-                    finally:
-                        driver.switch_to.default_content()
-            except Exception:
-                pass
-                driver.switch_to.default_content()
+                    _LD.mkdir(parents=True, exist_ok=True)
+                    driver.switch_to.default_content()
+                    (_LD / "tutorial_main.html").write_text(
+                        driver.page_source, encoding="utf-8"
+                    )
+                    for j, frame in enumerate(
+                        driver.find_elements(By.XPATH, "//iframe")
+                    ):
+                        try:
+                            driver.switch_to.frame(frame)
+                            (_LD / f"tutorial_frame_{j}.html").write_text(
+                                driver.page_source, encoding="utf-8"
+                            )
+                        except Exception:
+                            continue
+                        finally:
+                            driver.switch_to.default_content()
+                except Exception:
+                    driver.switch_to.default_content()
                 return False
-            driver.execute_script("arguments[0].click();", btn)
+            driver.execute_script(
+                "if (arguments[0]) arguments[0].click();", btn
+            )
             logger.info(f"Cerrando tutorial onboarding via shadow DOM (click {paso})...")
             time.sleep(0.5)
             return True
