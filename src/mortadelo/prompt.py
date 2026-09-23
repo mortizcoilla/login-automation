@@ -7,19 +7,26 @@ agente (.opencode/agent/mortadelo.md, rol v2 aprobado).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-PROMPT_VERSION = 1
+PROMPT_VERSION = 4
 
 
 @dataclass
 class Pedidos:
-    """Lo que Yadira pidio en el bloque ** mortadelo (mas el trigger crudo)."""
+    """Lo que Yadira pidio en el bloque ** mortadelo (mas el trigger crudo).
+
+    pedidos_libres: los pedidos que NO calzan en las categorias
+    estructuradas (examenes/interconsulta/indicaciones) — p. ej. "Dame
+    sugerencias para la psicologa" o "como cerrar el GES". Cada uno se
+    convierte en una seccion explicita del prompt (REQ-077).
+    """
 
     trigger_texto: str = ""
     examenes: bool = False
     interconsulta_especialidad: str | None = None
     indicaciones: bool = False
+    pedidos_libres: list[str] = field(default_factory=list)
 
 
 _REGLAS_FICHA = """Ejecucion:
@@ -30,9 +37,9 @@ _REGLAS_FICHA = """Ejecucion:
 
 Correccion ortografica: corrige faltas de ortografia del texto de la doctora (letras faltantes o sobrantes, tildes, terminos medicos mal escritos) SIN cambiar el contenido, el estilo, las abreviaturas ni el formato. NO corrijas tiempos verbales, NO mejores la redaccion ni la puntuacion: solo ortografia objetiva.
 
-Prohibido: agregar secciones o bloques nuevos (salvo las secciones expresamente pedidas abajo); eliminar secciones existentes; modificar, corregir o reformular los campos ya escritos por la doctora (mas alla de la ortografia objetiva); reformatear (no conviertas texto en vinetas ni vinetas en texto).
+Prohibido: agregar secciones, bloques o titulos nuevos; eliminar secciones existentes; modificar, corregir o reformular los campos ya escritos por la doctora (mas alla de la ortografia objetiva); reformatear (no conviertas texto en vinetas ni vinetas en texto).
 
-IMPORTANTE - bloque ** mortadelo: es una instruccion para el sistema, NO contenido clinico. ELIMINALO del documento final (no debe aparecer en tu salida)."""
+IMPORTANTE - bloque ** mortadelo: es una instruccion para el SISTEMA, no contenido clinico. ELIMINALO de tu salida (sus pedidos se responden en el INFORME de trazabilidad, NO en la ficha). La ficha queda exactamente con las secciones del documento original."""
 
 
 def _bloque_trigger(pedidos: Pedidos) -> str:
@@ -44,27 +51,6 @@ def _bloque_trigger(pedidos: Pedidos) -> str:
     )
 
 
-def _secciones_condicionales(pedidos: Pedidos) -> str:
-    partes: list[str] = []
-    if pedidos.indicaciones:
-        partes.append(
-            "Como la doctora pidio INDICACIONES, agrega AL FINAL del documento una "
-            'seccion con titulo "INDICACIONES:" (mayusculas y dos puntos, como los '
-            "demas titulos del documento), con las indicaciones segun insumos y "
-            "criterio experto, listas para copiar en Rayen."
-        )
-    if pedidos.interconsulta_especialidad:
-        partes.append(
-            f"Como la doctora pidio INTERCONSULTA, agrega AL FINAL del documento "
-            f"(despues de INDICACIONES si tambien fue pedida) una seccion con titulo "
-            f'"INTERCONSULTA A {pedidos.interconsulta_especialidad.upper()}:" '
-            "(mayusculas y dos puntos), con el texto de la interconsulta completo y "
-            "listo para copiar en Rayen: antecedentes relevantes, motivo, hallazgos "
-            "que la justifican y solicitud concreta."
-        )
-    return " ".join(partes) if partes else ""
-
-
 def construir_prompt_ficha(
     paciente: str,
     fecha: str,
@@ -73,11 +59,13 @@ def construir_prompt_ficha(
     examenes: str | None,
     pedidos: Pedidos,
 ) -> str:
-    """Prompt de la LLAMADA 1 (ficha completa)."""
+    """Prompt de la LLAMADA 1 (ficha completa).
+
+    REQ-077/078: la ficha NUNCA agrega secciones — los pedidos del
+    bloque ** mortadelo se responden en el informe de trazabilidad
+    (llamada 2).
+    """
     bloque_exam = examenes if examenes else "(este paciente no tiene examenes consolidados)"
-    secciones = _secciones_condicionales(pedidos)
-    if secciones:
-        secciones = "\n\n" + secciones
     primera = base_anamnesis.splitlines()[0] if base_anamnesis.splitlines() else ""
     return f"""Completa el documento ANAMNESIS de {paciente} ({fecha}) utilizando los insumos entregados.
 
@@ -93,10 +81,9 @@ def construir_prompt_ficha(
 {bloque_exam}
 === FIN INSUMO 2 ===
 
-{_bloque_trigger(pedidos)}{secciones}
+{_bloque_trigger(pedidos)}
 
 {_REGLAS_FICHA}
-
 Salida: exclusivamente el contenido del documento actualizado, respetando el formato original. Sin comentarios ni explicaciones, sin bloques de codigo. OBLIGATORIO: la primera linea de tu salida es EXACTAMENTE la primera linea del documento original, copiada tal cual, incluidos sus simbolos '>':
 {primera}"""
 
@@ -109,15 +96,23 @@ def construir_prompt_informe(
     examenes: str | None,
     pedidos: Pedidos,
 ) -> str:
-    """Prompt de la LLAMADA 2 (informe de trazabilidad)."""
+    """Prompt de la LLAMADA 2 (informe de trazabilidad).
+
+    REQ-077/078: los pedidos del bloque ** mortadelo (estructurados y
+    libres) se responden AQUI, en la seccion 'Solicitudes de la
+    doctora' — la ficha no agrega secciones.
+    """
     bloque_exam = examenes if examenes else "(sin examenes consolidados)"
     return f"""Genera el INFORME DE TRAZABILIDAD de {paciente} ({fecha}), documento de supervision para la Dra. Yadira. Markdown claro, sencillo y profesional, con EXACTAMENTE estas secciones en este orden:
 
 ## ALERTAS
 (indicadores de riesgo en los insumos: ideacion suicida, autolesiones, violencia intrafamiliar, consumo de riesgo; si no hay, escribir "Sin alertas.")
 
+## Solicitudes de la doctora
+(El bloque ** mortadelo puede traer instrucciones de la doctora y datos de apoyo. Por CADA instruccion — generar/realizar interconsulta a una especialidad, indicaciones para el paciente, sugerencias para la psicologa u otro profesional, como cerrar un GES, u otras — escribe en NEGRITA el pedido y debajo tu respuesta experta completa, fundamentada en los insumos: si pide interconsulta, el texto completo listo para copiar; si pide sugerencias o indicaciones, el listado concreto. Los datos de apoyo del bloque — telefono, agudeza visual, formulas — integrálos en las respuestas correspondientes. Si el bloque no trae instrucciones, escribe "Sin solicitudes.")
+
 ## Llenados realizados
-(tabla markdown | Campo | Origen | Fundamentacion |; una fila por cada campo vacio que fue completado en la ficha y por cada seccion agregada; Origen = info_paciente / examenes / criterio experto)
+(tabla markdown | Campo | Origen | Fundamentacion |; una fila por cada campo vacio que fue completado en la ficha; Origen = info_paciente / examenes / criterio experto)
 
 ## Correcciones ortograficas
 (tabla markdown | Original | Corregido |; SOLO las correcciones de ortografia objetiva aplicadas al texto de la doctora; si ninguna, "Ninguna.")
