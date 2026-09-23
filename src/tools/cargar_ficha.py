@@ -44,6 +44,7 @@ from src.notas.modelos import PacienteObjetivo
 from src.rayen.escritura.editor_anamnesis import (
     ResultadoPegado,
     TipoEditor,
+    guardar_editor_anamnesis,
     pegar_en_editor,
 )
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
@@ -100,6 +101,7 @@ class ResultadoCarga:
     fecha: str
     ficha_path: str = ""
     estado: str = "pendiente"  # ok / skip / error / pendiente_selector
+    abierta: bool = False  # la ficha se abrio en Rayen (hubo doble click)
     motivo: str = ""
     tipo_editor: str = ""
     caracteres_pegados: int = 0
@@ -175,6 +177,7 @@ def cargar_ficha_de_paciente(
         resultado.estado = "skip"
         resultado.motivo = "paciente no encontrado en tabla del dia"
         return resultado
+    resultado.abierta = True
 
     # Si el panel no cargo (REQ-030), NO intentamos pegar: el editor
     # interno tampoco estara.
@@ -192,6 +195,13 @@ def cargar_ficha_de_paciente(
         resultado.motivo = pegado.motivo
         return resultado
 
+    # Guardar (REQ-073 revisada 23-09-2026: guardado automatico).
+    if not guardar_editor_anamnesis(driver, logger):
+        resultado.estado = "error"
+        resultado.motivo = "guardar: el editor no cerro tras presionar Guardar"
+        logger.error(f"[cargar_ficha] {resultado.motivo}")
+        return resultado
+
     resultado.estado = "ok"
     resultado.caracteres_pegados = pegado.caracteres_pegados or len(texto)
     logger.info(
@@ -205,37 +215,85 @@ def cargar_ficha_de_paciente(
 # ---- Iterador batch ----
 
 
+def _abrir_sesion(credenciales: dict[str, str], logger: logging.Logger):
+    """Login a Rayen. Devuelve el driver o None si fallo."""
+    try:
+        return run_login(credenciales, logger, headless=False)
+    except Exception as e:
+        logger.exception(f"[cargar_ficha] login fallo: {e}")
+        return None
+
+
 def iterar_pacientes(
-    driver,
     logger: logging.Logger,
     pacientes: list[PacienteObjetivo],
+    credenciales: dict[str, str] | None = None,
     fichas_dir: Path = FICHAS_GENERADAS_DIR,
+    max_abiertas: int = 8,
 ) -> list[ResultadoCarga]:
-    """Procesa cada paciente del informe. Continua con el siguiente si uno falla."""
+    """Procesa cada paciente gestionando el ciclo de sesion (REQ-081).
+
+    Rayen soporta solo 8 fichas abiertas por sesion: al llegar al limite
+    cierra el navegador, vuelve a loguear y sigue con el resto. Si un
+    paciente falla, la corrida continua con el siguiente.
+    """
     resultados: list[ResultadoCarga] = []
-    for i, p in enumerate(pacientes, 1):
-        logger.info(
-            f"[cargar_ficha] ({i}/{len(pacientes)}) {p.nombre} ({p.fecha})"
+    driver = None
+    abiertas = 0  # fichas abiertas en la sesion actual
+    en_ficha = False  # venimos de abrir una ficha (no de un skip)
+
+    def _error(nombre: str, fecha: str, motivo: str) -> ResultadoCarga:
+        return ResultadoCarga(
+            nombre=nombre,
+            fecha=fecha,
+            estado="error",
+            motivo=motivo,
+            timestamp=datetime.now().isoformat(timespec="seconds"),
         )
+
+    for i, p in enumerate(pacientes, 1):
+        logger.info(f"[cargar_ficha] ({i}/{len(pacientes)}) {p.nombre} ({p.fecha})")
         try:
-            # Volver a la lista de Pacientes citados antes de cada paciente
-            # distinto del primero: abrir_ficha_por_nombre filtra/busca en
-            # esa tabla (mismo patron que paso 3 tras pegar/extraer).
-            if i > 1:
+            # Limite de Rayen: 8 fichas abiertas -> cerrar y re-loguear.
+            if driver is not None and abiertas >= max_abiertas:
+                logger.info(
+                    "[cargar_ficha] limite de fichas abiertas: cerrando "
+                    "sesion y volviendo a loguear..."
+                )
+                safe_quit(driver, logger)
+                driver = None
+                abiertas = 0
+                en_ficha = False
+
+            # Volver a la lista si venimos de una ficha abierta.
+            if driver is not None and en_ficha:
                 volver_a_pacientes_citados(driver, logger)
+                en_ficha = False
+
+            if driver is None:
+                driver = _abrir_sesion(credenciales or {}, logger)
+                if driver is None:
+                    resultados.append(
+                        _error(p.nombre, p.fecha, "login fallo")
+                    )
+                    for restante in pacientes[i:]:
+                        resultados.append(
+                            _error(restante.nombre, restante.fecha, "login fallo")
+                        )
+                    return resultados
+                abiertas = 0
+
             r = cargar_ficha_de_paciente(driver, logger, p, fichas_dir=fichas_dir)
+            abiertas += 1 if r.abierta else 0
+            en_ficha = r.abierta
         except Exception as e:
             logger.exception(
                 f"[cargar_ficha] excepcion no controlada con {p.nombre}: {e}"
             )
-            r = ResultadoCarga(
-                nombre=p.nombre,
-                fecha=p.fecha,
-                estado="error",
-                motivo=f"excepcion no controlada: {type(e).__name__}: {e}",
-                timestamp=datetime.now().isoformat(timespec="seconds"),
-            )
+            r = _error(p.nombre, p.fecha, f"excepcion no controlada: {type(e).__name__}: {e}")
         resultados.append(r)
+    if driver is not None:
+        safe_quit(driver, logger)
     return resultados
 
 
@@ -377,17 +435,16 @@ def main() -> int:
         )
         modo = "un_paciente"
 
-    # Login + iteracion (salteado en --dry-run).
+    # Login: en el modo completo lo gestiona iterar_pacientes (ciclo de
+    # sesion cada 8 fichas, REQ-081). --solo-apertura abre su propia
+    # sesion aqui. --dry-run no toca Rayen.
     driver = None
-    if not args.dry_run:
+    if args.solo_apertura:
         try:
             driver = run_login(credentials, logger, headless=False)
         except Exception as e:
             logger.exception(f"[cargar_ficha] login fallo: {e}")
             return 3
-        # run_login deja el driver en login + box + Pacientes citados;
-        # todo lo que sigue lo necesita no-None.
-        assert driver is not None
 
     resultados: list[ResultadoCarga] = []
     try:
@@ -518,7 +575,10 @@ def main() -> int:
                 )
         else:
             resultados = iterar_pacientes(
-                driver, logger, pacientes, fichas_dir=args.fichas_dir
+                logger,
+                pacientes,
+                credenciales=credentials,
+                fichas_dir=args.fichas_dir,
             )
     finally:
         if driver is not None:

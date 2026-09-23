@@ -167,6 +167,9 @@ def test_cargar_ficha_de_paciente_exitoso(
     ), patch(
         "src.tools.cargar_ficha.pegar_en_editor",
         return_value=cargar_ficha.pegador_fake_ok(len(texto)),
+    ), patch(
+        "src.tools.cargar_ficha.guardar_editor_anamnesis",
+        return_value=True,
     ):
         resultado = cargar_ficha.cargar_ficha_de_paciente(
             fake_driver, logger, paciente, fichas_dir=tmp_path
@@ -234,28 +237,43 @@ def test_iterar_pacientes_mezcla_estados(
             tipo_atencion="",
         ),
     ]
-    fake_driver = MagicMock()
-
     # El primero abre y pega OK; el segundo skip por sin insumo;
     # el tercero abre y pega OK.
     def fake_abrir(driver, log, p):
         p.panel_cargo = True
         return True
 
+    sesiones: list[int] = []
+
+    def fake_abrir_sesion(creds, log):
+        sesiones.append(1)
+        return MagicMock()
+
     with patch(
+        "src.tools.cargar_ficha._abrir_sesion",
+        side_effect=fake_abrir_sesion,
+    ), patch(
+        "src.tools.cargar_ficha.volver_a_pacientes_citados",
+    ), patch(
+        "src.tools.cargar_ficha.safe_quit",
+    ), patch(
         "src.tools.cargar_ficha.abrir_ficha_por_nombre",
         side_effect=fake_abrir,
     ), patch(
         "src.tools.cargar_ficha.pegar_en_editor",
         return_value=cargar_ficha.pegador_fake_ok(1),
+    ), patch(
+        "src.tools.cargar_ficha.guardar_editor_anamnesis",
+        return_value=True,
     ):
         resultados = cargar_ficha.iterar_pacientes(
-            fake_driver, logger, pacientes, fichas_dir=tmp_path
+            logger, pacientes, credenciales={"u": "1"}, fichas_dir=tmp_path
         )
 
     assert len(resultados) == 3
     estados = [r.estado for r in resultados]
     assert estados == ["ok", "skip", "ok"]
+    assert len(sesiones) == 1  # 3 pacientes < 8: una sola sesion
 
 
 # ---------------------------------------------------------------------------
@@ -364,3 +382,50 @@ def test_main_ejecuta_login_y_delega_a_iterar(
 
     assert rc == 0
     mock_iter.assert_called_once()
+
+
+def test_recicla_sesion_cada_8_fichas(logger: logging.Logger, tmp_path: Path) -> None:
+    """REQ-081: Rayen soporta 8 fichas abiertas por sesion — al llegar
+    a 8 se cierra el navegador y se vuelve a loguear para el resto."""
+    pacientes = [
+        PacienteObjetivo(fecha="15-09-2026", nombre=f"Pac{i}", tipo_atencion="")
+        for i in range(1, 10)  # 9 pacientes
+    ]
+    for i in range(1, 10):
+        (tmp_path / f"ficha_Pac{i}_15-09-2026.md").write_text("x", encoding="utf-8")
+
+    sesiones: list[int] = []
+    safe_quits: list[int] = []
+    abiertas_log: list[int] = []
+
+    def fake_abrir_sesion(creds, log):
+        sesiones.append(1)
+        return MagicMock()
+
+    def fake_safe_quit(driver, log):
+        safe_quits.append(1)
+
+    def fake_volver(driver, log):
+        pass
+
+    def fake_abrir(driver, log, p):
+        p.panel_cargo = True
+        abiertas_log.append(1)
+        return True
+
+    with (
+        patch("src.tools.cargar_ficha._abrir_sesion", side_effect=fake_abrir_sesion),
+        patch("src.tools.cargar_ficha.safe_quit", side_effect=fake_safe_quit),
+        patch("src.tools.cargar_ficha.volver_a_pacientes_citados", side_effect=fake_volver),
+        patch("src.tools.cargar_ficha.abrir_ficha_por_nombre", side_effect=fake_abrir),
+        patch("src.tools.cargar_ficha.pegar_en_editor", return_value=cargar_ficha.pegador_fake_ok(1)),
+        patch("src.tools.cargar_ficha.guardar_editor_anamnesis", return_value=True),
+    ):
+        resultados = cargar_ficha.iterar_pacientes(
+            logger, pacientes, credenciales={"u": "1"}, fichas_dir=tmp_path
+        )
+
+    assert len(resultados) == 9
+    assert all(r.estado == "ok" for r in resultados)
+    assert len(sesiones) == 2, "9 pacientes = 2 sesiones (8 + 1)"
+    assert len(safe_quits) == 2, "1 cierre al reciclar + 1 cierre final"

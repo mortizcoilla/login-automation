@@ -62,6 +62,7 @@ _LAPIZ_ARIA = (
     "//li[@id='anamnesis']//button[@aria-label='Modificar']",
 )
 _HISTORIA_SELECTOR = (By.CSS_SELECTOR, "textarea#historiaEnfermedad")
+_GUARDAR_SELECTOR = (By.CSS_SELECTOR, "button.add-header-button")
 _EDITOR_TIMEOUT_S = 15
 
 # Set + eventos: reemplaza TODO el texto (corrar y pegar) y dispara
@@ -107,6 +108,36 @@ def abrir_editor_anamnesis(
     except TimeoutException:
         logger.warning("[editor_anamnesis] el editor (#historiaEnfermedad) no aparecio")
         return None
+
+
+def guardar_editor_anamnesis(
+    driver: WebDriver, logger: logging.Logger, timeout: int = 10
+) -> bool:
+    """Presiona Guardar en el editor y espera su cierre.
+
+    REQ-073 revisada (decision de la usuaria 23-09-2026): el guardado es
+    automatico dentro del flujo del paso 8. Si el editor no cierra tras
+    el click, devuelve False (el paciente queda como error).
+    """
+    wait = WebDriverWait(driver, timeout)
+    try:
+        boton = wait.until(EC.element_to_be_clickable(_GUARDAR_SELECTOR))
+    except TimeoutException:
+        logger.warning("[editor_anamnesis] boton Guardar no aparecio")
+        return False
+    try:
+        boton.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", boton)
+    try:
+        WebDriverWait(driver, timeout).until(
+            EC.invisibility_of_element_located(_HISTORIA_SELECTOR)
+        )
+    except TimeoutException:
+        logger.warning("[editor_anamnesis] el editor no cerro tras Guardar")
+        return False
+    logger.info("[editor_anamnesis] Guardar OK (editor cerrado)")
+    return True
 
 
 def pegar_en_editor(
