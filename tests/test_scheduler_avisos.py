@@ -42,8 +42,8 @@ def test_inicio_sin_conteo_no_menciona_lista() -> None:
 
 def test_fin_ok_menciona_fichas_guardadas() -> None:
     mensaje = avisos.armar_mensaje_fin(ok=True, fichas_ok=4, paso_fallido=0)
+    # El pool rota por fecha: todas las variantes mencionan el conteo.
     assert "4 fichas" in mensaje
-    assert "guardadas" in mensaje
 
 
 def test_fin_ok_sin_dato_es_sobrio() -> None:
