@@ -63,7 +63,19 @@ _LAPIZ_ARIA = (
 )
 _HISTORIA_SELECTOR = (By.CSS_SELECTOR, "textarea#historiaEnfermedad")
 _GUARDAR_SELECTOR = (By.CSS_SELECTOR, "button.add-header-button")
-_EDITOR_TIMEOUT_S = 15
+# Flujo real entregado por Yadira (23-09-2026): la anamnesis aparece
+# COLAPSADA; primero se expande con "...ver mas" y recien entonces el
+# lapiz abre el editor. Sin este paso el lapiz no esta disponible.
+_VER_MAS_ANAMNESIS = (
+    By.XPATH,
+    "//li[@id='anamnesis']//div[contains(@class,'textoverflow-button')]",
+)
+_VER_MAS_GENERICO = (
+    By.XPATH,
+    "//div[contains(@class,'textoverflow-button')]"
+    "[contains(normalize-space(.), 'ver más') or contains(normalize-space(.), 'ver mas')]",
+)
+_EDITOR_TIMEOUT_S = 30
 
 # Set + eventos: reemplaza TODO el texto (corrar y pegar) y dispara
 # input/change para que el UI de Rayen reaccione (auto-height, contador).
@@ -77,19 +89,48 @@ return el.value.length;
 """
 
 
+def _expandir_ver_mas(driver: WebDriver, logger: logging.Logger, timeout: int) -> None:
+    """Paso 1 del flujo real: expandir la anamnesis colapsada.
+
+    Click en '...ver mas' (el de la anamnesis; si no esta, el primero
+    de la pagina). Tolerante: si no hay boton colapsado, no pasa nada —
+    la seccion ya puede estar expandida.
+    """
+    import time as _time
+
+
+    intentos = max(3, timeout // 10)
+    for _ in range(intentos):
+        for selector in (_VER_MAS_ANAMNESIS, _VER_MAS_GENERICO):
+            try:
+                boton = driver.find_element(*selector)
+            except Exception:
+                continue
+            try:
+                driver.execute_script("arguments[0].click();", boton)
+                logger.info("[editor_anamnesis] '...ver más' expandido")
+            except Exception:
+                pass
+            return
+        _time.sleep(1)
+    logger.info("[editor_anamnesis] sin '...ver más' (seccion ya expandida)")
+
+
 def abrir_editor_anamnesis(
     driver: WebDriver, logger: logging.Logger, timeout: int = _EDITOR_TIMEOUT_S
 ) -> WebElement | None:
-    """Abre el editor de anamnesis (click en el lapiz) y devuelve el
-    textarea de historia. None si el lapiz o el editor no aparecen.
+    """Abre el editor de anamnesis y devuelve el textarea de historia.
 
-    NO modifica nada: solo abre el editor.
+    Flujo real (Yadira 23-09-2026): expandir '...ver mas' -> click en
+    el lapiz -> el editor despliega #historiaEnfermedad.
+    None si el lapiz o el editor no aparecen. NO pega nada.
     """
+    _expandir_ver_mas(driver, logger, timeout)
     wait = WebDriverWait(driver, timeout)
     try:
         # PRESENCIA (no clickeable): el lapiz vive dentro de la seccion
-        # colapsada ("...ver mas") y Selenium no lo ve como clicable;
-        # el click por JS funciona igual (caso Natalie 23-09).
+        # colapsada y Selenium no lo ve como clicable; el click por JS
+        # funciona igual (caso Natalie 23-09).
         lapiz = wait.until(
             EC.presence_of_element_located(_LAPIZ_SELECTOR)
         )

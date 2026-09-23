@@ -224,18 +224,10 @@ def cargar_ficha_de_paciente(
             logger.error(f"[cargar_ficha] {resultado.motivo}")
             return resultado
         logger.info("[cargar_ficha] verificacion post-guardado OK")
-        # Cerrar el editor reabierto (el contenido ya esta guardado):
-        # quedarse en modo edicion puede disparar el dialogo de
-        # "salir sin guardar" al navegar al siguiente paciente.
-        try:
-            from selenium.webdriver.common.by import By
-
-            back = driver.find_element(
-                By.XPATH, "//button[.//*[contains(@class, 'arrow-left')]]"
-            )
-            driver.execute_script("arguments[0].click();", back)
-        except Exception:
-            logger.warning("[cargar_ficha] no se pudo cerrar el editor reabierto")
+        # El editor reabierto se deja asi (sin cambios pendientes: solo
+        # se leyo). La salida al siguiente paciente es por el menu
+        # lateral 'Pacientes citados' (volver_a_pacientes_citados).
+        # Regla de la usuaria: nunca se presionan botones de cerrar.
     else:
         logger.warning(
             "[cargar_ficha] no se pudo reabrir el editor para verificar; "

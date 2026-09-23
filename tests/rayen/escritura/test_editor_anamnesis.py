@@ -70,7 +70,12 @@ def test_nunca_toca_guardar() -> None:
         pegar_en_editor(d, FICHA, logging.getLogger("test"))
     lapiz.click.assert_called_once()
     textarea.click.assert_not_called()
-    assert d.execute_script.call_count == 1
+    # execute_script: 1 expansion 'ver mas' + 1 pegado. Ningun Guardar:
+    # guardar_editor_anamnesis NO forma parte de pegar_en_editor.
+    assert d.execute_script.call_count == 2
+    for llamada in d.execute_script.call_args_list:
+        script = llamada.args[0]
+        assert "add-header-button" not in script
 
 
 # --- fallos -------------------------------------------------------------------
@@ -114,3 +119,18 @@ def test_excepcion_en_el_pegado() -> None:
         r = pegar_en_editor(d, FICHA, logging.getLogger("test"))
     assert r.ok is False
     assert "RuntimeError" in r.motivo
+
+
+def test_expande_ver_mas_antes_de_buscar_el_lapiz() -> None:
+    """Flujo real (Yadira 23-09-2026): la anamnesis viene colapsada;
+    primero '...ver mas', despues el lapiz."""
+    d = _driver()
+    lapiz, textarea = MagicMock(), MagicMock()
+    ver_mas = MagicMock()
+    d.find_element.return_value = ver_mas  # el buscador de ver-mas
+    with _con_waits([lapiz, textarea]):
+        pegar_en_editor(d, FICHA, logging.getLogger("test"))
+    # El click de expansion SI se ejecuto (por JS, al boton ver-mas).
+    d.execute_script.assert_any_call("arguments[0].click();", ver_mas)
+    # Y despues el lapiz abrio el editor normalmente.
+    lapiz.click.assert_called_once()
