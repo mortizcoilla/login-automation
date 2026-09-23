@@ -31,7 +31,15 @@ from pathlib import Path
 if __package__ in (None, ""):  # script directo: bootstrap para `from src...`
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from src.core.rutas import DATA_DIR, LOGS_DIR, ROOT, informe_mes_actual_path
+import shutil
+
+from src.core.rutas import (
+    DATA_DIR,
+    FICHAS_GENERADAS_DIR,
+    LOGS_DIR,
+    ROOT,
+    informe_mes_actual_path,
+)
 from src.scheduler import avisos
 from src.scheduler.calendario import (
     CalendarioError,
@@ -114,6 +122,43 @@ def _cadena(usuario: str) -> list[list[str]]:
     ]
 
 
+def _resumen_mortadelo_reciente(offset: int) -> tuple[int, int] | None:
+    """Ultimo resumen de Mortadelo escrito EN ESTA corrida (tras offset).
+
+    Evita aceptar un exito parcial basandose en el resumen viejo de una
+    corrida anterior que siga en el log.
+    """
+    try:
+        with LOG_PATH.open("r", encoding="utf-8") as fh:
+            fh.seek(offset)
+            cola = fh.read()
+    except OSError:
+        return None
+    matches = avisos._RESUMEN_MORTADELO_RE.findall(cola)
+    if not matches:
+        return None
+    ok, total = (int(x) for x in matches[-1])
+    return ok, total
+
+
+def _copiar_informe_a_onedrive() -> None:
+    """Deja el informe de fichas abiertas visible en OneDrive.
+
+    La DB SQLite queda local (OneDrive puede corruptarla), pero el
+    informe de texto es para leer: copia al raiz de productos.
+    """
+    ruta = informe_mes_actual_path()
+    if not ruta.exists():
+        _log("copiar informe: no existe aun")
+        return
+    destino = FICHAS_GENERADAS_DIR.parent / ruta.name
+    try:
+        shutil.copy2(ruta, destino)
+        _log(f"informe copiado a OneDrive: {destino}")
+    except OSError as e:
+        _log(f"copiar informe fallo: {e}")
+
+
 def ejecutar_cadena(usuario: str) -> int:
     """Corre los 5 pasos del usuario. 0 si todos terminan en 0; si uno
     falla, el numero de ese paso (semantica &&).
@@ -122,6 +167,7 @@ def ejecutar_cadena(usuario: str) -> int:
     consola donde caer).
     """
     _log(f"[{usuario}] inicio de cadena (4->5->3->6->7)")
+    offset_log_0 = LOG_PATH.stat().st_size if LOG_PATH.exists() else 0
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
@@ -137,11 +183,25 @@ def ejecutar_cadena(usuario: str) -> int:
                 stderr=subprocess.STDOUT,
             )
         if resultado.returncode != 0:
+            # Paso 7 (mortadelo) con codigo 1: puede ser exito parcial
+            # (pacientes del informe sin atencion hoy -> sin anamnesis ->
+            # skip esperado). Si genero al menos 1 ficha, se acepta.
+            if numero == 5 and resultado.returncode == 1:
+                conteo = _resumen_mortadelo_reciente(offset_log_0)
+                if conteo and conteo[0] >= 1:
+                    _log(
+                        f"[{usuario}] paso 5/5 con omitidos: {conteo[0]}/{conteo[1]} "
+                        f"fichas generadas ({conteo[1] - conteo[0]} pacientes sin "
+                        f"atencion hoy). Se acepta como completado."
+                    )
+                    return 0
             _log(
                 f"[{usuario}] FALLO en paso {numero}/5 (codigo {resultado.returncode}). "
                 f"La cadena se detiene; reintento en el proximo disparo si hay cupo."
             )
             return numero
+        if numero == 2:
+            _copiar_informe_a_onedrive()
     _log(f"[{usuario}] cadena completa OK")
     return 0
 
@@ -176,25 +236,28 @@ def _correr_vencidas(
     n_pacientes = _contar_pacientes_informe()
     for entrada in vencidas_hoy:
         _marcar_intento(entrada.usuario, estado)
-        avisos.enviar(avisos.armar_mensaje_inicio(date.today(), n_pacientes))
+        enviado = avisos.enviar(avisos.armar_mensaje_inicio(date.today(), n_pacientes))
+        _log(f"aviso inicio: {'enviado' if enviado else 'NO ENVIADO'}")
         paso_fallido = ejecutar_cadena(entrada.usuario)
         if paso_fallido == 0:
             _marcar_ok(entrada.usuario, estado)
             conteo = avisos.contar_fichas_del_log(LOG_PATH)
-            avisos.enviar(
+            enviado = avisos.enviar(
                 avisos.armar_mensaje_fin(
                     ok=True,
                     fichas_ok=conteo[0] if conteo else None,
                     paso_fallido=0,
                 )
             )
+            _log(f"aviso fin: {'enviado' if enviado else 'NO ENVIADO'}")
         else:
             fallidas += 1
-            avisos.enviar(
+            enviado = avisos.enviar(
                 avisos.armar_mensaje_fin(
                     ok=False, fichas_ok=None, paso_fallido=paso_fallido
                 )
             )
+            _log(f"aviso fallo: {'enviado' if enviado else 'NO ENVIADO'}")
     return 1 if fallidas else 0
 
 

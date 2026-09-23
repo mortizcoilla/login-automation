@@ -238,3 +238,54 @@ def test_forzar_usuario_desconocido_falla_sin_correr(
     )
     assert runner.main(["--forzar", "fantasma", "--calendario", str(cal)]) == 2
     assert runner_aislado == []  # no ejecuto nada
+
+
+def test_paso7_con_omitidos_pero_con_fichas_es_exito(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Mortadelo exit 1 CON fichas generadas = exito parcial (REQ-077)."""
+    monkeypatch.setattr(runner, "ESTADO_PATH", tmp_path / "estado.json")
+    log = tmp_path / "logs" / "scheduler.log"
+    monkeypatch.setattr(runner, "LOG_PATH", log)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    llamadas: list[list[str]] = []
+
+    class _Res:
+        def __init__(self, code: int) -> None:
+            self.returncode = code
+
+    def _fake_run(cmd: list[str], **kwargs: object) -> _Res:
+        llamadas.append(cmd[1:])
+        if len(llamadas) == 5:
+            # mortadelo escribe su resumen y sale con omitidos
+            with open(log, "a", encoding="utf-8") as fh:
+                fh.write("[mortadelo] === Resumen: 4/6 pacientes completos ===" + chr(10))
+            return _Res(1)
+        return _Res(0)
+
+    monkeypatch.setattr(runner.subprocess, "run", _fake_run)
+    assert runner.ejecutar_cadena("yadira") == 0
+    assert len(llamadas) == 5
+
+
+def test_paso7_fallo_total_sigue_siendo_fallo(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Mortadelo exit 1 SIN generar nada = fallo real (paso 5)."""
+    monkeypatch.setattr(runner, "ESTADO_PATH", tmp_path / "estado.json")
+    monkeypatch.setattr(runner, "LOG_PATH", tmp_path / "logs" / "scheduler.log")
+    log = tmp_path / "logs" / "scheduler.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    llamadas: list[list[str]] = []
+
+    class _Res:
+        def __init__(self, code: int) -> None:
+            self.returncode = code
+
+    def _fake_run(cmd: list[str], **kwargs: object) -> _Res:
+        llamadas.append(cmd[1:])
+        return _Res(0 if len(llamadas) < 5 else 1)
+
+    monkeypatch.setattr(runner.subprocess, "run", _fake_run)
+    assert runner.ejecutar_cadena("yadira") == 5
+    assert len(llamadas) == 5
