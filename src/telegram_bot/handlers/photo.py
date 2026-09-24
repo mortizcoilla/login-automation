@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 # - paciente: cualquier texto, no vacio
 # - fecha: opcional, formato dd-mm-yyyy al final
 ARCHIVAR_RE = re.compile(
-    r"^\s*/\s*archivar\s+(?P<paciente>.+?)(?:\s+(?P<fecha>\d{2}-\d{2}-\d{4}))?\s*$",
+    r"^\s*/\s*archivar(?:[\s_]+)(?P<paciente>.+?)(?:[\s_]+(?P<fecha>\d{2}[-/]\d{2}[-/]\d{4}))?\s*$",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -119,6 +119,8 @@ async def cmd_archivar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
     fecha = match.group("fecha")  # puede ser None
+    if fecha:
+        fecha = fecha.replace("/", "-")  # Yadira a veces escribe 24/09/2026
 
     # Si Yadira dio una fecha, validar formato dd-mm-yyyy estrictamente.
     # (La regex solo valida estructura, no valores reales del calendario.)
