@@ -20,6 +20,7 @@ construimos; no se interpreta ni se completa nada aqui.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -281,6 +282,112 @@ def agregar_anamnesis_nueva(
     except TimeoutException:
         logger.warning("[editor_anamnesis] el editor no aparecio tras 'Agregar!'")
         return None
+
+
+_MOTIVO_SELECTOR = (By.CSS_SELECTOR, "textarea#motivoConsulta")
+_ETAPA_SELECTOR = (By.CSS_SELECTOR, "select#etapa")
+
+_JS_SET = """
+const el = arguments[0], valor = arguments[1];
+el.focus();
+el.value = valor;
+el.dispatchEvent(new Event('input', {bubbles: true}));
+el.dispatchEvent(new Event('change', {bubbles: true}));
+return String(el.value).length;
+"""
+
+
+def _motivo_de_ficha(ficha: str) -> str:
+    """'> **Motivo de atencion:** X' (primera linea de la ficha) -> X."""
+    lineas = ficha.splitlines() if ficha else []
+    if not lineas or not lineas[0].strip().startswith(">"):
+        return ""
+    m = re.match(
+        r"^>\s*\*\*Motivo de atenci[oó]n:\*\*\s*(.+)$",
+        lineas[0].strip(),
+        re.IGNORECASE,
+    )
+    texto = m.group(1).strip() if m else lineas[0].lstrip("> ").strip()
+    return texto[:500]  # maxlength del campo
+
+
+def _historia_de_ficha(ficha: str) -> str:
+    """La ficha SIN la primera linea del motivo (va en su campo propio)."""
+    lineas = ficha.splitlines() if ficha else []
+    if lineas and lineas[0].strip().startswith(">"):
+        return "\n".join(lineas[1:]).strip()
+    return ficha.strip()
+
+
+def _etapa_de_ficha(ficha: str) -> str:
+    """Ciclo vital femenino segun palabras de la ficha; default No Aplica."""
+    norm = re.sub(r"\s+", " ", ficha.lower())
+    norm = "".join(
+        c for c in norm if c not in "áéíóú"
+    )  # quitar tildes para matchear
+    pares = [
+        ("embarazada primigesta", "2"),
+        ("embarazada", "3"),
+        ("puerpera", "4"),
+        ("climaterica", "5"),
+        ("no gestante", "1"),
+    ]
+    for palabra, valor in pares:
+        if palabra in norm:
+            return valor
+    return "0"  # No Aplica
+
+
+def llenar_editor_nuevo(
+    driver: WebDriver, logger: logging.Logger, ficha: str, timeout: int = 15
+) -> bool:
+    """Llena el editor nuevo: motivo + ciclo vital + historia (ficha).
+
+    - #motivoConsulta <- el motivo de la primera linea de la ficha.
+    - #etapa <- Ciclo vital femenino detectado en la ficha (default:
+      No Aplica; Yadira lo revisa en el informe de trazabilidad).
+    - #historiaEnfermedad <- la ficha completa (sin la linea del motivo).
+
+    Returns:
+        True si los tres campos quedaron seteados con verificacion.
+    """
+    motivo = _motivo_de_ficha(ficha)
+    historia = _historia_de_ficha(ficha)
+    etapa = _etapa_de_ficha(ficha)
+    logger.info(
+        f"[editor_anamnesis] llenando editor nuevo: motivo={motivo!r} "
+        f"({len(motivo)} chars) | etapa={etapa} | historia={len(historia)} chars"
+    )
+
+    wait = WebDriverWait(driver, timeout)
+    try:
+        campo_motivo = wait.until(
+            EC.presence_of_element_located(_MOTIVO_SELECTOR)
+        )
+        campo_etapa = wait.until(EC.presence_of_element_located(_ETAPA_SELECTOR))
+        campo_historia = wait.until(
+            EC.presence_of_element_located(_HISTORIA_SELECTOR)
+        )
+    except TimeoutException:
+        logger.warning("[editor_anamnesis] campos del editor no aparecieron")
+        return False
+
+    try:
+        driver.execute_script(_JS_SET, campo_motivo, motivo)
+        driver.execute_script(_JS_SET, campo_etapa, etapa)
+        largo = driver.execute_script(_JS_SET, campo_historia, historia)
+    except Exception as e:
+        logger.exception(f"[editor_anamnesis] fallo llenando el editor: {e}")
+        return False
+
+    if largo != len(historia):
+        logger.error(
+            f"[editor_anamnesis] verificacion: historia quedo con {largo} "
+            f"de {len(historia)} chars"
+        )
+        return False
+    logger.info("[editor_anamnesis] editor nuevo llenado y verificado")
+    return True
 
 
 def guardar_editor_anamnesis(

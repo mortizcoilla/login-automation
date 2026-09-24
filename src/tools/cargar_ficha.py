@@ -654,25 +654,55 @@ def main() -> int:
 
                         textarea = agregar_anamnesis_nueva(driver, logger)
                         if textarea is not None:
-                            estado = "editor_nuevo_logrado"
-                            motivo = (
-                                "'Agregar!' clickeado y editor VACIO abierto "
-                                "(#historiaEnfermedad presente). PARADA aqui "
-                                "— el pegado de la ficha y Guardar son el "
-                                "paso siguiente."
+                            # Paso 4 (Yadira 24-09-2026): llenar motivo +
+                            # ciclo vital + historia (ficha del LLM) y
+                            # presionar Agregar. Verificacion post-guardado
+                            # por screenshot.
+                            from src.rayen.escritura.editor_anamnesis import (
+                                guardar_editor_anamnesis,
+                                llenar_editor_nuevo,
                             )
-                            try:
-                                from src.core.rutas import SCREENSHOTS_DIR as _SS
 
-                                driver.save_screenshot(
-                                    str(_SS / f"{base_ss}_3_editor_nuevo.png")
+                            ficha_texto = leer_ficha_generada(
+                                p.nombre, p.fecha, args.fichas_dir
+                            )
+                            lleno = llenar_editor_nuevo(
+                                driver, logger, ficha_texto or ""
+                            )
+                            if lleno and guardar_editor_anamnesis(driver, logger):
+                                estado = "cargada_ok"
+                                motivo = (
+                                    "anamnesis nueva cargada: motivo + ciclo "
+                                    "vital + ficha completa del LLM pegada y "
+                                    "'Agregar' presionado. Verificar en Rayen "
+                                    "y en el screenshot final."
                                 )
-                                logger.info(
-                                    "[cargar_ficha] paso 3: editor nuevo "
-                                    "abierto (screenshot) — PARADA aqui"
+                                try:
+                                    from src.core.rutas import (
+                                        SCREENSHOTS_DIR as _SS,
+                                    )
+
+                                    driver.save_screenshot(
+                                        str(_SS / f"{base_ss}_4_cargada.png")
+                                    )
+                                    logger.info(
+                                        "[cargar_ficha] paso 4: ficha cargada "
+                                        "y guardada (screenshot final)"
+                                    )
+                                except Exception:
+                                    pass
+                            elif lleno:
+                                estado = "error"
+                                motivo = (
+                                    "editor llenado pero 'Agregar' no cerro "
+                                    "el editor"
                                 )
-                            except Exception:
-                                pass
+                            else:
+                                estado = "error"
+                                motivo = (
+                                    "no se pudo llenar el editor nuevo "
+                                    "(campos no aparecieron)"
+                                )
                         else:
                             estado = "editor_nuevo_no_logrado"
                             motivo = (
