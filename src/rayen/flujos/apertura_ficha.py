@@ -226,25 +226,22 @@ def _wait_present(driver, xpath: str, timeout: int):
     )
 
 
-def _esperar_panel_o_entrar(
+def _entrar_atencion_y_esperar_lapiz(
     driver: WebDriver, logger: logging.Logger, budget_s: int, poll_s: float = 2.0
 ):
-    """Espera el panel de la ficha manejando los obstaculos conocidos.
+    """Entra a la atencion y espera el lapiz de la anamnesis.
 
-    Ciclo hasta agotar el presupuesto:
-      1. panel visible -> devolverlo.
-      2. tutorial onboarding presente -> cerrarlo (frames + shadow DOM;
-         aparece de forma asincrona tras entrar a la atencion).
-      3. badge 'NN Atencion actual' presente -> click (el doble click
-         aterriza en 'Historia clinica' y hay que entrar a la atencion).
+    Flujo real (Yadira 24-09-2026): el doble click aterriza en la vista
+    'Historia clinica' (li#anamnesis como RESUMEN de solo lectura) —
+    hay que CLICK en la pestaña 'Atencion actual' del nav vertical;
+    recien entonces existe el lapiz (button anamnesis-edit-*) de la
+    seccion editable. En el camino puede aparecer el tutorial
+    onboarding (se cierra). Devuelve el lapiz o None.
     """
     import time as _time
 
     from selenium.webdriver.common.by import By
 
-    # Selector PROBADO del paso 3 (click_atencion_actual): la pestaña
-    # 'Atencion actual' del nav vertical. El doble click puede aterrizar
-    # en 'Historia clinica' (pestaña activa) y hay que entrar a la atencion.
     tab_atencion = (
         By.XPATH,
         "//li[contains(@class, 'verticalnav-tab')]"
@@ -253,39 +250,26 @@ def _esperar_panel_o_entrar(
     fin = _time.monotonic() + budget_s
     tab_hecho = False
     while _time.monotonic() < fin:
-        # PRESENCIA (no visibilidad): el UI nuevo tiene tab-panes ocultos
-        # con los mismos titulos delante del pane activo (caso Natalie).
-        panel = _wait_present(driver, _PANEL_XPATH, timeout=8)
-        if panel is not None:
-            return panel
+        # El lapiz = la seccion anamnesis editable de la atencion.
+        try:
+            return driver.find_element(
+                By.CSS_SELECTOR, "li#anamnesis button[id^='anamnesis-edit-']"
+            )
+        except Exception:
+            pass
         if not tab_hecho:
             try:
                 tab = driver.find_element(*tab_atencion)
-                _ = tab.location_once_scrolled_into_view  # scroll al tab
+                _ = tab.location_once_scrolled_into_view
                 tab.click()  # click nativo: mismo metodo del paso 3
                 tab_hecho = True
                 logger.info(
-                    "[apertura] Click en pestaña 'Atención actual' del nav."
+                    "[crear_notas] Click en pestaña 'Atención actual' del nav."
                 )
             except Exception as e:
                 logger.debug(f"[apertura] pestaña no disponible aun: {e}")
-        # El tutorial (si aparece) sale tras entrar a la atencion: chequeo
-        # barato, 1 intento — el reintento lo da la vuelta del waiter.
         _cerrar_tutorial_onboarding(driver, logger)
         _time.sleep(poll_s)
-    # Diagnostico: volcar el HTML de la atencion para inspeccionar los
-    # selectores reales del UI nuevo.
-    try:
-        from src.core.rutas import LOGS_DIR as _LD
-
-        _LD.mkdir(parents=True, exist_ok=True)
-        driver.switch_to.default_content()
-        (_LD / "panel_timeout_main.html").write_text(
-            driver.page_source, encoding="utf-8"
-        )
-        logger.info("Dump del DOM en: logs/panel_timeout_main.html")
-    except Exception:
-        pass
     return None
 
 
@@ -348,8 +332,8 @@ def abrir_ficha_por_nombre(
     # 4) Entrar a la atencion (pestaña 'Atencion actual' del nav
     #    vertical) y esperar la seccion anamnesis. Maneja el tutorial
     #    onboarding asincrono (REQ-030: sin re-click del doble click).
-    panel = _esperar_panel_o_entrar(driver, logger, PANEL_TIMEOUT_S + 60)
-    if panel is None:
+    lapiz = _entrar_atencion_y_esperar_lapiz(driver, logger, PANEL_TIMEOUT_S + 60)
+    if lapiz is None:
         # REQ-030: no re-clickear. Marcar flag y seguir.
         logger.warning(
             f"Panel no aparecio en {PANEL_TIMEOUT_S + 30}s. "
@@ -368,7 +352,7 @@ def abrir_ficha_por_nombre(
             pass
         paciente.panel_cargo = False
     else:
-        logger.info(f"Panel del paciente cargado ({panel.tag_name})")
+        logger.info("Seccion anamnesis de la atencion disponible (lapiz presente)")
         paciente.panel_cargo = True
 
     logger.info(

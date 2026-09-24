@@ -137,9 +137,13 @@ def test_panel_no_carga_marca_panel_cargo_false(
         ),
         patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
         patch(
-            "src.rayen.flujos.apertura_ficha._wait_present",
-            return_value=None,  # panel no cargo
-        ) as mock_wait,
+            "src.rayen.flujos.apertura_ficha._cerrar_tutorial_onboarding",
+            return_value=False,  # sin tutorial
+        ),
+        patch(
+            "src.rayen.flujos.apertura_ficha._entrar_atencion_y_esperar_lapiz",
+            return_value=None,  # el lapiz de anamnesis nunca aparecio
+        ),
     ):
         ok = abrir_ficha_por_nombre(fake_driver, logger, paciente_exacto)
 
@@ -148,12 +152,6 @@ def test_panel_no_carga_marca_panel_cargo_false(
     # precaucion (paso 3 sigue con extraccion; paso 8 aborta el pegado).
     assert ok is True
     assert paciente_exacto.panel_cargo is False
-    # El esperador combinado (REQ-081) pollea con esperas cortas dentro
-    # de un presupuesto total de 60s + 30s del reintento del badge.
-    timeouts = [c.kwargs.get("timeout") for c in mock_wait.call_args_list]
-    assert timeouts
-    assert set(timeouts) <= {8, PANEL_TIMEOUT_S}
-    assert len(timeouts) >= 2  # hubo al menos un reintento tras el badge
 
 
 def test_apertura_delega_a_select_date_con_fecha_paciente(
