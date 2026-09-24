@@ -77,6 +77,24 @@ _VER_MAS_GENERICO = (
 )
 _EDITOR_TIMEOUT_S = 30
 
+# Flujo de REEMPLAZO (Yadira 24-09-2026): para cargar la ficha completa,
+# la anamnesis vieja (incompleta) se DESCARTA y se escribe la nueva.
+# Basura (trash): button anamnesis-delete-* con aria-label "Descartar";
+# el dialogo de confirmacion pide confirmar con el boton naranja.
+_BASURA_SELECTOR = (
+    By.CSS_SELECTOR,
+    "li#anamnesis button[id^='anamnesis-delete-']",
+)
+_BASURA_ARIA = (
+    By.XPATH,
+    "//li[@id='anamnesis']//button[@aria-label='Descartar']",
+)
+_DIALOGO_CONFIRMAR = (
+    By.XPATH,
+    "//button[contains(@class,'orange-btn')]"
+    "[normalize-space()='Descartar']",
+)
+
 # Set + eventos: reemplaza TODO el texto (corrar y pegar) y dispara
 # input/change para que el UI de Rayen reaccione (auto-height, contador).
 _JS_PEGAR = """
@@ -174,6 +192,64 @@ def abrir_editor_anamnesis(
     except TimeoutException:
         logger.warning("[editor_anamnesis] el editor (#historiaEnfermedad) no aparecio")
         return None
+
+
+def descartar_anamnesis(
+    driver: WebDriver,
+    logger: logging.Logger,
+    respaldo_existe: bool,
+    timeout: int = 15,
+) -> bool:
+    """Descarta la anamnesis vieja (trash -> confirmar en el dialogo).
+
+    ACCION IRREVERSIBLE en Rayen. Guardia obligatorio: `respaldo_existe`
+    debe ser True (la anamnesis original respaldada en OneDrive, en
+    `anam_<pac>_<fecha>.md`); si no, NO descarta y devuelve False.
+
+    Args:
+        driver: en la vista Atencion actual, con el item de anamnesis visible.
+        logger: logger del caller.
+        respaldo_existe: True si el respaldo de la anamnesis esta en OneDrive.
+        timeout: espera del dialogo de confirmacion.
+
+    Returns:
+        True si el descarte se confirmo (dialogo atendido); False si el
+        guardia freno la operacion o el dialogo no aparecio.
+    """
+    if not respaldo_existe:
+        logger.error(
+            "[editor_anamnesis] DESCARTAR bloqueado: no hay respaldo de la "
+            "anamnesis en OneDrive (anam_<pac>_<fecha>.md). No se toca Rayen."
+        )
+        return False
+
+    wait = WebDriverWait(driver, timeout)
+    try:
+        basura = wait.until(EC.presence_of_element_located(_BASURA_SELECTOR))
+    except TimeoutException:
+        try:
+            basura = wait.until(EC.presence_of_element_located(_BASURA_ARIA))
+        except TimeoutException:
+            logger.warning("[editor_anamnesis] boton Descartar (basura) no aparecio")
+            return False
+    try:
+        basura.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", basura)
+
+    # Dialogo: '¿Quiere descartar permanentemente esta anamnesis?' ->
+    # confirmar con el boton naranja 'Descartar'.
+    try:
+        confirmar = wait.until(EC.element_to_be_clickable(_DIALOGO_CONFIRMAR))
+    except TimeoutException:
+        logger.warning("[editor_anamnesis] el dialogo de confirmacion no aparecio")
+        return False
+    try:
+        confirmar.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", confirmar)
+    logger.info("[editor_anamnesis] anamnesis vieja descartada (confirmado)")
+    return True
 
 
 def guardar_editor_anamnesis(

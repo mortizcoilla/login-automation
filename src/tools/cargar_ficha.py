@@ -39,7 +39,11 @@ with contextlib.suppress(AttributeError, OSError):
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 from src.core.nombres import safe_filename
-from src.core.rutas import FICHAS_GENERADAS_DIR, TRAZABILIDAD_CARGA_DIR
+from src.core.rutas import (
+    ANAMNESIS_DIR,
+    FICHAS_GENERADAS_DIR,
+    TRAZABILIDAD_CARGA_DIR,
+)
 from src.credentials import load_credentials
 from src.notas.modelos import PacienteObjetivo
 from src.rayen.escritura.editor_anamnesis import (
@@ -566,35 +570,86 @@ def main() -> int:
                     if p.panel_cargo
                     else "limite NO visible (panel no cargo en 60s)"
                 )
-                # Llegar hasta el EDITOR: click en el lapiz de la anamnesis
-                # y verificar #historiaEnfermedad. Sin pegar contenido:
-                # se hace un ECO (el campo se re-escribe con su propio
-                # texto) para validar la via de escritura sin cambiar datos.
-                editor = None
+                # Flujo de reemplazo (Yadira 24-09-2026), PASO A PASO:
+                # descartar la anamnesis vieja (con guardia de respaldo) y
+                # PARAR. El siguiente paso lo define la usuaria.
                 if p.panel_cargo:
                     from src.rayen.escritura.editor_anamnesis import (
-                        abrir_editor_anamnesis,
-                        pegar_en_editor,
+                        descartar_anamnesis,
                     )
 
-                    editor = abrir_editor_anamnesis(driver, logger)
-                    if editor is not None:
-                        estado = "editor_logrado"
-                        actual = editor.get_attribute("value") or ""
-                        eco = pegar_en_editor(driver, actual, logger)
-                        detalle_eco = (
-                            f"; eco de escritura OK ({eco.caracteres_pegados} chars, sin cambios)"
-                            if eco.ok
-                            else f"; eco de escritura FALLO ({eco.motivo})"
+                    base_ss = f"paso_{p.nombre.replace(' ', '_')}"
+                    try:
+                        from src.core.rutas import SCREENSHOTS_DIR as _SS
+
+                        _SS.mkdir(parents=True, exist_ok=True)
+                        driver.save_screenshot(
+                            str(_SS / f"{base_ss}_1_atencion_actual.png")
                         )
+                        logger.info(
+                            "[cargar_ficha] paso 1: en Atencion actual "
+                            "(screenshot guardado)"
+                        )
+                    except Exception:
+                        pass
+
+                    # Guardia: el respaldo de la anamnesis debe existir en
+                    # OneDrive antes de descartar nada en Rayen.
+                    respaldo = ANAMNESIS_DIR / (
+                        f"anam_{safe_filename(p.nombre)}_{p.fecha}.md"
+                    )
+                    respaldo_ok = respaldo.exists()
+                    if not respaldo_ok:
+                        logger.error(
+                            f"[cargar_ficha] sin respaldo ({respaldo.name}): "
+                            f"NO se descarta la anamnesis en Rayen."
+                        )
+                        resultados.append(
+                            ResultadoCarga(
+                                nombre=p.nombre,
+                                fecha=p.fecha,
+                                ficha_path=str(path),
+                                estado="error",
+                                motivo=(
+                                    "descartar bloqueado: sin respaldo en "
+                                    f"OneDrive ({respaldo.name})"
+                                ),
+                                timestamp=datetime.now().isoformat(
+                                    timespec="seconds"
+                                ),
+                            )
+                        )
+                        continue
+
+                    descartado = descartar_anamnesis(
+                        driver, logger, respaldo_existe=respaldo_ok
+                    )
+                    if descartado:
+                        estado = "descartado"
                         motivo = (
-                            "editor de anamnesis abierto (#historiaEnfermedad "
-                            "visible); paso 8 pegaria aqui y se detendria "
-                            "antes de Guardar" + detalle_eco
+                            "anamnesis vieja DESCARTADA (respaldo verificado "
+                            "en OneDrive). PARADA aqui — el paso siguiente "
+                            "(escritura de la ficha nueva) lo define la "
+                            "usuaria."
                         )
+                        try:
+                            from src.core.rutas import SCREENSHOTS_DIR as _SS
+
+                            driver.save_screenshot(
+                                str(_SS / f"{base_ss}_2_descartado.png")
+                            )
+                            logger.info(
+                                "[cargar_ficha] paso 2: anamnesis descartada "
+                                "(screenshot guardado) — PARADA aqui"
+                            )
+                        except Exception:
+                            pass
                     else:
-                        estado = "editor_no_logrado"
-                        motivo = "el lapiz o el editor de anamnesis no aparecieron"
+                        estado = "descarte_no_logrado"
+                        motivo = (
+                            "el descarte no se confirmo (ver logs; el "
+                            "respaldo esta a salvo en OneDrive)"
+                        )
                 resultados.append(
                     ResultadoCarga(
                         nombre=p.nombre,
