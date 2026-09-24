@@ -94,6 +94,12 @@ _DIALOGO_CONFIRMAR = (
     "//button[contains(@class,'orange-btn')]"
     "[normalize-space()='Descartar']",
 )
+# Tras descartar, la seccion muestra el placeholder con el boton
+# 'Agregar!' que abre el editor vacio (Yadira 24-09-2026).
+_AGREGAR_SELECTOR = (
+    By.XPATH,
+    "//button[contains(@class,'btn-info')][normalize-space()='Agregar!']",
+)
 
 # Set + eventos: reemplaza TODO el texto (corrar y pegar) y dispara
 # input/change para que el UI de Rayen reaccione (auto-height, contador).
@@ -250,6 +256,31 @@ def descartar_anamnesis(
         driver.execute_script("arguments[0].click();", confirmar)
     logger.info("[editor_anamnesis] anamnesis vieja descartada (confirmado)")
     return True
+
+
+def agregar_anamnesis_nueva(
+    driver: WebDriver, logger: logging.Logger, timeout: int = 15
+) -> WebElement | None:
+    """Click en 'Agregar!' (tras el descarte) y espera el editor vacio.
+
+    Devuelve el textarea #historiaEnfermedad (vacio, listo para pegar
+    la ficha del LLM) o None si el boton/editor no aparecen. NO pega.
+    """
+    wait = WebDriverWait(driver, timeout)
+    try:
+        boton = wait.until(EC.element_to_be_clickable(_AGREGAR_SELECTOR))
+    except TimeoutException:
+        logger.warning("[editor_anamnesis] boton 'Agregar!' no aparecio")
+        return None
+    try:
+        boton.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", boton)
+    try:
+        return wait.until(EC.presence_of_element_located(_HISTORIA_SELECTOR))
+    except TimeoutException:
+        logger.warning("[editor_anamnesis] el editor no aparecio tras 'Agregar!'")
+        return None
 
 
 def guardar_editor_anamnesis(

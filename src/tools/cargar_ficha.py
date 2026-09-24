@@ -644,6 +644,40 @@ def main() -> int:
                             )
                         except Exception:
                             pass
+
+                        # Paso 3 (Yadira 24-09-2026): click en 'Agregar!'
+                        # -> editor vacio para la ficha del LLM. PARADA:
+                        # sin pegar todavia.
+                        from src.rayen.escritura.editor_anamnesis import (
+                            agregar_anamnesis_nueva,
+                        )
+
+                        textarea = agregar_anamnesis_nueva(driver, logger)
+                        if textarea is not None:
+                            estado = "editor_nuevo_logrado"
+                            motivo = (
+                                "'Agregar!' clickeado y editor VACIO abierto "
+                                "(#historiaEnfermedad presente). PARADA aqui "
+                                "— el pegado de la ficha y Guardar son el "
+                                "paso siguiente."
+                            )
+                            try:
+                                from src.core.rutas import SCREENSHOTS_DIR as _SS
+
+                                driver.save_screenshot(
+                                    str(_SS / f"{base_ss}_3_editor_nuevo.png")
+                                )
+                                logger.info(
+                                    "[cargar_ficha] paso 3: editor nuevo "
+                                    "abierto (screenshot) — PARADA aqui"
+                                )
+                            except Exception:
+                                pass
+                        else:
+                            estado = "editor_nuevo_no_logrado"
+                            motivo = (
+                                "el boton 'Agregar!' o el editor no aparecieron"
+                            )
                     else:
                         estado = "descarte_no_logrado"
                         motivo = (
