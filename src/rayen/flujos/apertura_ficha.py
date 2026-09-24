@@ -345,9 +345,9 @@ def abrir_ficha_por_nombre(
     # 3) Doble click en la fila para abrir la ficha
     _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
 
-    # 4) Esperar el panel manejando los obstaculos conocidos (REQ-030):
-    #    tutorial onboarding asincrono y aterrizaje en 'Historia clinica'
-    #    con badge 'NN Atencion actual' (se clickea para entrar).
+    # 4) Entrar a la atencion (pestaña 'Atencion actual' del nav
+    #    vertical) y esperar la seccion anamnesis. Maneja el tutorial
+    #    onboarding asincrono (REQ-030: sin re-click del doble click).
     panel = _esperar_panel_o_entrar(driver, logger, PANEL_TIMEOUT_S + 60)
     if panel is None:
         # REQ-030: no re-clickear. Marcar flag y seguir.

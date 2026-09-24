@@ -1,0 +1,155 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+ENV/
+
+.env
+.env.local
+.env.*.local
+
+config/users.json
+config/users.local.json
+config/api_config.json
+config/api_config.local.json
+config/api_config.*.json
+
+login_automation.log
+*.log
+
+data/raw_responses/
+data/pacientes_*.csv
+data/queue.db
+data/analysis/
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# Manuales MINSAL (190 MB, referenciados por path — no se commitean al repo)
+data/manuales/
+
+# Markdown convertido de manuales MINSAL (varios MB — fuente para el LLM).
+# Se regenera con `python -m src.tools.convertir_manuales`. Vive en disco
+# local, referenciado por path por los bundles.
+data/manuales_md/
+
+# Notas clinicas de pacientes (contienen RUN, nombre, direccion, telefono,
+# datos clinicos). NO se commitean al repo publico. Vivir en disco local
+# para revision Yadira; nunca al remoto.
+# Sesion 2026-09-16: ahora son .md (markdown con frontmatter YAML).
+# Sesion 2026-09-16 15:42: notas, manuales y plantillas viven bajo data/.
+data/notas_clinicas/*.md
+data/notas_clinicas/*.txt
+data/notas_clinicas/*/*.md
+data/notas_clinicas/*/_chrome_dl/
+
+# Respaldo de anamnesis de Yadira (sesion 2026-09-16 15:14).
+data/anamnesis/
+
+# Info del paciente sin anamnesis (sesion 2026-09-16 17:45, pedido Yadira).
+# Complementario a notas_clinicas/ — tiene todo MENOS la anamnesis cruda.
+data/info_paciente/
+
+# Inbox de fotos de examenes (Yadira via Pilita por Telegram). Local-only,
+# reservado para uso futuro. Sesion 2026-09-16: carpeta movida desde
+# data/notas_clinicas/_adjuntos/ a data/adjuntos/.
+data/adjuntos/
+
+# Examenes ya procesados por vision LLM. Local-only, reservado para
+# uso futuro. Sesion 2026-09-16.
+data/examenes/
+
+# Fotos crudas de examenes recibidas por Telegram (Rubicita, paso 2).
+# PII (imagenes de examenes con nombre/RUN del paciente). Ambos casings
+# porque el script escribe Examenes_crudos y el FS de Windows es
+# case-insensitive pero los patrones de git son case-sensitive.
+data/examenes_crudos/
+data/Examenes_crudos/
+
+# Artefactos de datos derivados (PII de pacientes). Local-only.
+data/cross_refs.json
+data/ner.json
+data/referencias.json
+
+# Capturas de pantalla + HTML de diagnostico del flujo Selenium. Van a
+# data/logs/screenshots/. Se borran con `python -m src.tools.limpiar_screenshots`
+# al final de una corrida exitosa + tests OK.
+data/logs/screenshots/
+data/logs/
+
+# Trash / backups locales
+.trash/
+**/.trash/
+*.bak_*.cleanup
+*.bak_*
+
+# Cache del browser (descargas en curso)
+**/_chrome_dl/
+**/_adjuntos/_chrome_dl/
+
+# Debug artifacts de browser_automation (screenshots + HTML de errores)
+error_*.html
+error_*.png
+step_*.png
+debug_state_*.html
+
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Plantillas Yadira (INMUTABLES, no se commitean).
+data/plantillas/
+
+# Fichas generadas por Mortadelo (paso 7) - PII clinica, local-only
+data/fichas_generadas/
+data/informes_trazabilidad/
+
+# Trazabilidad de carga en Rayen (paso 8 cargar_ficha). Local-only:
+# contiene nombre/fecha del paciente + estado del pegado.
+data/trazabilidad_carga/
+
+# Dependencias del proyecto opencode (CLI)
+.opencode/node_modules/
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+node_modules/
+bower_components/
+jspm_packages/
+site-packages/
+coverage/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）
