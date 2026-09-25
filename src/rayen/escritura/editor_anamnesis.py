@@ -260,28 +260,50 @@ def descartar_anamnesis(
 
 
 def agregar_anamnesis_nueva(
-    driver: WebDriver, logger: logging.Logger, timeout: int = 15
+    driver: WebDriver, logger: logging.Logger, timeout: int = 20
 ) -> WebElement | None:
     """Click en 'Agregar!' (tras el descarte) y espera el editor vacio.
 
-    Devuelve el textarea #historiaEnfermedad (vacio, listo para pegar
-    la ficha del LLM) o None si el boton/editor no aparecen. NO pega.
+    Patron que funciona con Rayen: click NATIVO (el click por JS no
+    dispara los manejadores — caso de la pestaña 'Atencion actual') +
+    sondeo hasta el presupuesto. Devuelve el textarea #historiaEnfermedad
+    (vacio, listo para la ficha del LLM) o None. NO pega.
     """
-    wait = WebDriverWait(driver, timeout)
+    import time as _time
+
+
+    fin = _time.monotonic() + timeout
+    clickeado = False
+    while _time.monotonic() < fin:
+        if not clickeado:
+            try:
+                boton = driver.find_element(*_AGREGAR_SELECTOR)
+                _ = boton.location_once_scrolled_into_view
+                boton.click()  # nativo
+                clickeado = True
+                logger.info("[editor_anamnesis] 'Agregar!' clickeado (nativo)")
+            except Exception as e:
+                logger.debug(f"[editor_anamnesis] 'Agregar!' no disponible: {e}")
+        else:
+            try:
+                ta = driver.find_element(*_HISTORIA_SELECTOR)
+                logger.info("[editor_anamnesis] editor abierto tras 'Agregar!'")
+                return ta
+            except Exception:
+                pass
+        _time.sleep(1)
+    logger.warning("[editor_anamnesis] 'Agregar!' o el editor no aparecieron")
     try:
-        boton = wait.until(EC.element_to_be_clickable(_AGREGAR_SELECTOR))
-    except TimeoutException:
-        logger.warning("[editor_anamnesis] boton 'Agregar!' no aparecio")
-        return None
-    try:
-        boton.click()
+        from src.core.rutas import LOGS_DIR as _LD
+
+        _LD.mkdir(parents=True, exist_ok=True)
+        driver.switch_to.default_content()
+        (_LD / "agregar_sin_editor.html").write_text(
+            driver.page_source, encoding="utf-8"
+        )
     except Exception:
-        driver.execute_script("arguments[0].click();", boton)
-    try:
-        return wait.until(EC.presence_of_element_located(_HISTORIA_SELECTOR))
-    except TimeoutException:
-        logger.warning("[editor_anamnesis] el editor no aparecio tras 'Agregar!'")
-        return None
+        pass
+    return None
 
 
 _MOTIVO_SELECTOR = (By.CSS_SELECTOR, "textarea#motivoConsulta")
