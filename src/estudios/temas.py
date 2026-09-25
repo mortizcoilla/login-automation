@@ -84,10 +84,10 @@ def extraer_de_nota(texto: str) -> tuple[list[str], int | None]:
             if codigo not in codigos:
                 codigos.append(codigo)
     edad = None
-    m = _EDAD_RE.search(texto)
-    if m:
+    m_edad = _EDAD_RE.search(texto)
+    if m_edad:
         with contextlib.suppress(ValueError):
-            edad = int(m.group(1))
+            edad = int(m_edad.group(1))
     return codigos, edad
 
 
