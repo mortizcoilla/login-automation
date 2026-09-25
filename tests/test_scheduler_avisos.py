@@ -126,7 +126,9 @@ def test_saludo_matutino_rotativo_y_determinista() -> None:
     assert c != a  # otro dia, otro saludo
 
 
-def test_aviso_fichas_abiertas_formato_pedido() -> None:
+def test_aviso_fichas_abiertas_tabulado() -> None:
+    """REQ-080 (estetica): tabla tabulada — numeros alineados a la
+    derecha, separadores y fila de TOTAL."""
     distribucion = [
         ("Morbilidad telefonica", 5),
         ("Control integral ecicep-g3", 4),
@@ -134,10 +136,15 @@ def test_aviso_fichas_abiertas_formato_pedido() -> None:
         ("Ingreso integral ecicep-g3", 1),
     ]
     mensaje = avisos.armar_aviso_fichas_abiertas(12, distribucion)
-    assert "TOTAL FICHAS ABIERTAS:12" in mensaje
-    assert "Distribucion por tipo de atencion:" in mensaje
+    assert "FICHAS ABIERTAS: 12" in mensaje
+    assert "TOTAL" in mensaje
     for tipo, _ in distribucion:
         assert tipo in mensaje
+    # numeros alineados a la derecha: la columna de numeros termina igual
+    bloque = mensaje.split("```")[1].splitlines()
+    filas_num = [ln for ln in bloque if ln.strip() and not ln.startswith("─") and "FICHAS" not in ln and "TOTAL" not in ln]
+    posiciones = {len(ln.rstrip()) for ln in filas_num}
+    assert len(posiciones) == 1, f"numeros desalineados: {posiciones}"
 
 
 def test_aviso_fichas_abiertas_ordenado_por_conteo() -> None:

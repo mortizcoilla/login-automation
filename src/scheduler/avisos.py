@@ -171,12 +171,21 @@ def armar_aviso_fichas_abiertas(
 ) -> str:
     """Conteo de fichas abiertas con su distribucion (REQ-080).
 
-    Formato pedido por la usuaria, en bloque monoespaciado para que las
-    columnas queden alineadas en Telegram.
+    Tabla monoespaciada tabulada de verdad: columna de nombres a la
+    izquierda (ancho = max + 2), numeros ALINEADOS A LA DERECHA,
+    separadores y fila de TOTAL.
     """
-    lineas = [f"TOTAL FICHAS ABIERTAS:{total}", "Distribucion por tipo de atencion:"]
-    for tipo, n in sorted(distribucion, key=lambda x: x[1], reverse=True):
-        lineas.append(f"  {tipo}{' ' * max(1, 45 - len(tipo))}{n}")
+    datos = sorted(distribucion, key=lambda x: x[1], reverse=True)
+    ancho_nombre = max((len(t) for t, _ in datos), default=5) + 2
+    ancho_num = max([len(str(n)) for _, n in datos] + [len(str(total))])
+    sep = "─" * (ancho_nombre + ancho_num)
+
+    lineas = [f"📋 FICHAS ABIERTAS: {total}", sep]
+    for tipo, n in datos:
+        lineas.append(f"{tipo:<{ancho_nombre}}{n:>{ancho_num}}")
+    lineas.append(sep)
+    lineas.append(f"{'TOTAL':<{ancho_nombre}}{total:>{ancho_num}}")
+
     portada = elegir_mensaje(FRASES_FICHAS_ABIERTAS, date.today())
     return f"{portada}\n```{chr(10)}{chr(10).join(lineas)}{chr(10)}```"
 
