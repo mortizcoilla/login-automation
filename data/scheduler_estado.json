@@ -1,5 +1,10 @@
 {
   "__saludo__": {
-    "fecha": "2026-09-24"
+    "fecha": "2026-09-25"
+  },
+  "yadira": {
+    "fecha_ultimo_intento": "2026-09-24",
+    "fallos_hoy": 0,
+    "ok": true
   }
 }

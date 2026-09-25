@@ -160,6 +160,22 @@ def _copiar_informe_a_onedrive() -> None:
         _log(f"copiar informe fallo: {e}")
 
 
+def _archivar_fichas_cerradas_seguro() -> None:
+    """REQ-082: tras la cadena, mover al archivo las fichas de pacientes
+    cerrados. Jamas rompe la cadena; en tests no toca datos reales."""
+    if "pytest" in sys.modules:
+        return
+    try:
+        import logging
+
+        from src.tools.archivar_fichas import archivar_fichas_cerradas
+
+        movidas = archivar_fichas_cerradas(logger=logging.getLogger("scheduler"))
+        _log(f"fichas archivadas: {len(movidas)} movida(s)")
+    except Exception as e:
+        _log(f"archivar fichas fallo (no critico): {e}")
+
+
 def ejecutar_cadena(usuario: str) -> int:
     """Corre los 5 pasos del usuario. 0 si todos terminan en 0; si uno
     falla, el numero de ese paso (semantica &&).
@@ -215,6 +231,7 @@ def ejecutar_cadena(usuario: str) -> int:
                     f"{'enviado' if enviado else 'NO ENVIADO'}"
                 )
     _log(f"[{usuario}] cadena completa OK")
+    _archivar_fichas_cerradas_seguro()
     return 0
 
 
