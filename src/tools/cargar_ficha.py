@@ -53,6 +53,7 @@ from src.rayen.escritura.editor_anamnesis import (
     guardar_editor_anamnesis,
     pegar_en_editor,
 )
+from src.rayen.escritura.editor_anamnesis import _historia_de_ficha as _historia_de_ficha_rayen
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
 from src.rayen.navegacion import volver_a_pacientes_citados
 from src.rayen.navegador import run_login, safe_quit
@@ -670,13 +671,28 @@ def main() -> int:
                                 driver, logger, ficha_texto or ""
                             )
                             if lleno and guardar_editor_anamnesis(driver, logger):
-                                estado = "cargada_ok"
-                                motivo = (
-                                    "anamnesis nueva cargada: motivo + ciclo "
-                                    "vital + ficha completa del LLM pegada y "
-                                    "'Agregar' presionado. Verificar en Rayen "
-                                    "y en el screenshot final."
+                                from src.rayen.escritura.editor_anamnesis import (
+                                    verificar_anamnesis_guardada,
                                 )
+
+                                ficha_cuerpo = _historia_de_ficha_rayen(
+                                    ficha_texto or ""
+                                )
+                                if verificar_anamnesis_guardada(
+                                    driver, logger, ficha_cuerpo
+                                ):
+                                    estado = "cargada_ok"
+                                    motivo = (
+                                        "anamnesis nueva cargada y VERIFICADA: "
+                                        "Rayen contiene la ficha completa del "
+                                        "LLM (motivo + ciclo vital + historia)."
+                                    )
+                                else:
+                                    estado = "error"
+                                    motivo = (
+                                        "verificacion post-guardado: Rayen NO "
+                                        "contiene la ficha completa (ver log)"
+                                    )
                                 try:
                                     from src.core.rutas import (
                                         SCREENSHOTS_DIR as _SS,

@@ -201,6 +201,38 @@ def abrir_editor_anamnesis(
         return None
 
 
+def verificar_anamnesis_guardada(
+    driver: WebDriver,
+    logger: logging.Logger,
+    esperado: str,
+    timeout: int = 30,
+) -> bool:
+    """Verifica lo que Rayen REALLY guardo: expande ver-mas, abre el
+    lapiz y compara el textarea contra `esperado` (solo lectura)."""
+    import time as _time
+
+    fin = _time.monotonic() + timeout
+    while _time.monotonic() < fin:
+        textarea = abrir_editor_anamnesis(driver, logger, timeout=5)
+        if textarea is not None:
+            contenido = str(textarea.get_attribute("value") or "")
+            if contenido.strip() == esperado.strip():
+                logger.info(
+                    "[editor_anamnesis] verificacion post-guardado OK "
+                    f"({len(contenido)} chars en Rayen)"
+                )
+                return True
+            logger.error(
+                "[editor_anamnesis] MISMATCH post-guardado: Rayen tiene "
+                f"{len(contenido)} chars, esperado {len(esperado)}. "
+                f"Primeros 120: {contenido[:120]!r}"
+            )
+            return False
+        _time.sleep(2)
+    logger.warning("[editor_anamnesis] no se pudo reabrir para verificar")
+    return False
+
+
 def descartar_anamnesis(
     driver: WebDriver,
     logger: logging.Logger,
@@ -312,7 +344,11 @@ _ETAPA_SELECTOR = (By.CSS_SELECTOR, "select#etapa")
 _JS_SET = """
 const el = arguments[0], valor = arguments[1];
 el.focus();
-el.value = valor;
+const proto = el.tagName === 'TEXTAREA'
+  ? window.HTMLTextAreaElement.prototype
+  : (el.tagName === 'SELECT' ? window.HTMLSelectElement.prototype : window.HTMLInputElement.prototype);
+const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+setter.call(el, valor);
 el.dispatchEvent(new Event('input', {bubbles: true}));
 el.dispatchEvent(new Event('change', {bubbles: true}));
 return String(el.value).length;
@@ -394,19 +430,39 @@ def llenar_editor_nuevo(
         logger.warning("[editor_anamnesis] campos del editor no aparecieron")
         return False
 
-    try:
-        driver.execute_script(_JS_SET, campo_motivo, motivo)
-        driver.execute_script(_JS_SET, campo_etapa, etapa)
-        largo = driver.execute_script(_JS_SET, campo_historia, historia)
-    except Exception as e:
-        logger.exception(f"[editor_anamnesis] fallo llenando el editor: {e}")
+    import time as _time
+
+    def _set_y_verificar(campo, valor, nombre):
+        """Setea y re-lee; si el framework pisa el valor, reintenta."""
+        for intento in range(1, 4):
+            try:
+                driver.execute_script(_JS_SET, campo, valor)
+            except Exception as e:
+                logger.exception(f"[editor_anamnesis] fallo seteando {nombre}: {e}")
+                return False
+            _time.sleep(0.5)
+            actual = str(campo.get_attribute("value") or "")
+            if actual == valor:
+                logger.info(
+                    f"[editor_anamnesis] {nombre} verificado "
+                    f"({len(valor)} chars, intento {intento})"
+                )
+                return True
+            logger.warning(
+                f"[editor_anamnesis] {nombre} quedo con {len(actual)} de "
+                f"{len(valor)} chars (intento {intento}); re-seteando"
+            )
         return False
 
-    if largo != len(historia):
-        logger.error(
-            f"[editor_anamnesis] verificacion: historia quedo con {largo} "
-            f"de {len(historia)} chars"
-        )
+    try:
+        if not _set_y_verificar(campo_motivo, motivo, "motivo"):
+            return False
+        if not _set_y_verificar(campo_etapa, etapa, "etapa"):
+            return False
+        if not _set_y_verificar(campo_historia, historia, "historia"):
+            return False
+    except Exception as e:
+        logger.exception(f"[editor_anamnesis] fallo llenando el editor: {e}")
         return False
     logger.info("[editor_anamnesis] editor nuevo llenado y verificado")
     return True
