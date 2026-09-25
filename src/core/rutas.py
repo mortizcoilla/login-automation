@@ -53,6 +53,14 @@ FICHAS_GENERADAS_DIR = _dir_desde_env("FICHAS_GENERADAS_DIR", DATA_DIR / "fichas
 INFORMES_TRAZABILIDAD_DIR = _dir_desde_env(
     "INFORMES_TRAZABILIDAD_DIR", DATA_DIR / "informes_trazabilidad"
 )
+TRAZABILIDAD_CARGA_DIR = _dir_desde_env(
+    "TRAZABILIDAD_CARGA_DIR", DATA_DIR / "trazabilidad_carga"
+)
+# REQ-082: fichas cerradas (ya no en el informe de fichas abiertas)
+# se mueven aqui: historial en OneDrive, la carpeta activa queda limpia.
+FICHAS_ARCHIVADAS_DIR = _dir_desde_env(
+    "FICHAS_ARCHIVADAS_DIR", DATA_DIR / "fichas_archivadas"
+)
 ANALISIS_DIR = _dir_desde_env("ANALYSIS_DIR", DATA_DIR / "analysis")
 SCREENSHOTS_DIR = _dir_desde_env("SCREENSHOTS_DIR", DATA_DIR / "logs" / "screenshots")
 LOGS_DIR = _dir_desde_env("LOGS_DIR", ROOT / "logs")
