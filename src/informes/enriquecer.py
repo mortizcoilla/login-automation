@@ -359,7 +359,12 @@ def _extraer_requerimientos(nota_path: Path) -> dict[str, bool]:
         dict con keys 'examenes', 'interconsulta' y 'indicaciones',
         todas bool. Si la nota no existe, todas False.
     """
-    resultado = {"examenes": False, "interconsulta": False, "indicaciones": False}
+    resultado = {
+        "examenes": False,
+        "interconsulta": False,
+        "indicaciones": False,
+        "mortadelo": False,
+    }
 
     if not nota_path.exists():
         return resultado
@@ -375,6 +380,10 @@ def _extraer_requerimientos(nota_path: Path) -> dict[str, bool]:
     matches = list(TRIGGER_RE.finditer(text))
     if not matches:
         return resultado
+    # REQ-084: la sola existencia del bloque ** mortadelo se reporta —
+    # hay pedidos que no caen en las 3 keywords (sugerencias para la
+    # psicologa, cierre de GES, etc., REQ-077).
+    resultado["mortadelo"] = True
 
     # Para cada trigger, examinar el texto hasta el proximo trigger
     # (o fin de archivo)
@@ -406,7 +415,8 @@ _ANCHO_MOTIVO = 24
 _ANCHO_EXAMENES_ADJUNTOS = 18
 _ANCHO_CREAR_INTERCONSULTA = 20
 _ANCHO_INDICACIONES = 16
-_ANCHO_TOTAL = 210
+_ANCHO_MORTADELO = 9
+_ANCHO_TOTAL = 221
 
 
 def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
@@ -446,6 +456,7 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
             f"{'Examenes':<{_ANCHO_EXAMENES_ADJUNTOS}}",
             f"{'Interconsulta':<{_ANCHO_CREAR_INTERCONSULTA}}",
             f"{'Indicaciones':<{_ANCHO_INDICACIONES}}",
+            f"{'Mortadelo':<{_ANCHO_MORTADELO}}",
         ]
     )
     out.write(header + "\n")
@@ -459,6 +470,7 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
         examenes = "si" if f.get("examenes") else "no"
         ic = "si" if f.get("interconsulta") else "no"
         indicaciones = "si" if f.get("indicaciones") else "no"
+        mortadelo = "si" if f.get("mortadelo") else "no"
         cells = "  ".join(
             [
                 f"{f.get('fecha', '-'):<{_ANCHO_FECHA}}",
@@ -469,6 +481,7 @@ def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
                 f"{examenes:<{_ANCHO_EXAMENES_ADJUNTOS}}",
                 f"{ic:<{_ANCHO_CREAR_INTERCONSULTA}}",
                 f"{indicaciones:<{_ANCHO_INDICACIONES}}",
+                f"{mortadelo:<{_ANCHO_MORTADELO}}",
             ]
         )
         out.write(cells + "\n")
@@ -602,6 +615,7 @@ def main() -> int:
         fila["examenes"] = reqs["examenes"]
         fila["interconsulta"] = reqs["interconsulta"]
         fila["indicaciones"] = reqs["indicaciones"]
+        fila["mortadelo"] = reqs["mortadelo"]
         if reqs["examenes"]:
             enriched_examenes += 1
         if reqs["interconsulta"]:

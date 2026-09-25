@@ -103,7 +103,7 @@ Referencia inmutable de comportamiento:
 - `<pac>` y `nombre_*` se mantienen con mayusculas, tildes y espacios (legible).
 
 ### Reporte enriquecido (paso 6)
-Columnas: `Fecha | Nombre | Edad | Tipo de atencion | Motivo de la atencion | Examenes | Interconsulta | Indicaciones`
+Columnas: `Fecha | Nombre | Edad | Tipo de atencion | Motivo de la atencion | Examenes | Interconsulta | Indicaciones | Mortadelo` (Mortadelo = si/no segun la existencia del bloque ** mortadelo, REQ-084)
 
 `Examenes`, `Interconsulta`, `Indicaciones` se llenan desde el trigger
 `** Mortadelo` en la nota clinica:

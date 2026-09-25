@@ -26,7 +26,7 @@ def test_extraer_requerimientos_sin_nota(tmp_path: Path):
     """Si la nota no existe, devuelve dict con ambos False."""
     nota = tmp_path / "no_existe.md"
     resultado = _extraer_requerimientos(nota)
-    assert resultado == {"examenes": False, "interconsulta": False, "indicaciones": False}
+    assert resultado == {"examenes": False, "interconsulta": False, "indicaciones": False, "mortadelo": False}
 
 
 def test_extraer_requerimientos_sin_trigger(tmp_path: Path):
@@ -37,7 +37,7 @@ def test_extraer_requerimientos_sin_trigger(tmp_path: Path):
         encoding="utf-8",
     )
     resultado = _extraer_requerimientos(nota)
-    assert resultado == {"examenes": False, "interconsulta": False, "indicaciones": False}
+    assert resultado == {"examenes": False, "interconsulta": False, "indicaciones": False, "mortadelo": False}
 
 
 def test_extraer_requerimientos_examenes_si(tmp_path: Path):
@@ -139,14 +139,20 @@ def test_extraer_requerimientos_multiples_triggers(tmp_path: Path):
 
 
 def test_extraer_requerimientos_trigger_sin_keywords(tmp_path: Path):
-    """Trigger presente pero sin keywords -> ambos False."""
+    """Trigger presente pero sin keywords -> keywords False; la columna
+    Mortadelo = si (REQ-084: la existencia del bloque se reporta)."""
     nota = tmp_path / "paciente.md"
     nota.write_text(
         "** mortadelo: agrega el peso y la talla\n",
         encoding="utf-8",
     )
     resultado = _extraer_requerimientos(nota)
-    assert resultado == {"examenes": False, "interconsulta": False, "indicaciones": False}
+    assert resultado == {
+        "examenes": False,
+        "interconsulta": False,
+        "indicaciones": False,
+        "mortadelo": True,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -561,17 +567,22 @@ def test_edad_a_decimal_precision_2_decimales():
 # ---------------------------------------------------------------------------
 
 
-def test_parser_ignora_9_columnas(tmp_path: Path):
-    """Lineas de 9 columnas (formato 17:26 con Plantilla) se IGNORAN:
-    el parser actual solo acepta 5, 7 u 8."""
+def test_parser_acepta_9_columnas(tmp_path: Path):
+    """REQ-084: 9 columnas = layout nuevo con Mortadelo al final. El
+    legacy 17:26 (con Plantilla) tambien cae bien: la desambiguacion
+    por Edad_decimal resuelve tipo/motivo en ambos."""
     informe = tmp_path / "informe.txt"
     informe.write_text(
         "10-09-2026    Juan Perez    40 anos 2 meses 10 dias    40,19"
-        "    Control    control sm    CONTROL    no    no\n",
+        "    Control    control sm    CONTROL    no    si\n",
         encoding="utf-8",
     )
     filas = _parsear_informe_basico(informe)
-    assert filas == []
+    assert len(filas) == 1
+    assert filas[0]["fecha"] == "10-09-2026"
+    assert filas[0]["nombre"] == "Juan Perez"
+    assert filas[0]["tipo_atencion"] == "Control"
+    assert filas[0]["motivo"] == "control sm"
 
 
 def test_parser_acepta_8_columnas_sin_decimal(tmp_path: Path):

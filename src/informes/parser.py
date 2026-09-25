@@ -58,7 +58,7 @@ def parsear_linea_informe(linea: str) -> dict[str, str] | None:
         (siempre se re-deriva de la nota, REQ-041).
     """
     parts = re.split(r"\s{2,}", linea.rstrip())
-    if len(parts) not in (4, 5, 6, 7, 8):
+    if len(parts) not in (4, 5, 6, 7, 8, 9):
         return None
     if not re.match(r"^\d{2}-\d{2}-\d{4}$", parts[0]):
         return None
@@ -78,7 +78,7 @@ def parsear_linea_informe(linea: str) -> dict[str, str] | None:
         # Intermedio 16:30: Fecha|Nombre|Edad|Tipo|Motivo|Exam|IC
         tipo_atencion, motivo, plantilla = parts[3], parts[4], ""
     else:
-        # 8 columnas: disambiguacion REQ-043
+        # 8-9 columnas (9 = con Mortadelo, REQ-084): disambiguacion REQ-043
         if _EDAD_LIKE_RE.match(parts[3].strip()):
             # Deprecado 17:26: Fecha|Nombre|Edad|Edad_dec|Tipo|Motivo|Ex|IC
             tipo_atencion, motivo, plantilla = parts[4], parts[5], ""
@@ -126,7 +126,7 @@ def parsear_filas_enriquecidas(ruta: Path) -> list[dict]:
     filas: list[dict] = []
     for line in ruta.read_text(encoding="utf-8").splitlines():
         parts = re.split(r"\s{2,}", line.rstrip())
-        if len(parts) not in (5, 7, 8):
+        if len(parts) not in (5, 7, 8, 9):
             continue
         fila = parsear_linea_informe(line)
         if fila is None:
