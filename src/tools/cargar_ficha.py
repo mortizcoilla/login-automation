@@ -341,8 +341,12 @@ def _escribir_trazabilidad(
     resultados: list[ResultadoCarga],
     modo: str,
     args_extras: dict,
-    out_dir: Path = TRAZABILIDAD_CARGA_DIR,
+    out_dir: Path | None = None,
 ) -> Path:
+    """Escribe la trazabilidad. out_dir resuelto a TIEMPO DE LLAMADA
+    (el default de parametro se evalua al importar y rompe los patches
+    de test — registraba en la carpeta real desde los tests)."""
+    out_dir = out_dir or TRAZABILIDAD_CARGA_DIR
     """Escribe data/trazabilidad_carga/carga_<ts>.json con el detalle."""
     out_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")

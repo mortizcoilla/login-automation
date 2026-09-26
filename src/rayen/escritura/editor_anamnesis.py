@@ -397,7 +397,7 @@ def _etapa_de_ficha(ficha: str) -> str:
 
 
 def llenar_editor_nuevo(
-    driver: WebDriver, logger: logging.Logger, ficha: str, timeout: int = 15
+    driver: WebDriver, logger: logging.Logger, ficha: str, timeout: int = 45
 ) -> bool:
     """Llena el editor nuevo: motivo + ciclo vital + historia (ficha).
 
@@ -438,6 +438,13 @@ def llenar_editor_nuevo(
             _time.sleep(1)
     if campos is None:
         logger.warning("[editor_anamnesis] campos del editor no aparecieron")
+        try:
+            from src.core.rutas import SCREENSHOTS_DIR as _SS
+
+            _SS.mkdir(parents=True, exist_ok=True)
+            driver.save_screenshot(str(_SS / "editor_sin_campos.png"))
+        except Exception:
+            pass
         try:
             from src.core.rutas import LOGS_DIR as _LD
 
