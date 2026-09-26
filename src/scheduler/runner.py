@@ -183,6 +183,28 @@ def ejecutar_cadena(usuario: str) -> int:
     La salida de los pasos va al log (la tarea corre con pythonw: no hay
     consola donde caer).
     """
+    # REQ-060 (robustez): lockfile — el Programador de Tareas puede
+    # lanzar dos instancias (recuperacion de disparos perdidos + regular)
+    # y dos cadenas en paralelo compiten por la DB y Rayen.
+    lock = ESTADO_PATH.parent / "scheduler.lock"
+    try:
+        import os as _os
+
+        fd = _os.open(str(lock), _os.O_CREAT | _os.O_EXCL | _os.O_WRONLY)
+        _os.write(fd, str(_os.getpid()).encode())
+        _os.close(fd)
+    except FileExistsError:
+        edad_s = (
+            datetime.now().timestamp() - lock.stat().st_mtime
+            if lock.exists()
+            else 999999
+        )
+        if edad_s < 4 * 3600:
+            _log(f"[{usuario}] OTRO runner tiene el lock (edad {int(edad_s)}s): no lanzo cadena.")
+            return 3
+        _log(f"[{usuario}] lock vencido ({int(edad_s)}s): lo tomo.")
+        lock.unlink(missing_ok=True)
+
     _log(f"[{usuario}] inicio de cadena (4->5->3->6->7)")
     offset_log_0 = LOG_PATH.stat().st_size if LOG_PATH.exists() else 0
     env = dict(os.environ)
@@ -216,22 +238,13 @@ def ejecutar_cadena(usuario: str) -> int:
                 f"[{usuario}] FALLO en paso {numero}/5 (codigo {resultado.returncode}). "
                 f"La cadena se detiene; reintento en el proximo disparo si hay cupo."
             )
+            (ESTADO_PATH.parent / "scheduler.lock").unlink(missing_ok=True)
             return numero
         if numero == 2:
             _copiar_informe_a_onedrive()
-            # REQ-080: aviso de fichas abiertas con su distribucion.
-            conteo_fichas = _distribucion_fichas_informe()
-            if conteo_fichas is not None:
-                total, distribucion = conteo_fichas
-                enviado = avisos.enviar(
-                    avisos.armar_aviso_fichas_abiertas(total, distribucion)
-                )
-                _log(
-                    f"aviso fichas abiertas ({total}): "
-                    f"{'enviado' if enviado else 'NO ENVIADO'}"
-                )
     _log(f"[{usuario}] cadena completa OK")
     _archivar_fichas_cerradas_seguro()
+    (ESTADO_PATH.parent / "scheduler.lock").unlink(missing_ok=True)
     return 0
 
 
@@ -296,11 +309,15 @@ def _quizas_saludo_matutino(
     if registro.get("fecha") == hoy:
         return
     try:
-        avisos.enviar(avisos.armar_saludo_matutino(ahora.date()))
+        # Write-first: marcar ANTES de enviar (dos procesos en paralelo
+        # -> solo uno gana la marca y el saludo sale una sola vez).
         estado["__saludo__"] = {"fecha": hoy}
         _guardar_estado(estado)
+        avisos.enviar(avisos.armar_saludo_matutino(ahora.date()))
         _log("saludo matutino enviado.")
     except Exception as e:  # el saludo no puede romper el latido
+        estado.pop("__saludo__", None)
+        _guardar_estado(estado)
         _log(f"saludo matutino fallo (no es critico): {e}")
 
 
@@ -321,6 +338,19 @@ def _correr_vencidas(
         paso_fallido = ejecutar_cadena(entrada.usuario)
         if paso_fallido == 0:
             _marcar_ok(entrada.usuario, estado)
+            # REQ-080 (ajuste usuaria 25-09): el aviso de fichas abiertas
+            # va DESPUES de que la cadena completa corrio, con el informe
+            # ya enriquecido — no a mitad de camino.
+            conteo_fichas = _distribucion_fichas_informe()
+            if conteo_fichas is not None:
+                total_f, distribucion = conteo_fichas
+                enviado_f = avisos.enviar(
+                    avisos.armar_aviso_fichas_abiertas(total_f, distribucion)
+                )
+                _log(
+                    f"aviso fichas abiertas ({total_f}): "
+                    f"{'enviado' if enviado_f else 'NO ENVIADO'}"
+                )
             conteo = avisos.contar_fichas_del_log(LOG_PATH)
             enviado = avisos.enviar(
                 avisos.armar_mensaje_fin(
