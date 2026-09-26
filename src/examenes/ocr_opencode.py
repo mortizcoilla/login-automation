@@ -12,6 +12,7 @@ Config (en .env):
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import shutil
@@ -24,6 +25,8 @@ DEFAULT_MODEL = "opencode/mimo-v2.6-flash-free"
 _TIMEOUT_SEGUNDOS = 180
 
 # Codigos ANSI que el CLI deja en la salida.
+logger = logging.getLogger(__name__)
+
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 PROMPT_TRANSCRIPCION = (

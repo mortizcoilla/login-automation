@@ -205,6 +205,9 @@ async def cmd_archivar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Mision 2 (REQ-061): transcribir con vision y consolidar TODAS las
         # imagenes archivadas del paciente en un unico exam_<pac>_<fecha>.md.
         # El archivado ya esta hecho: un fallo aqui es un aviso, no un error.
+        # OBSERVABILIDAD (REQ-061): el resultado de la consolidacion
+        # queda en el log del bot — antes solo iba al Telegram de Yadira
+        # y un fallo de OCR era indetectable desde aca.
         try:
             consolidado = await asyncio.to_thread(
                 consolidar_desde_telegram,
@@ -212,6 +215,18 @@ async def cmd_archivar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 fecha_atencion=fecha,
                 crudos_dir=destino_dir_override,
             )
+            if consolidado.get("ok"):
+                logger.info(
+                    "[consolidacion] OK: %s (%s fotos)",
+                    Path(str(consolidado.get("path", ""))).name,
+                    consolidado.get("fotos", 0),
+                )
+            else:
+                logger.error(
+                    "[consolidacion] FALLO para %s: %s",
+                    paciente,
+                    consolidado.get("error", "motivo desconocido"),
+                )
         except Exception as exc:
             logger.exception("Error inesperado en consolidacion OCR")
             consolidado = {"ok": False, "error": f"error inesperado: {exc}"}
