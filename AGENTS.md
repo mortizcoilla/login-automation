@@ -29,14 +29,18 @@ python -m src.analysis.actualizar_mes_actual yadira && python -m src.analysis.in
 5. (paso 7) Mortadelo genera ficha completa + informe de trazabilidad
    -> data/fichas_generadas/ y data/informes_trazabilidad/
 
-**Opt-in independiente** (Yadira lo invoca cuando quiere, REQ-070):
-- (paso 8) `python -m src.tools.cargar_ficha --paciente "..." --fecha dd-mm-yyyy`
-  o `--todos`: pega la ficha generada (paso 7) en el editor interno de
-  Rayen. Comparte el flujo de apertura de ficha con paso 3
-  (`src/rayen/flujos/apertura_ficha.py`) hasta el
-  `<div>Atencion actual</div>`; a partir de ahi, paso 8 NO hace click
-  (no entra al panel de evaluacion), pega el contenido y se detiene.
-  Yadira revisa y aprieta Guardar ella misma. Trazabilidad en
+**Paso 8 — carga de la ficha en Rayen** (REQ-070..075, 081; automatico
+en el cron y manual con `--solo-apertura`):
+- (paso 8) `python -m src.tools.cargar_ficha --paciente "..." --fecha
+  dd-mm-yyyy` o `--todos`: pega la ficha generada (paso 7) en el editor
+  de anamnesis de Rayen. Flujo (Yadira 24-26/09): Atencion actual
+  (pestaña del nav) -> basurero descarta la anamnesis vieja (con
+  respaldo verificado en OneDrive, REQ-082) -> 'Agregar!' -> pega la
+  ficha completa en #historiaEnfermedad (motivo en su campo propio,
+  ciclo vital en blanco) -> 'Agregar' (guardado automatico, REQ-073
+  revisada) -> verificacion post-guardado (relee y compara). Recorre
+  Pacientes citados entre pacientes; recycle de sesion cada 8 fichas
+  (REQ-081). Trazabilidad en
   `data/trazabilidad_carga/carga_<ts>.json`.
 
 **Opt-in por paciente** (solo cuando Yadira envia examenes por Telegram):
