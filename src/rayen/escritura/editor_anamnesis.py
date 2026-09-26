@@ -339,7 +339,6 @@ def agregar_anamnesis_nueva(
 
 
 _MOTIVO_SELECTOR = (By.CSS_SELECTOR, "textarea#motivoConsulta")
-_ETAPA_SELECTOR = (By.CSS_SELECTOR, "select#etapa")
 
 _JS_SET = """
 const el = arguments[0], valor = arguments[1];
@@ -377,25 +376,6 @@ def _historia_de_ficha(ficha: str) -> str:
     return ficha.strip()
 
 
-def _etapa_de_ficha(ficha: str) -> str:
-    """Ciclo vital femenino segun palabras de la ficha; default No Aplica."""
-    norm = re.sub(r"\s+", " ", ficha.lower())
-    norm = "".join(
-        c for c in norm if c not in "áéíóú"
-    )  # quitar tildes para matchear
-    pares = [
-        ("embarazada primigesta", "2"),
-        ("embarazada", "3"),
-        ("puerpera", "4"),
-        ("climaterica", "5"),
-        ("no gestante", "1"),
-    ]
-    for palabra, valor in pares:
-        if palabra in norm:
-            return valor
-    return "0"  # No Aplica
-
-
 def llenar_editor_nuevo(
     driver: WebDriver, logger: logging.Logger, ficha: str, timeout: int = 45
 ) -> bool:
@@ -411,17 +391,18 @@ def llenar_editor_nuevo(
     """
     motivo = _motivo_de_ficha(ficha)
     historia = _historia_de_ficha(ficha)
-    etapa = _etapa_de_ficha(ficha)
     logger.info(
         f"[editor_anamnesis] llenando editor nuevo: motivo={motivo!r} "
-        f"({len(motivo)} chars) | etapa={etapa} | historia={len(historia)} chars"
+        f"({len(motivo)} chars) | historia={len(historia)} chars"
     )
 
     # Patron que funciona con Rayen (mismo de lapiz/Agregar!/pestaña):
     # SONDEO con find_element directo — el WebDriverWait+presence falla
     # intermitentemente con campos visibles (caso Juan Carlos 26-09:
     # la usuaria los vio en pantalla mientras el wait agotaba).
-    driver.switch_to.default_content()  # por si un paso anterior quedo en un frame
+    # NO cambiar de contexto: los campos del editor estan en el mismo
+    # frame donde los pasos anteriores encontraron lapiz/basurero/Agregar
+    # (cambiar de contexto los hace 'desaparecer' — caso Juan Carlos).
     import time as _time
 
     fin = _time.monotonic() + timeout
@@ -430,7 +411,6 @@ def llenar_editor_nuevo(
         try:
             campos = (
                 driver.find_element(*_MOTIVO_SELECTOR),
-                driver.find_element(*_ETAPA_SELECTOR),
                 driver.find_element(*_HISTORIA_SELECTOR),
             )
             break
@@ -456,7 +436,7 @@ def llenar_editor_nuevo(
         except Exception:
             pass
         return False
-    campo_motivo, campo_etapa, campo_historia = campos
+    campo_motivo, campo_historia = campos
 
     import time as _time
 
@@ -485,8 +465,8 @@ def llenar_editor_nuevo(
     try:
         if not _set_y_verificar(campo_motivo, motivo, "motivo"):
             return False
-        if not _set_y_verificar(campo_etapa, etapa, "etapa"):
-            return False
+        # Ciclo vital femenino: SE DEJA EN BLANCO (instruccion usuaria
+        # 26-09-2026 — no se toca el select #etapa).
         if not _set_y_verificar(campo_historia, historia, "historia"):
             return False
     except Exception as e:
