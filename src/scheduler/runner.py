@@ -240,7 +240,9 @@ def ejecutar_cadena(usuario: str) -> int:
             )
             (ESTADO_PATH.parent / "scheduler.lock").unlink(missing_ok=True)
             return numero
-        if numero == 2:
+        if numero == 4:
+            # REQ-078 (ajuste usuaria 25-09): copiar el informe YA
+            # ENRIQUECIDO (tras el paso 6), no el base del paso 5.
             _copiar_informe_a_onedrive()
     _log(f"[{usuario}] cadena completa OK")
     _archivar_fichas_cerradas_seguro()
