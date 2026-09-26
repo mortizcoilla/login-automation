@@ -47,6 +47,7 @@ import argparse
 import contextlib
 import io
 import re
+import shutil
 import sys
 from collections import Counter
 from pathlib import Path
@@ -324,6 +325,14 @@ def _extraer_edad(nota_path: Path) -> str | None:
     m = EDAD_RE.search(text)
     if m:
         return _limpiar_valor_campo(m.group(1))
+
+    # REQ-085 fallback: si el paso 3 no pudo extraer la tabla de
+    # Identificacion (panel de Rayen), la edad SIEMPRE esta en el cuerpo
+    # de la anamnesis ('Paciente de 51 anos de edad') — la primera
+    # mencion de edad del texto es la del paciente.
+    m_body = re.search(r"\b(\d{1,3})\s+a[ñn]os\b", text)
+    if m_body:
+        return f"{m_body.group(1)} años"
     return None
 
 
@@ -668,6 +677,21 @@ def main() -> int:
     except OSError as e:
         print(f"WARN: no se pudo guardar: {e}", file=sys.stderr)
         return 1
+
+    # REQ-078 (ajuste usuaria 25-09): en OneDrive va el informe
+    # ENRIQUECIDO (este), no el base del paso 5. El canonico queda en
+    # analysis junto a la DB (SQLite siempre local). En tests no se
+    # toca el OneDrive real.
+    if "pytest" not in sys.modules:
+        try:
+            from src.core.rutas import FICHAS_GENERADAS_DIR
+
+            destino = FICHAS_GENERADAS_DIR.parent / informe_path.name
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(informe_path, destino)
+            print(f"[copia para lectura en: {destino}]")
+        except OSError as e:
+            print(f"WARN: copia a OneDrive fallo: {e}", file=sys.stderr)
 
     return 0
 
