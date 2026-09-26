@@ -49,6 +49,7 @@ import io
 import re
 import shutil
 import sys
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -428,6 +429,25 @@ _ANCHO_MORTADELO = 9
 _ANCHO_TOTAL = 221
 
 
+def _normalizar_tipo_atencion(tipo: str) -> str:
+    """REQ-086: 'Morbilidad telefonica' y 'Morbilidad presencial' se
+    muestran simplemente como 'Morbilidad' (filtro pedido por Yadira).
+    Tolerante a tildes y mayusculas; los demas tipos quedan igual."""
+    if not tipo:
+        return tipo
+    sin_tildes = "".join(
+        c
+        for c in unicodedata.normalize("NFD", tipo)
+        if not unicodedata.combining(c)
+    )
+    normalizado = sin_tildes.strip().lower()
+    if normalizado.startswith("morbilidad telefonica") or normalizado.startswith(
+        "morbilidad presencial"
+    ):
+        return "Morbilidad"
+    return tipo
+
+
 def _formatear_tabla(filas: list[dict[str, str]], periodo: str) -> str:
     """Devuelve el informe completo como string, listo para escribir."""
     out = io.StringIO()
@@ -573,6 +593,11 @@ def main() -> int:
     print(f"[enriquecer_informe] archivo: {informe_path.name}  (el anual NO se toca)")
 
     filas = _parsear_informe_basico(informe_path)
+    # REQ-086: filtro de tipo de atencion — 'Morbilidad telefonica' y
+    # 'Morbilidad presencial' se muestran como 'Morbilidad'.
+    for fila in filas:
+        if "tipo_atencion" in fila:
+            fila["tipo_atencion"] = _normalizar_tipo_atencion(fila["tipo_atencion"])
     if not filas:
         print("  no se encontraron filas para enriquecer")
         return 1
