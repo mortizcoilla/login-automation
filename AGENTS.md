@@ -45,6 +45,13 @@ si corre. Modulo aislado: no modifica los pasos de arriba.
 
 ## 3. Reglas duras
 
+- **REGLA DE EJECUCION (26-09-2026)**: los pasos del flujo diario y el
+  cron corren SIEMPRE desde este worktree (C:\login-automation-bot) —
+  es el unico con la DB fresca. El workspace principal
+  (C:\login-automation) es solo desarrollo: su DB esta congelada y
+  ejecutar pasos 4-6 desde ahi sobrescribe productos con datos viejos
+  (incidente del informe de 12 fichas).
+
 - **Yadira es la fuente de verdad** sobre sus datos. Los agentes no deciden
   diagnosticos ni tratamientos.
 - **Las notas son INMUTABLES en contenido y orden**. Solo se permite
