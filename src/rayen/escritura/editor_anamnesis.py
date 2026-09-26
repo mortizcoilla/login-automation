@@ -417,18 +417,39 @@ def llenar_editor_nuevo(
         f"({len(motivo)} chars) | etapa={etapa} | historia={len(historia)} chars"
     )
 
-    wait = WebDriverWait(driver, timeout)
-    try:
-        campo_motivo = wait.until(
-            EC.presence_of_element_located(_MOTIVO_SELECTOR)
-        )
-        campo_etapa = wait.until(EC.presence_of_element_located(_ETAPA_SELECTOR))
-        campo_historia = wait.until(
-            EC.presence_of_element_located(_HISTORIA_SELECTOR)
-        )
-    except TimeoutException:
+    # Patron que funciona con Rayen (mismo de lapiz/Agregar!/pestaña):
+    # SONDEO con find_element directo — el WebDriverWait+presence falla
+    # intermitentemente con campos visibles (caso Juan Carlos 26-09:
+    # la usuaria los vio en pantalla mientras el wait agotaba).
+    driver.switch_to.default_content()  # por si un paso anterior quedo en un frame
+    import time as _time
+
+    fin = _time.monotonic() + timeout
+    campos = None
+    while _time.monotonic() < fin:
+        try:
+            campos = (
+                driver.find_element(*_MOTIVO_SELECTOR),
+                driver.find_element(*_ETAPA_SELECTOR),
+                driver.find_element(*_HISTORIA_SELECTOR),
+            )
+            break
+        except Exception:
+            _time.sleep(1)
+    if campos is None:
         logger.warning("[editor_anamnesis] campos del editor no aparecieron")
+        try:
+            from src.core.rutas import LOGS_DIR as _LD
+
+            _LD.mkdir(parents=True, exist_ok=True)
+            driver.switch_to.default_content()
+            (_LD / "editor_sin_campos.html").write_text(
+                driver.page_source, encoding="utf-8"
+            )
+        except Exception:
+            pass
         return False
+    campo_motivo, campo_etapa, campo_historia = campos
 
     import time as _time
 

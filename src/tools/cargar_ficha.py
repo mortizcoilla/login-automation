@@ -594,38 +594,55 @@ def main() -> int:
                     except Exception:
                         pass
 
-                    # Guardia: el respaldo de la anamnesis debe existir en
-                    # OneDrive antes de descartar nada en Rayen.
-                    respaldo = ANAMNESIS_DIR / (
-                        f"anam_{safe_filename(p.nombre)}_{p.fecha}.md"
-                    )
-                    respaldo_ok = respaldo.exists()
-                    if not respaldo_ok:
-                        logger.error(
-                            f"[cargar_ficha] sin respaldo ({respaldo.name}): "
-                            f"NO se descarta la anamnesis en Rayen."
-                        )
-                        resultados.append(
-                            ResultadoCarga(
-                                nombre=p.nombre,
-                                fecha=p.fecha,
-                                ficha_path=str(path),
-                                estado="error",
-                                motivo=(
-                                    "descartar bloqueado: sin respaldo en "
-                                    f"OneDrive ({respaldo.name})"
-                                ),
-                                timestamp=datetime.now().isoformat(
-                                    timespec="seconds"
-                                ),
-                            )
-                        )
-                        continue
+                    # Si la entrada de anamnesis NO existe en Rayen (ya
+                    # descartada en una corrida previa, o nunca hubo), el
+                    # descarte se salta e iremos directo a 'Agregar!'.
+                    from selenium.webdriver.common.by import By
 
-                    descartado = descartar_anamnesis(
-                        driver, logger, respaldo_existe=respaldo_ok
+                    try:
+                        driver.find_element(By.CSS_SELECTOR, "li#anamnesis")
+                        hay_anamnesis = True
+                    except Exception:
+                        hay_anamnesis = False
+                    logger.info(
+                        "[cargar_ficha] entrada de anamnesis en Rayen: %s",
+                        "presente" if hay_anamnesis else "AUSENTE (se omite descarte)",
                     )
-                    if descartado:
+
+                    descartado = False
+                    if hay_anamnesis:
+                        # Guardia: el respaldo de la anamnesis debe existir en
+                        # OneDrive antes de descartar nada en Rayen.
+                        respaldo = ANAMNESIS_DIR / (
+                            f"anam_{safe_filename(p.nombre)}_{p.fecha}.md"
+                        )
+                        respaldo_ok = respaldo.exists()
+                        if not respaldo_ok:
+                            logger.error(
+                                f"[cargar_ficha] sin respaldo ({respaldo.name}): "
+                                f"NO se descarta la anamnesis en Rayen."
+                            )
+                            resultados.append(
+                                ResultadoCarga(
+                                    nombre=p.nombre,
+                                    fecha=p.fecha,
+                                    ficha_path=str(path),
+                                    estado="error",
+                                    motivo=(
+                                        "descartar bloqueado: sin respaldo en "
+                                        f"OneDrive ({respaldo.name})"
+                                    ),
+                                    timestamp=datetime.now().isoformat(
+                                        timespec="seconds"
+                                    ),
+                                )
+                            )
+                            continue
+
+                        descartado = descartar_anamnesis(
+                            driver, logger, respaldo_existe=respaldo_ok
+                        )
+                    if descartado or not hay_anamnesis:
                         estado = "descartado"
                         motivo = (
                             "anamnesis vieja DESCARTADA (respaldo verificado "
