@@ -325,6 +325,14 @@ def _extraer_edad(nota_path: Path) -> str | None:
     m = EDAD_RE.search(text)
     if m:
         return _limpiar_valor_campo(m.group(1))
+
+    # REQ-085 fallback: si el paso 3 no pudo extraer la tabla de
+    # Identificacion (panel de Rayen), la edad SIEMPRE esta en el cuerpo
+    # de la anamnesis ('Paciente de 51 anos de edad') — la primera
+    # mencion de edad del texto es la del paciente.
+    m_body = re.search(r"\b(\d{1,3})\s+a[ñn]os\b", text)
+    if m_body:
+        return f"{m_body.group(1)} años"
     return None
 
 
