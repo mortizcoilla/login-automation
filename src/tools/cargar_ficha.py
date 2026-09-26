@@ -797,7 +797,9 @@ def main() -> int:
     # --solo-apertura, "panel_logrado" tambien es exito (ese era el
     # objetivo del modo).
     exitosos = resumen["ok"] + sum(
-        1 for r in resultados if r.estado in ("panel_logrado", "editor_logrado")
+        1
+        for r in resultados
+        if r.estado in ("panel_logrado", "editor_logrado", "cargada_ok")
     )
     return 0 if exitosos == resumen["total"] else 1
 
