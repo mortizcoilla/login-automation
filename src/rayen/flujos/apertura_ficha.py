@@ -226,17 +226,19 @@ def _wait_present(driver, xpath: str, timeout: int):
     )
 
 
-def _entrar_atencion_y_esperar_lapiz(
+def _entrar_atencion_y_esperar_editor(
     driver: WebDriver, logger: logging.Logger, budget_s: int, poll_s: float = 2.0
 ):
-    """Entra a la atencion y espera el lapiz de la anamnesis.
+    """Entra a la atencion y espera la senal editable.
 
-    Flujo real (Yadira 24-09-2026): el doble click aterriza en la vista
-    'Historia clinica' (li#anamnesis como RESUMEN de solo lectura) —
-    hay que CLICK en la pestaña 'Atencion actual' del nav vertical;
-    recien entonces existe el lapiz (button anamnesis-edit-*) de la
-    seccion editable. En el camino puede aparecer el tutorial
-    onboarding (se cierra). Devuelve el lapiz o None.
+    DOS estados posibles (Yadira 26-09-2026):
+      - ("lapiz", el)   -> hay anamnesis: se puede editar/descartar
+      - ("agregar", el) -> SIN anamnesis (placeholder 'Agregar!'): se
+        creara una nueva directamente
+    Flujo real: el doble click aterriza en la vista 'Historia clinica' —
+    hay que CLICK en la pestaña 'Atencion actual' del nav vertical. En
+    el camino puede aparecer el tutorial onboarding (se cierra).
+    Devuelve None si ninguna senal aparece en el presupuesto.
     """
     import time as _time
 
@@ -247,14 +249,26 @@ def _entrar_atencion_y_esperar_lapiz(
         "//li[contains(@class, 'verticalnav-tab')]"
         "[.//div[normalize-space(text())='Atención actual']]",
     )
+    agregar_btn = (
+        By.XPATH,
+        "//button[contains(@class,'btn-info')]"
+        "[normalize-space()='Agregar!']",
+    )
     fin = _time.monotonic() + budget_s
     tab_hecho = False
     while _time.monotonic() < fin:
-        # El lapiz = la seccion anamnesis editable de la atencion.
+        # Senal 1: hay anamnesis -> lapiz (seccion editable).
         try:
-            return driver.find_element(
+            lapiz = driver.find_element(
                 By.CSS_SELECTOR, "li#anamnesis button[id^='anamnesis-edit-']"
             )
+            return "lapiz", lapiz
+        except Exception:
+            pass
+        # Senal 2: SIN anamnesis -> placeholder 'Agregar!'.
+        try:
+            agregar = driver.find_element(*agregar_btn)
+            return "agregar", agregar
         except Exception:
             pass
         if not tab_hecho:
@@ -330,13 +344,17 @@ def abrir_ficha_por_nombre(
     _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
 
     # 4) Entrar a la atencion (pestaña 'Atencion actual' del nav
-    #    vertical) y esperar la seccion anamnesis. Maneja el tutorial
-    #    onboarding asincrono (REQ-030: sin re-click del doble click).
-    lapiz = _entrar_atencion_y_esperar_lapiz(driver, logger, PANEL_TIMEOUT_S + 60)
-    if lapiz is None:
+    #    vertical) y esperar la señal editable: lapiz (hay anamnesis) o
+    #    Agregar! (sin anamnesis — se creara una nueva). Maneja el
+    #    tutorial onboarding asincrono (REQ-030: sin re-click).
+    senal = _entrar_atencion_y_esperar_editor(
+        driver, logger, PANEL_TIMEOUT_S + 60
+    )
+    tipo_editor = senal[0] if senal else None
+    if tipo_editor is None:
         # REQ-030: no re-clickear. Marcar flag y seguir.
         logger.warning(
-            f"Panel no aparecio en {PANEL_TIMEOUT_S + 30}s. "
+            f"Senal editable (lapiz/Agregar) no aparecio en {PANEL_TIMEOUT_S + 30}s. "
             f"El flujo procedera sobre lo que haya. "
             f"El caller debera decidir si esto es aceptable."
         )

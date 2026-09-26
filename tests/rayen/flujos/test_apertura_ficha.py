@@ -141,8 +141,8 @@ def test_panel_no_carga_marca_panel_cargo_false(
             return_value=False,  # sin tutorial
         ),
         patch(
-            "src.rayen.flujos.apertura_ficha._entrar_atencion_y_esperar_lapiz",
-            return_value=None,  # el lapiz de anamnesis nunca aparecio
+            "src.rayen.flujos.apertura_ficha._entrar_atencion_y_esperar_editor",
+            return_value=None,  # ninguna senal aparecio en el presupuesto
         ),
     ):
         ok = abrir_ficha_por_nombre(fake_driver, logger, paciente_exacto)
