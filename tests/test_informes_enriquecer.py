@@ -53,3 +53,26 @@ class TestColumnaMortadelo:
         assert lineas_datos, "fila de datos presente"
         # la celda mortadelo = si
         assert " si" in lineas_datos[0][-12:]
+
+
+class TestFiltroTipoAtencion:
+    """REQ-086: Morbilidad telefonica/presencial -> 'Morbilidad'."""
+
+    def test_telefonica_y_presencial_se_colapsan(self) -> None:
+        from src.informes.enriquecer import _normalizar_tipo_atencion
+
+        assert _normalizar_tipo_atencion("Morbilidad telefónica") == "Morbilidad"
+        assert _normalizar_tipo_atencion("Morbilidad presencial") == "Morbilidad"
+        assert _normalizar_tipo_atencion("morbilidad TELEFÓNICA") == "Morbilidad"
+
+    def test_otros_tipos_quedan_iguales(self) -> None:
+        from src.informes.enriquecer import _normalizar_tipo_atencion
+
+        assert (
+            _normalizar_tipo_atencion("Control integral ecicep-g3")
+            == "Control integral ecicep-g3"
+        )
+        assert _normalizar_tipo_atencion("Ingreso salud mental infantil") == (
+            "Ingreso salud mental infantil"
+        )
+        assert _normalizar_tipo_atencion("") == ""
