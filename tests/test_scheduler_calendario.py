@@ -167,12 +167,15 @@ def runner_aislado(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     return llamadas
 
 
-def test_cadena_ok_corre_5_pasos(runner_aislado, tmp_path: Path) -> None:
+def test_cadena_ok_corre_6_pasos(runner_aislado, tmp_path: Path) -> None:
     assert runner.ejecutar_cadena("yadira") == 0
-    assert len(runner_aislado) == 5
+    assert len(runner_aislado) == 6
     assert runner_aislado[0] == ["-m", "src.analysis.actualizar_mes_actual", "yadira"]
     assert runner_aislado[2][-2:] == ["--user", "yadira"]
     assert runner_aislado[4] == ["-m", "src.tools.mortadelo", "--todos"]
+    assert runner_aislado[5] == [
+        "-m", "src.tools.cargar_ficha", "--todos", "--user", "yadira"
+    ]
 
 
 def test_cadena_con_fallo_se_detiene_en_el_primer_paso(
@@ -265,7 +268,7 @@ def test_paso7_con_omitidos_pero_con_fichas_es_exito(
 
     monkeypatch.setattr(runner.subprocess, "run", _fake_run)
     assert runner.ejecutar_cadena("yadira") == 0
-    assert len(llamadas) == 5
+    assert len(llamadas) == 6
 
 
 def test_paso7_fallo_total_sigue_siendo_fallo(
@@ -288,4 +291,4 @@ def test_paso7_fallo_total_sigue_siendo_fallo(
 
     monkeypatch.setattr(runner.subprocess, "run", _fake_run)
     assert runner.ejecutar_cadena("yadira") == 5
-    assert len(llamadas) == 5
+    assert len(llamadas) == 5  # corto en mortadelo (paso 5); cargar no corre

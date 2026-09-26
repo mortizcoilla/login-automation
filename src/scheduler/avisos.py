@@ -155,7 +155,7 @@ def armar_mensaje_fin(ok: bool, fichas_ok: int | None, paso_fallido: int = 0) ->
         if fichas_ok is None:
             return "✅ Listo mama! La cadena diaria terminó bien 💛"
         return elegir_mensaje(MENSAJES_FIN_OK, date.today()).format(x=fichas_ok)
-    detalle = f"se trunco en el paso {paso_fallido}/5" if paso_fallido else "con error"
+    detalle = f"se trunco en el paso {paso_fallido}/6" if paso_fallido else "con error"
     return MENSAJES_FIN_FALLO[date.today().toordinal() % len(MENSAJES_FIN_FALLO)].format(
         detalle=detalle
     )

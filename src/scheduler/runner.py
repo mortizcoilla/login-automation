@@ -120,6 +120,9 @@ def _cadena(usuario: str) -> list[list[str]]:
         ["-m", "src.tools.crear_notas_clinicas", "--todos", "--user", usuario],
         ["-m", "src.analysis.enriquecer_informe"],
         ["-m", "src.tools.mortadelo", "--todos"],
+        # Paso 8 (REQ-070): carga las fichas generadas en Rayen
+        # (descartar -> Agregar! -> llenar -> Agregar, REQ-073/081).
+        ["-m", "src.tools.cargar_ficha", "--todos", "--user", usuario],
     ]
 
 
@@ -205,14 +208,14 @@ def ejecutar_cadena(usuario: str) -> int:
         _log(f"[{usuario}] lock vencido ({int(edad_s)}s): lo tomo.")
         lock.unlink(missing_ok=True)
 
-    _log(f"[{usuario}] inicio de cadena (4->5->3->6->7)")
+    _log(f"[{usuario}] inicio de cadena (4->5->3->6->7->8)")
     offset_log_0 = LOG_PATH.stat().st_size if LOG_PATH.exists() else 0
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     for numero, args in enumerate(_cadena(usuario), 1):
-        _log(f"[{usuario}] paso {numero}/5: {' '.join(args)}")
+        _log(f"[{usuario}] paso {numero}/6: {' '.join(args)}")
         with LOG_PATH.open("a", encoding="utf-8") as logfh:
             resultado = subprocess.run(
                 [str(PY), *args],
@@ -229,13 +232,13 @@ def ejecutar_cadena(usuario: str) -> int:
                 conteo = _resumen_mortadelo_reciente(offset_log_0)
                 if conteo and conteo[0] >= 1:
                     _log(
-                        f"[{usuario}] paso 5/5 con omitidos: {conteo[0]}/{conteo[1]} "
+                        f"[{usuario}] paso 5/6 con omitidos: {conteo[0]}/{conteo[1]} "
                         f"fichas generadas ({conteo[1] - conteo[0]} pacientes sin "
                         f"atencion hoy). Se acepta como completado."
                     )
-                    return 0
+                    continue  # sigue con el paso 6 (cargar fichas)
             _log(
-                f"[{usuario}] FALLO en paso {numero}/5 (codigo {resultado.returncode}). "
+                f"[{usuario}] FALLO en paso {numero}/6 (codigo {resultado.returncode}). "
                 f"La cadena se detiene; reintento en el proximo disparo si hay cupo."
             )
             (ESTADO_PATH.parent / "scheduler.lock").unlink(missing_ok=True)

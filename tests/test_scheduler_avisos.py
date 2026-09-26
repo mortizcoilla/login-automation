@@ -53,7 +53,7 @@ def test_fin_ok_sin_dato_es_sobrio() -> None:
 
 def test_fin_fallo_menciona_el_paso() -> None:
     mensaje = avisos.armar_mensaje_fin(ok=False, fichas_ok=None, paso_fallido=3)
-    assert "paso 3/5" in mensaje
+    assert "paso 3/6" in mensaje
 
 
 def test_conteo_del_log_toma_el_ultimo_resumen(tmp_path: Path) -> None:
