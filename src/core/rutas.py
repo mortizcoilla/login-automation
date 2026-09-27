@@ -61,6 +61,9 @@ TRAZABILIDAD_CARGA_DIR = _dir_desde_env(
 # activas quedan solo con pacientes del informe.
 ARCHIVADOS_DIR = _dir_desde_env("ARCHIVADOS_DIR", DATA_DIR / "archivados")
 ANALISIS_DIR = _dir_desde_env("ANALYSIS_DIR", DATA_DIR / "analysis")
+# REQ-091: ubicacion UNICA del informe de fichas abiertas (el usuario
+# lo revisa en OneDrive). Redirigible via .env; por defecto, analysis.
+INFORMES_FICHAS_DIR = _dir_desde_env("INFORMES_FICHAS_DIR", ANALISIS_DIR)
 SCREENSHOTS_DIR = _dir_desde_env("SCREENSHOTS_DIR", DATA_DIR / "logs" / "screenshots")
 LOGS_DIR = _dir_desde_env("LOGS_DIR", ROOT / "logs")
 
@@ -73,7 +76,7 @@ def informe_mes_actual_path(fecha: date | None = None) -> Path:
         informe_mes_actual_path(date(2026, 7, 15)) -> informe_fichas_abiertas_07-2026.txt
     """
     f = fecha or date.today()
-    return ANALISIS_DIR / f"informe_fichas_abiertas_{f.strftime('%m-%Y')}.txt"
+    return INFORMES_FICHAS_DIR / f"informe_fichas_abiertas_{f.strftime('%m-%Y')}.txt"
 
 
 def informe_anual_path(anio: int | None = None) -> Path:
