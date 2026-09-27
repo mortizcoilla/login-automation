@@ -85,6 +85,7 @@ IMAGE_EXTENSIONS = {
 
 
 # Normalizacion unica: core.nombres (REQ-012/016).
+from src.core.fechas import fecha_hoy_str
 from src.core.nombres import nombre_a_filename, normalizar_texto
 
 
@@ -347,26 +348,15 @@ def recibir_y_archivar(
                 # Yadira no dio fecha. Usar la del informe.
                 fecha_resuelta = fecha_informe
         else:
-            # No hay match. Usar lo que Yadira dio (si dio).
+            # No hay match (paciente nuevo o no citado hoy). La foto NUNCA
+            # se pierde: se archiva con el nombre que dio Yadira y la fecha
+            # de HOY (el examen llego hoy). El match se puede re-hacer
+            # despues desde los crudos (paso 2b).
             paciente_resuelto = nombre_paciente.strip()
             if fecha_atencion and fecha_atencion.strip():
-                fecha_input = fecha_atencion.strip()
-                try:
-                    datetime.strptime(fecha_input, "%d-%m-%Y")
-                    fecha_resuelta = fecha_input
-                except ValueError:
-                    resultado["error"] = (
-                        f"Fecha '{fecha_input}' no es valida (dd-mm-yyyy) "
-                        f"y no se encontro match en notas_clinicas/ para "
-                        f"resolver la fecha."
-                    )
-                    return resultado
+                fecha_resuelta = fecha_atencion.strip()
             else:
-                resultado["error"] = (
-                    f"Yadira no dio fecha y no se encontro match en "
-                    f"notas_clinicas/ para el paciente '{nombre_paciente}'."
-                )
-                return resultado
+                fecha_resuelta = fecha_hoy_str()
     else:
         # Yadira no dio nombre.
         resultado["error"] = "Yadira debe dar el nombre del paciente. Rubicita NO adivina."

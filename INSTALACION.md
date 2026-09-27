@@ -81,6 +81,11 @@ Chrome visible; `true` para sin ventana) y, para el paso 7,
 `MORTADELO_TIMEOUT`. Las API keys de z.ai/MiniMax NO se usan (motor
 exclusivo: opencode CLI).
 
+El bloque "Rutas de productos" (REQ-059) declara todos los directorios
+de salida: `DATA_DIR` reubica todos los productos de una vez y cada
+directorio tiene override individual. Con los defaults (comentados) no
+hay que editar nada al cambiar de PC: las rutas son relativas al repo.
+
 ## 4. CLI de opencode (solo si se usara el paso 7)
 
 ```powershell
@@ -116,6 +121,27 @@ Y la prueba real, con login de Rayen a la vista:
 ```powershell
 python flujo_diario.py     # 4 -> 5 -> 3 -> 6 -> 7, pide confirmacion
 ```
+
+## 7. Cron del flujo diario (opcional, Windows)
+
+El scheduler (`src/scheduler/`, REQ-060) corre la cadena diaria en el
+calendario de cada doctor, definido en `config/calendario.json`
+(editar ese archivo cambia horarios o agrega doctores: NO hay que
+re-registrar nada):
+
+```powershell
+python -m src.scheduler.instalar --instalar     # crea la tarea (queda DESACTIVADA)
+python -m src.scheduler.instalar --activar      # la deja corriendo
+python -m src.scheduler.instalar --estado       # ver estado/proxima corrida
+python -m src.scheduler.runner --listar         # que venceria ahora, sin correr
+python -m src.scheduler.runner --forzar yadira  # corrida manual inmediata
+```
+
+La tarea dispara cada 30 min (silenciosa, pythonw); el runner decide
+con el calendario si corre. Si el PC estaba apagado a la hora, corre
+al encender. Log: `logs/scheduler.log`; estado del dia:
+`data/scheduler_estado.json`. Desactivar sin borrar:
+`--desactivar`. Eliminar: `--desinstalar`.
 
 ## 7. Problemas frecuentes
 

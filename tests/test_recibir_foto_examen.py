@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from src.core.fechas import fecha_hoy_str
 from src.tools.recibir_foto_examen import (
     _parsear_frontmatter,
     buscar_match_paciente,
@@ -224,7 +225,9 @@ class TestRecibirYArchivarErrores:
         assert r["ok"] is False
         assert "valida" in r["error"]
 
-    def test_sin_fecha_sin_match_error(self, tmp_path: Path) -> None:
+    def test_sin_fecha_sin_match_archiva_con_hoy(self, tmp_path: Path) -> None:
+        """REQ-080/permiso usuaria: la foto NUNCA se pierde — paciente sin
+        match y sin fecha se archiva con HOY y el nombre dado."""
         foto = _crear_foto(tmp_path)
         r = recibir_y_archivar(
             input_path=foto,
@@ -234,8 +237,9 @@ class TestRecibirYArchivarErrores:
             notas_dir=tmp_path / "notas",
             destino_dir=tmp_path / "crudos",
         )
-        assert r["ok"] is False
-        assert "match" in r["error"]
+        assert r["ok"] is True
+        assert r["fecha_resuelta"] == fecha_hoy_str()
+        assert (tmp_path / "crudos" / r["nombre"]).exists()
 
 
 # ---------------------------------------------------------------------------
