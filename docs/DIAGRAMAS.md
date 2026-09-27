@@ -88,23 +88,38 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
    data/fichas_generadas/ficha_<pac>_<fecha>.md          (producto 1)
    data/informes_trazabilidad/informe_trazabilidad_*.md (producto 2)
                              |
-                             |  (opt-in independiente, paso 8)
+                             |  (paso 8: parte final de la cadena diaria)
                              v
 +---------------------------------------------------------------+
 | (8) python -m src.tools.cargar_ficha --todos / --paciente...  |
-|     Lee data/fichas_generadas/ficha_<pac>_<fecha>.md (paso 7) |
-|     Login Rayen -> box -> Pacientes citados -> filtrar fecha   |
-|     -> buscar nombre -> doble click -> abre ficha             |
+|     Lee ficha_<pac>_<fecha>.md (paso 7, OneDrive)             |
+|     Login Rayen -> Pacientes citados -> doble click           |
 |     (flujo compartido con paso 3 via src/rayen/flujos/        |
-|     apertura_ficha.py; limite: <div>Atencion actual</div>)     |
-|     Detecta editor interno de Rayen -> pega el contenido      |
-|     NO auto-envia: Yadira revisa y aprieta Guardar ella misma  |
+|     apertura_ficha.py, entrar_atencion=True)                   |
+|     Editor anamnesis: descartar vieja -> Agregar! -> llenar   |
+|     (motivo + ficha completa) -> GUARDAR AUTOMATICO (REQ-073) |
+|     Sesion reciclada cada 8 fichas; higiene de pestanas       |
 +----------------------------+---------------------------------+
                              v
    data/trazabilidad_carga/carga_<ts>.json  (carga por paciente)
                              |
                              v
-                     Yadira revisa y guarda
++---------------------------------------------------------------+
+| (A) python -m src.tools.archivar_fichas  (REQ-097)            |
+|     Pacientes que ya NO estan en el informe (cerrados en      |
+|     Rayen) se mueven de las 5 carpetas activas al archivo.    |
+|     Guardia: sin informe fresco no se mueve nada. Nada se     |
+|     borra (colisiones _v2).                                   |
++----------------------------+---------------------------------+
+                             v
+   OneDrive/Login-Automation/archivados/<MM-AAAA>/   (plano por mes)
+
+   Layout OneDrive (REQ-089/097):
+     anamnesis/ examenes/ fichas_generadas/ informes_trazabilidad/
+       -> SOLO pacientes del informe (activos)
+     archivados/09-2026/ ...  -> cerrados, por mes de cierre
+     papers/                  -> papers traducidos (REQ-096)
+     informe_fichas_abiertas_<MM-YYYY>.txt (raiz; unico, REQ-091)
 ```
 
 ## 4. Regla del limite compartido paso 3 vs paso 8
@@ -117,11 +132,52 @@ flujo compartido es:
       <div>Atencion actual</div>
     </li>
 
-A partir de ese punto:
-- **Paso 3** hace click en "Atencion actual" y entra al panel de
-  evaluacion para extraer motivo/anamnesis/etc.
-- **Paso 8** NO hace click: pega el contenido de la ficha generada
-  en el editor asociado y se detiene.
+Desde el refactor REQ-093 el limite es un PARAMETRO del flujo
+compartido (`abrir_ficha_por_nombre(entrar_atencion=)`):
+- **Paso 3** (`entrar_atencion=False`): la apertura TERMINA en la
+  vista 'Historia clinica' — identificacion e historial se extraen
+  desde ahi, y el click a 'Atencion actual' lo hace la extraccion
+  despues (REQ-093; antes el waiter cambiaba de vista antes de
+  extraer y las notas salian sin tabla).
+- **Paso 8** (`entrar_atencion=True`, default): entra a 'Atencion
+  actual' hasta el editor (lapiz/Agregar!) para reemplazar la
+  anamnesis y Guardar automatico.
+
+## 5. Papers semanales interactivos (REQ-096, sabado 09:00)
+
+```
+  Tarea Windows LoginAutomation-PapersSabado (sab 09:00)
+        |
+        v
+  python -m src.estudios.oferta_papers
+        |-- analizar_notas (notas -> capitulo mas atendido)
+        |-- buscar_papers (PubMed, top 3 del tema)  [offline: no Rayen]
+        |-- mini-resumenes (LLM papers: mimo rapido)
+        |-- sendMessage directo (avisos.enviar) -----> Yadira (Telegram)
+        '-- guarda data/estados/oferta_papers.json (para el 1/2/3)
+        |
+        v
+  Yadira responde "1" / "2" / "3"  (bot Rubicita, handlers/papers.py)
+        |
+        v
+  descargar_texto: PMC completo si es libre; si no, abstract (efetch)
+        |
+        v
+  traducir_paper (LLM papers: glm-5.3-flash free -> mimo respaldo;
+                  NO la cascada z.ai de mortadelo)
+        |
+        v
+  OneDrive/Login-Automation/papers/paper_<pmid>_<fecha>.md
+        + resumen respondido en el chat
+  Yadira responde "enviar" -> el .md llega como documento al telefono
+```
+
+LLM de papers (src/estudios/gemini_texto.py): motor gemini si hay
+credito (prepago agotado 27-09) con respaldo opencode FREE. OJO
+opencode: prompts a UNA linea (el CLI trunca argv en saltos de linea),
+--standalone y cwd neutral (si no, el modelo lee el codigo del repo).
+
+---
 
 ## 2. El flujo opt-in de examenes (por paciente, cuando hay fotos)
 
