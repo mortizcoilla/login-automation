@@ -1,12 +1,14 @@
-"""CLI del archivo de fichas (REQ-082): mueve a `fichas archivadas` las
-fichas generadas (paso 7) que YA NO estan en el informe de fichas
-abiertas del mes (pacientes cerrados).
+"""CLI del archivo de productos cerrados (REQ-082/088).
+
+Mueve a `archivados` los productos de pacientes que YA NO estan en el
+informe de fichas abiertas del mes (pacientes cerrados). Productos:
+notas clinicas, info paciente, anamnesis, fichas generadas e informes
+de trazabilidad — las carpetas activas quedan SOLO con pacientes del
+informe (lectura facil para Yadira).
 
 Semantica:
-- La carpeta activa (`FICHAS_GENERADAS_DIR`) queda con solo las fichas
-  de pacientes del informe.
-- Las cerradas se MUEVEN a `FICHAS_ARCHIVADAS_DIR` (historial en
-  OneDrive; nunca se borra nada). Colisiones -> sufijo _v2, _v3...
+- Los archivos cerrados se MUEVEN a ARCHIVADOS_DIR (nunca se borra
+  nada; colisiones -> _v2, _v3...). Un solo folder de historial.
 - Si el informe no existe o no se puede leer, NO se mueve nada
   (guardia: sin informe fresco no hay criterio de cierre).
 
@@ -29,15 +31,25 @@ with contextlib.suppress(AttributeError, OSError):
 
 from src.core.nombres import safe_filename
 from src.core.rutas import (
-    FICHAS_ARCHIVADAS_DIR,
+    ANAMNESIS_DIR,
+    ARCHIVADOS_DIR,
     FICHAS_GENERADAS_DIR,
+    INFO_PACIENTE_DIR,
+    INFORMES_TRAZABILIDAD_DIR,
+    NOTAS_DIR,
     informe_mes_actual_path,
 )
 from src.informes.parser import parsear_pacientes_objetivo
 
-# ficha_<safe>_<dd-mm-yyyy>.md — el nombre del paciente lleva guiones
-# bajos internos, la fecha es el ultimo segmento _dd-mm-yyyy.
-_FICHA_RE = re.compile(r"^ficha_(?P<paciente>.+)_(?P<fecha>\d{2}-\d{2}-\d{4})\.md$")
+# (nombre producto, carpeta origen, prefijo del archivo). El nombre del
+# paciente + la fecha van despues del prefijo: <prefijo><safe>_<dd-mm-yyyy>.md
+PRODUCTOS: list[tuple[str, Path, str]] = [
+    ("notas_clinicas", NOTAS_DIR, ""),
+    ("info_paciente", INFO_PACIENTE_DIR, "info_"),
+    ("anamnesis", ANAMNESIS_DIR, "anam_"),
+    ("fichas_generadas", FICHAS_GENERADAS_DIR, "ficha_"),
+    ("informes_trazabilidad", INFORMES_TRAZABILIDAD_DIR, "informe_trazabilidad_"),
+]
 
 
 def _resolver_sin_colision(destino_dir: Path, nombre: str) -> Path:
@@ -52,60 +64,80 @@ def _resolver_sin_colision(destino_dir: Path, nombre: str) -> Path:
         n += 1
 
 
-def fichas_cerradas(
-    informe_path: Path, origen_dir: Path = FICHAS_GENERADAS_DIR
-) -> list[Path]:
-    """Fichas generadas cuyo (paciente, fecha) NO esta en el informe."""
+def _abiertas_del_informe(informe_path: Path) -> set[tuple[str, str]] | None:
+    """(safe_nombre, fecha) de los pacientes del informe; None si invalido."""
     if not informe_path.exists():
-        return []
+        return None
     try:
         pacientes = parsear_pacientes_objetivo(informe_path)
     except Exception:
-        return []
-    abiertas = {
-        (safe_filename(p.nombre), p.fecha) for p in pacientes
-    }
-    cerradas: list[Path] = []
-    for ficha in sorted(origen_dir.glob("ficha_*.md")):
-        m = _FICHA_RE.match(ficha.name)
-        if not m:
+        return None
+    return {(safe_filename(p.nombre), p.fecha) for p in pacientes}
+
+
+def cerrados_por_producto(
+    informe_path: Path, dirs_override: dict[str, Path] | None = None
+) -> dict[str, list[Path]]:
+    """Por producto: archivos cuyo (paciente, fecha) NO esta en el informe.
+
+    dirs_override: {producto: dir} para tests; default = rutas reales.
+    """
+    abiertas = _abiertas_del_informe(informe_path)
+    vacio: dict[str, list[Path]] = {nombre: [] for nombre, _d, _p in PRODUCTOS}
+    if abiertas is None:
+        return vacio
+
+    override = dirs_override or {}
+    resultado: dict[str, list[Path]] = {}
+    for nombre, dir_real, prefijo in PRODUCTOS:
+        dir_origen = override.get(nombre, dir_real)
+        if not dir_origen.exists():
+            resultado[nombre] = []
             continue
-        if (m.group("paciente"), m.group("fecha")) not in abiertas:
-            cerradas.append(ficha)
-    return cerradas
+        patron = re.escape(prefijo) + r"(.+)_(\d{2}-\d{2}-\d{4})\.md$"
+        cerrados: list[Path] = []
+        for archivo in sorted(dir_origen.glob(f"{prefijo}*.md")):
+            m = re.match(patron, archivo.name)
+            if not m:
+                continue  # nombre sin fecha reconocible: no se toca
+            if (m.group(1), m.group(2)) not in abiertas:
+                cerrados.append(archivo)
+        resultado[nombre] = cerrados
+    return resultado
 
 
-def archivar_fichas_cerradas(
+def archivar_cerrados(
     logger=None,
     informe_path: Path | None = None,
-    origen_dir: Path = FICHAS_GENERADAS_DIR,
-    destino_dir: Path = FICHAS_ARCHIVADAS_DIR,
+    destino_dir: Path = ARCHIVADOS_DIR,
+    dirs_override: dict[str, Path] | None = None,
 ) -> list[tuple[str, str]]:
-    """Mueve las fichas cerradas al archivo. Devuelve [(origen, destino)]."""
+    """Mueve TODOS los productos cerrados al archivo.
+
+    Returns:
+        [(nombre_producto, nombre_archivo), ...] de lo movido.
+    """
     informe = informe_path or informe_mes_actual_path()
-    cerradas = fichas_cerradas(informe, origen_dir)
-    if not cerradas:
-        if logger:
-            logger.info("[archivar_fichas] nada para archivar (informe %s)", informe.name)
-        return []
-    destino_dir.mkdir(parents=True, exist_ok=True)
+    por_producto = cerrados_por_producto(informe, dirs_override)
     movidas: list[tuple[str, str]] = []
-    for ficha in cerradas:
-        destino = _resolver_sin_colision(destino_dir, ficha.name)
-        try:
-            shutil.move(str(ficha), str(destino))
-            movidas.append((ficha.name, destino.name))
-            if logger:
-                logger.info("[archivar_fichas] %s -> %s", ficha.name, destino.name)
-        except OSError as e:
-            if logger:
-                logger.warning("[archivar_fichas] no se pudo mover %s: %s", ficha.name, e)
+    if sum(len(v) for v in por_producto.values()) == 0:
+        if logger:
+            logger.info("[archivar] nada para archivar (informe %s)", informe.name)
+        return movidas
+    destino_dir.mkdir(parents=True, exist_ok=True)
+    for nombre, cerrados in por_producto.items():
+        for archivo in cerrados:
+            destino = _resolver_sin_colision(destino_dir, archivo.name)
+            try:
+                shutil.move(str(archivo), str(destino))
+                movidas.append((nombre, archivo.name))
+                if logger:
+                    logger.info("[archivar] %s: %s", nombre, destino.name)
+            except OSError as e:
+                if logger:
+                    logger.warning("[archivar] no se pudo mover %s: %s", archivo.name, e)
     if logger:
-        logger.info(
-            "[archivar_fichas] %d ficha(s) archivada(s), %d quedan activas",
-            len(movidas),
-            len(list(origen_dir.glob("ficha_*.md"))),
-        )
+        logger.info("[archivar] %d archivo(s) archivado(s)", len(movidas))
     return movidas
 
 
@@ -113,37 +145,34 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="archivar_fichas",
         description=(
-            "Mueve a 'fichas archivadas' las fichas generadas que ya no "
-            "estan en el informe de fichas abiertas del mes (REQ-082)."
+            "Mueve a 'archivados' los productos (notas, info, anamnesis, "
+            "fichas, informes de trazabilidad) de pacientes que ya no "
+            "estan en el informe de fichas abiertas (REQ-082/088)."
         ),
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="lista las fichas que se moverian, sin mover nada",
-    )
+    parser.add_argument("--dry-run", action="store_true", help="lista sin mover nada")
     parser.add_argument("--informe", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    with contextlib.suppress(AttributeError):
-        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-
     informe = args.informe or informe_mes_actual_path()
-    cerradas = fichas_cerradas(informe, FICHAS_GENERADAS_DIR)
-    if not cerradas:
-        print(f"[archivar_fichas] nada para archivar (informe: {informe.name})")
+    por_producto = cerrados_por_producto(informe)
+    total = sum(len(v) for v in por_producto.values())
+    if total == 0:
+        print(f"[archivar] nada para archivar (informe: {informe.name})")
         return 0
-    print(f"[archivar_fichas] {len(cerradas)} ficha(s) cerrada(s):")
-    for ficha in cerradas:
-        if args.dry_run:
-            print(f"  (se moveria) {ficha.name}")
-        else:
-            destino = _resolver_sin_colision(FICHAS_ARCHIVADAS_DIR, ficha.name)
-            try:
-                shutil.move(str(ficha), str(destino))
-                print(f"  {ficha.name} -> {destino.name}")
-            except OSError as e:
-                print(f"  ERROR moviendo {ficha.name}: {e}")
+    for nombre, cerrados in por_producto.items():
+        for archivo in cerrados:
+            if args.dry_run:
+                print(f"  ({nombre}) se moveria: {archivo.name}")
+            else:
+                destino = _resolver_sin_colision(ARCHIVADOS_DIR, archivo.name)
+                try:
+                    shutil.move(str(archivo), str(destino))
+                    print(f"  ({nombre}) {archivo.name} -> {destino.name}")
+                except OSError as e:
+                    print(f"  ERROR moviendo {archivo.name}: {e}")
     return 0
+
+
 if __name__ == "__main__":
     sys.exit(main())
