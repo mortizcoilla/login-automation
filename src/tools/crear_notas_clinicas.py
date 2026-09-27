@@ -75,6 +75,7 @@ from src.rayen.navegacion import (
     sort_by_estado,
     volver_a_pacientes_citados,
 )
+from src.rayen import pestanas
 from src.rayen.navegador import ensure_session_alive, run_login, safe_quit
 from src.rayen.tabla import (
     _buscar_paciente_en_tabla,
@@ -369,102 +370,123 @@ def paso_4_1_abrir_ficha(
         f"| fecha={paciente.fecha} | tipo={paciente.tipo_atencion}"
     )
 
-    # 4.1.a: filtrar por fecha
-    select_date(driver, logger, fecha_str=paciente.fecha)
-    sort_by_estado(driver, logger)
+    # REQ-090: si Rayen bloquea la apertura por limite de pestañas
+    # (modal "Supero maximo de pestañas", conteo server-side), se
+    # libera el tablero y se reintenta UNA vez. Un segundo bloqueo
+    # seguido se degrada igual que un timeout de panel.
+    for intento in (1, 2):
+        # 4.1.a: filtrar por fecha
+        select_date(driver, logger, fecha_str=paciente.fecha)
+        sort_by_estado(driver, logger)
 
-    # 4.1.b: buscar al paciente por nombre completo
-    resultado_busqueda = _buscar_paciente_en_tabla(driver, logger, paciente.nombre)
-    if resultado_busqueda is None:
-        logger.warning(
-            f"[crear_notas] No se encontro a '{paciente.nombre}' en la tabla del {paciente.fecha}"
-        )
-        return False
-    row, nombre_rayen = resultado_busqueda
-    # Si hubo match parcial, guardar el nombre real de Rayen como
-    # metadato para que Mortadelo pueda matchear despues.
-    if nombre_rayen is not None:
-        paciente.nombre_rayen = nombre_rayen
-
-    # 4.1.c: doble click en la fila para abrir la ficha
-    _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
-
-    # Esperar a que el panel del paciente se cargue. Senal inequivoca:
-    # la tabla de identificacion del paciente tiene <th> en <tbody>
-    # (par label:valor). La tabla de Pacientes citados tiene <th> solo
-    # en <thead>, asi que el xpath con [.//tbody/th] filtra
-    # especificamente la del paciente.
-    #
-    # Sesion 2026-09-09: timeout subido de 15s a 30s. Caso Ana Patricia
-    # Vivanco Munoz: el panel tarda >15s en cargar y el script
-    # seguia con extraccion sobre un panel vacio, generando una nota
-    # con placeholders "(no se pudo extraer...)". Con 30s cubrimos el
-    # percentil alto de paginas lentas de Rayen sin penalizar el caso
-    # normal (las paginas rapidas cargan en <5s).
-    panel_xpath = (
-        "//table[.//tbody/th] | "
-        "//li[@id='anamnesis'] | "
-        "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')] | "
-        # ECICEP-g3 a veces no tiene tabla de identificacion visible
-        # (la estratificacion carga primero). Esperar el card tambien.
-        "//*[contains(@class, 'stratification-card')]"
-    )
-    # Sesion 2026-09-16: 30s -> 60s para ECICEP-g3.
-    # IMPORTANTE: NO hacer retry del doble-click aqui. El primer click
-    # ya nos llevo a la ficha del paciente. Si el panel no cargo,
-    # un segundo click no ayuda (la fila ya esta stale y ademas
-    # get_pacientes_del_dia espera 15s por div.rt-tr-group que ya
-    # no existe -> TimeoutException). Mejor: 1 sola espera de 60s,
-    # si falla -> placeholder, navegar manualmente al siguiente.
-    panel_timeout = 60
-    panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
-
-    if panel is None:
-        # Caso real 22-09-2026 (Lylian, paciente 8/12, fallo en las 3
-        # corridas): el doble click aterriza en la vista 'Historia
-        # clinica' con un badge 'NN Atencion actual' en la cabecera.
-        # Entrar ahi: click al badge, cerrar el tutorial onboarding si
-        # aparece, y re-esperar el panel 30s mas.
-        logger.info(
-            "[crear_notas] Panel ausente; intentando click en el badge "
-            "'Atencion actual'..."
-        )
-        try:
-            from selenium.webdriver.common.by import By
-
-            badge = driver.find_element(
-                By.XPATH,
-                "//*[contains(normalize-space(text()), 'Atención actual')]",
+        # 4.1.b: buscar al paciente por nombre completo
+        resultado_busqueda = _buscar_paciente_en_tabla(driver, logger, paciente.nombre)
+        if resultado_busqueda is None:
+            logger.warning(
+                f"[crear_notas] No se encontro a '{paciente.nombre}' en la tabla del {paciente.fecha}"
             )
-            driver.execute_script("arguments[0].click();", badge)
-            _cerrar_tutorial_onboarding(driver, logger)
-            panel = _wait_visible(driver, panel_xpath, timeout=30)
-        except Exception as e:  # el badge no estaba o fallo el click
-            logger.warning(f"[crear_notas] Badge no encontrado: {e}")
+            return False
+        row, nombre_rayen = resultado_busqueda
+        # Si hubo match parcial, guardar el nombre real de Rayen como
+        # metadato para que Mortadelo pueda matchear despues.
+        if nombre_rayen is not None:
+            paciente.nombre_rayen = nombre_rayen
 
-    if panel is None:
-        # Panel no cargo en 60s(+30s). NO re-clickamos. Marcamos el flag
-        # y dejamos que la extraccion proceda (devuelve vacios). La nota
-        # se guarda con placeholders + flag REVISION.
-        logger.warning(
-            f"[crear_notas] Panel no aparecio en {panel_timeout}s. "
-            f"Extraccion procedera sobre lo que haya; "
-            f"guardar_nota_clinica() escribira placeholder con flag REVISION."
+        # 4.1.c: doble click en la fila para abrir la ficha
+        _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
+
+        # Esperar a que el panel del paciente se cargue. Senal inequivoca:
+        # la tabla de identificacion del paciente tiene <th> en <tbody>
+        # (par label:valor). La tabla de Pacientes citados tiene <th> solo
+        # en <thead>, asi que el xpath con [.//tbody/th] filtra
+        # especificamente la del paciente.
+        #
+        # Sesion 2026-09-09: timeout subido de 15s a 30s. Caso Ana Patricia
+        # Vivanco Munoz: el panel tarda >15s en cargar y el script
+        # seguia con extraccion sobre un panel vacio, generando una nota
+        # con placeholders "(no se pudo extraer...)". Con 30s cubrimos el
+        # percentil alto de paginas lentas de Rayen sin penalizar el caso
+        # normal (las paginas rapidas cargan en <5s).
+        panel_xpath = (
+            "//table[.//tbody/th] | "
+            "//li[@id='anamnesis'] | "
+            "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')] | "
+            # ECICEP-g3 a veces no tiene tabla de identificacion visible
+            # (la estratificacion carga primero). Esperar el card tambien.
+            "//*[contains(@class, 'stratification-card')]"
         )
-        # Evidencia para diagnostico: que habia en pantalla.
-        try:
-            from src.core.rutas import SCREENSHOTS_DIR
+        # Sesion 2026-09-16: 30s -> 60s para ECICEP-g3.
+        # IMPORTANTE: NO hacer retry del doble-click aqui. El primer click
+        # ya nos llevo a la ficha del paciente. Si el panel no cargo,
+        # un segundo click no ayuda (la fila ya esta stale y ademas
+        # get_pacientes_del_dia espera 15s por div.rt-tr-group que ya
+        # no existe -> TimeoutException). Mejor: 1 sola espera de 60s,
+        # si falla -> placeholder, navegar manualmente al siguiente.
+        panel_timeout = 60
+        panel = _wait_visible(driver, panel_xpath, timeout=panel_timeout)
 
-            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-            nombre_safe = paciente.nombre.replace(" ", "_")
-            ruta = SCREENSHOTS_DIR / f"panel_timeout_{nombre_safe}.png"
-            driver.save_screenshot(str(ruta))
-            logger.warning(f"[crear_notas] Screenshot del timeout: {ruta.name}")
-        except Exception:
-            pass
-        paciente.panel_cargo = False
-    else:
-        logger.info(f"[crear_notas] Panel del paciente cargado ({panel.tag_name})")
+        # REQ-090: bloqueo por limite de pestañas -> liberar el tablero
+        # y reintentar la apertura completa una sola vez.
+        if (
+            panel is None
+            and intento == 1
+            and pestanas.modal_pestanas_presente(driver)
+        ):
+            logger.warning(
+                "[crear_notas] Rayen bloqueo la apertura por limite de "
+                "pestañas (REQ-090). Liberando tablero y reintentando una vez..."
+            )
+            pestanas.liberar_pestanas(driver, logger)
+            volver_a_pacientes_citados(driver, logger)
+            continue
+
+        if panel is None:
+            # Caso real 22-09-2026 (Lylian, paciente 8/12, fallo en las 3
+            # corridas): el doble click aterriza en la vista 'Historia
+            # clinica' con un badge 'NN Atencion actual' en la cabecera.
+            # Entrar ahi: click al badge, cerrar el tutorial onboarding si
+            # aparece, y re-esperar el panel 30s mas.
+            logger.info(
+                "[crear_notas] Panel ausente; intentando click en el badge "
+                "'Atencion actual'..."
+            )
+            try:
+                from selenium.webdriver.common.by import By
+
+                badge = driver.find_element(
+                    By.XPATH,
+                    "//*[contains(normalize-space(text()), 'Atención actual')]",
+                )
+                driver.execute_script("arguments[0].click();", badge)
+                _cerrar_tutorial_onboarding(driver, logger)
+                panel = _wait_visible(driver, panel_xpath, timeout=30)
+            except Exception as e:  # el badge no estaba o fallo el click
+                logger.warning(f"[crear_notas] Badge no encontrado: {e}")
+
+        if panel is None:
+            # Panel no cargo en 60s(+30s). NO re-clickamos. Marcamos el flag
+            # y dejamos que la extraccion proceda (devuelve vacios). La nota
+            # se guarda con placeholders + flag REVISION.
+            logger.warning(
+                f"[crear_notas] Panel no aparecio en {panel_timeout}s. "
+                f"Extraccion procedera sobre lo que haya; "
+                f"guardar_nota_clinica() escribira placeholder con flag REVISION."
+            )
+            # Evidencia para diagnostico: que habia en pantalla.
+            try:
+                from src.core.rutas import SCREENSHOTS_DIR
+
+                SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+                nombre_safe = paciente.nombre.replace(" ", "_")
+                ruta = SCREENSHOTS_DIR / f"panel_timeout_{nombre_safe}.png"
+                driver.save_screenshot(str(ruta))
+                logger.warning(f"[crear_notas] Screenshot del timeout: {ruta.name}")
+            except Exception:
+                pass
+            paciente.panel_cargo = False
+        else:
+            logger.info(f"[crear_notas] Panel del paciente cargado ({panel.tag_name})")
+        break
 
     logger.info(
         f"[crear_notas] Ficha abierta para {paciente.nombre} (URL actual: {driver.current_url})"
@@ -901,6 +923,19 @@ def main() -> int:
             pinfo.warnings = warnings_collector.snapshot()
             pinfo.tiempo_segundos = round(_time.time() - t_inicio, 2)
             pacientes_informe.append(pinfo)
+
+            # REQ-090: higiene de pestañas tras cada paciente — Rayen
+            # permite maximo 8 pestañas de ficha y el conteo es
+            # server-side (no se limpia al re-loguear). Cerrar la
+            # pestaña recien usada evita acumular el contador.
+            try:
+                cerradas = pestanas.cerrar_pestanas_ficha(driver, logger)
+                if cerradas:
+                    logger.info(
+                        f"[crear_notas] Pestañas de ficha cerradas: {cerradas}"
+                    )
+            except Exception as e:
+                logger.debug(f"[crear_notas] Higiene de pestañas falló: {e}")
 
             # Despues de CADA paciente (exitoso o no), volver a la lista
             # para el siguiente. Y si llegamos al limite, resetear sesion.
