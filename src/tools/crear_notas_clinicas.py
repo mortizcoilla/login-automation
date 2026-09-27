@@ -27,6 +27,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Forzar UTF-8 en consola Windows
@@ -434,6 +438,24 @@ def main() -> int:
     pacientes_informe: list[PacienteInforme] = []
     import time as _time
 
+    def reciclar_sesion() -> WebDriver:
+        """REQ-092: cierra el navegador roto y abre una sesion nueva.
+
+        La pagina 'Pacientes citados' se cuelga ('Buscando citas'
+        eterno) tras varias fichas; reciclar devuelve una pagina sana.
+        """
+        nonlocal driver
+        safe_quit(driver, logger)
+        driver = run_login(
+            credentials,
+            logger,
+            download_dir=str(ADJUNTOS_DOWNLOAD_DIR.resolve()),
+        )
+        if not ensure_session_alive(driver, logger):
+            raise RuntimeError("Sesion invalida tras reciclaje de emergencia.")
+        volver_a_pacientes_citados(driver, logger)
+        return driver
+
     logger.info(f"[crear_notas] Download dir Chrome: {ADJUNTOS_DOWNLOAD_DIR.resolve()}")
     try:
         driver = run_login(
@@ -464,7 +486,21 @@ def main() -> int:
             try:
                 # Paso 4.1 (flujo compartido con paso 8; ver
                 # `src.rayen.flujos.apertura_ficha`).
-                ok = abrir_ficha_por_nombre(driver, logger, paciente)
+                # REQ-092: si la pagina 'Pacientes citados' se colgo
+                # ('Buscando citas' eterno / filas stale), el sintoma
+                # tipico es TimeoutException del input de fecha o
+                # StaleElementReferenceException. Reciclar sesion y
+                # reintentar UNA vez antes de marcar error.
+                try:
+                    ok = abrir_ficha_por_nombre(driver, logger, paciente)
+                except (TimeoutException, StaleElementReferenceException) as e_nav:
+                    logger.warning(
+                        f"[crear_notas] Navegacion rota con {paciente.nombre} "
+                        f"({type(e_nav).__name__}). Reciclando sesion y "
+                        f"reintentando una vez..."
+                    )
+                    driver = reciclar_sesion()
+                    ok = abrir_ficha_por_nombre(driver, logger, paciente)
                 if not ok:
                     logger.warning(
                         f"[crear_notas] No se encontro a {paciente.nombre} en la tabla. Saltando."
@@ -717,6 +753,15 @@ def main() -> int:
                     f"Ultimas lineas del traceback: {tb_short}. "
                     f"Sigue con el siguiente."
                 )
+                # REQ-092: un error suele significar pagina muerta;
+                # reciclar para que el SIGUIENTE paciente arranque sano.
+                try:
+                    driver = reciclar_sesion()
+                except Exception as e_rec:
+                    logger.error(
+                        f"[crear_notas] Reciclaje de emergencia fallo: {e_rec}"
+                    )
+                    return 1
 
             pinfo.warnings = warnings_collector.snapshot()
             pinfo.tiempo_segundos = round(_time.time() - t_inicio, 2)

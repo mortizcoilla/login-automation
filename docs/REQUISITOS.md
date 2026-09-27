@@ -137,3 +137,5 @@ Convencion de fechas: dd-mm-yyyy.
    lo implementa agrega el test y actualiza la fila.
 3. Los comentarios `# Sesion 2026-XX-XX` del codigo se reemplazan gradualmente
    por `# REQ-NNN` (el origen historico queda citado aqui, no en el codigo).
+| REQ-091 | Unicidad del informe de fichas abiertas: UN solo archivo, en la raiz de OneDrive (configurable `INFORMES_FICHAS_DIR`); pasos 3/5/6/7 leen y escriben la misma ruta via `informe_mes_actual_path()`. No quedan copias internas en data/analysis. | Usuario 27-09-2026 | VIGENTE | `src/core/rutas.py` (`INFORMES_FICHAS_DIR`), `.env` ambas carpetas | suite informes |
+| REQ-092 | Autocuracion del paso 3 ante pagina colgada: cuando 'Pacientes citados' deja de responder ('Buscando citas' eterno -> TimeoutException del input de fecha o StaleElementReferenceException), el batch recicla la sesion (logout-login) y reintenta el paciente UNA vez; tras cualquier error de paciente recicla antes del siguiente. Evidencia: informe_tecnico 27-09 01:59 (6 TimeoutException de 65s consecutivos). | Incidente 27-09-2026 | VIGENTE | `src/tools/crear_notas_clinicas.py` (`reciclar_sesion`) | test_crear_notas_clinicas |
