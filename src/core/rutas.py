@@ -90,4 +90,4 @@ def informe_anual_path(anio: int | None = None) -> Path:
         informe_anual_path(2025) -> informe_fichas_abiertas_2025_completo.txt
     """
     a = anio or date.today().year
-    return ANALISIS_DIR / f"informe_fichas_abiertas_{a}_completo.txt"
+    return INFORMES_FICHAS_DIR / f"informe_fichas_abiertas_{a}_completo.txt"

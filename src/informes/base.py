@@ -53,11 +53,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any, TextIO
 
-from src.core.rutas import ANALISIS_DIR, ROOT
+from src.core.rutas import ANALISIS_DIR, INFORMES_FICHAS_DIR, ROOT
 
 BASE_DIR = ROOT
 DB_PATH = ANALISIS_DIR / "fichas_completo.db"
-OUT_DIR = ANALISIS_DIR
+# REQ-091: el informe nace directamente en su ubicacion unica
+# (OneDrive via INFORMES_FICHAS_DIR), no en data/analysis.
+OUT_DIR = INFORMES_FICHAS_DIR
 
 # Sin columna "Plantilla" — removida por peticion de Yadira.
 # Sin resolucion de plantilla canonica aqui.
