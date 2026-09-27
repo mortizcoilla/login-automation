@@ -135,6 +135,13 @@ def correr_paso(
     print(f"[{i}/{n}] PASO {num} · {desc}")
     print("─" * 64)
     t0 = time.monotonic()
+    # PYTHONIOENCODING: con stdout=PIPE los hijos no ven consola y usan
+    # cp1252 -> mueren con UnicodeEncodeError al imprimir '→' (mes.py).
+    # Mismo fix que usa el runner del cron.
+    import os
+
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
     proc = subprocess.Popen(
         [str(PY), *args],
         cwd=str(ROOT),
@@ -144,6 +151,7 @@ def correr_paso(
         encoding="utf-8",
         errors="replace",
         bufsize=1,
+        env=env,
     )
     assert proc.stdout is not None
     for cruda in proc.stdout:
