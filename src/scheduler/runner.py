@@ -32,11 +32,9 @@ from pathlib import Path
 if __package__ in (None, ""):  # script directo: bootstrap para `from src...`
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import shutil
 
 from src.core.rutas import (
     DATA_DIR,
-    FICHAS_GENERADAS_DIR,
     LOGS_DIR,
     ROOT,
     informe_mes_actual_path,
@@ -145,24 +143,6 @@ def _resumen_mortadelo_reciente(offset: int) -> tuple[int, int] | None:
     return ok, total
 
 
-def _copiar_informe_a_onedrive() -> None:
-    """Deja el informe de fichas abiertas visible en OneDrive.
-
-    La DB SQLite queda local (OneDrive puede corruptarla), pero el
-    informe de texto es para leer: copia al raiz de productos.
-    """
-    ruta = informe_mes_actual_path()
-    if not ruta.exists():
-        _log("copiar informe: no existe aun")
-        return
-    destino = FICHAS_GENERADAS_DIR.parent / ruta.name
-    try:
-        shutil.copy2(ruta, destino)
-        _log(f"informe copiado a OneDrive: {destino}")
-    except OSError as e:
-        _log(f"copiar informe fallo: {e}")
-
-
 def _archivar_fichas_cerradas_seguro() -> None:
     """REQ-082: tras la cadena, mover al archivo las fichas de pacientes
     cerrados. Jamas rompe la cadena; en tests no toca datos reales."""
@@ -244,9 +224,7 @@ def ejecutar_cadena(usuario: str) -> int:
             (ESTADO_PATH.parent / "scheduler.lock").unlink(missing_ok=True)
             return numero
         if numero == 4:
-            # REQ-078 (ajuste usuaria 25-09): copiar el informe YA
-            # ENRIQUECIDO (tras el paso 6), no el base del paso 5.
-            _copiar_informe_a_onedrive()
+            pass  # informe queda en data/analysis (REQ-089)
     _log(f"[{usuario}] cadena completa OK")
     _archivar_fichas_cerradas_seguro()
     (ESTADO_PATH.parent / "scheduler.lock").unlink(missing_ok=True)
