@@ -44,6 +44,10 @@ from telegram.ext import (
 from src.core.rutas import LOGS_DIR
 from src.telegram_bot.config import BotConfig, ConfigurationError
 from src.telegram_bot.handlers.debug import register as register_debug_handler
+from src.telegram_bot.handlers.papers import (
+    cmd_elegir_paper,
+    cmd_enviar_paper,
+)
 from src.telegram_bot.handlers.photo import cmd_archivar, cmd_foto_sin_match
 from src.telegram_bot.handlers.start import cmd_start
 from src.telegram_bot.handlers.text import cmd_text_fallback
@@ -151,6 +155,24 @@ def build_application(config: BotConfig) -> Application:
     # silencio y Yadira siente que "el bot no funciona" (caso real).
     application.add_handler(
         MessageHandler(media_filter, auth(cmd_foto_sin_match))
+    )
+
+    # REQ-096 (papers semanales): "1"/"2"/"3" elige un paper del listado
+    # del sabado; "enviar" manda el .md traducido como documento. Van
+    # ANTES del catch-all de texto para ganarle al match generico.
+    application.add_handler(
+        MessageHandler(
+            filters.Regex(r"^\s*[123]\s*$"),
+            auth(cmd_elegir_paper),
+        )
+    )
+    application.add_handler(
+        MessageHandler(
+            # (?i): flag inline — filters.Regex no acepta re.IGNORECASE
+            # como argumento.
+            filters.Regex(r"(?i)^\s*enviar\s*$"),
+            auth(cmd_enviar_paper),
+        )
     )
 
     # Catch-all de texto: cualquier mensaje de texto que no fue capturado

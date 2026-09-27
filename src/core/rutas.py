@@ -64,6 +64,10 @@ ANALISIS_DIR = _dir_desde_env("ANALYSIS_DIR", DATA_DIR / "analysis")
 # REQ-091: ubicacion UNICA del informe de fichas abiertas (el usuario
 # lo revisa en OneDrive). Redirigible via .env; por defecto, analysis.
 INFORMES_FICHAS_DIR = _dir_desde_env("INFORMES_FICHAS_DIR", ANALISIS_DIR)
+# REQ-096: papers traducidos de Yadira (elegidos desde Telegram).
+PAPERS_DIR = _dir_desde_env("PAPERS_DIR", INFORMES_FICHAS_DIR / "papers")
+# Estado del bot/scheduler (ofertas de papers, etc.) — local, no OneDrive.
+ESTADOS_DIR = _dir_desde_env("ESTADOS_DIR", DATA_DIR / "estados")
 SCREENSHOTS_DIR = _dir_desde_env("SCREENSHOTS_DIR", DATA_DIR / "logs" / "screenshots")
 LOGS_DIR = _dir_desde_env("LOGS_DIR", ROOT / "logs")
 

@@ -30,6 +30,7 @@ class Paper:
     journal: str
     fecha: str
     url: str
+    pmcid: str = ""  # "" si no hay version libre en PubMed Central
 
 
 def buscar_papers(termino: str, max_papers: int = 3, reldate_meses: int = 24) -> list[Paper]:
@@ -87,6 +88,7 @@ def buscar_papers(termino: str, max_papers: int = 3, reldate_meses: int = 24) ->
                 journal=str(doc.get("source", "")).strip(),
                 fecha=str(doc.get("pubdate", "")).strip(),
                 url=f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+                pmcid=str(doc.get("pmcid", "")).strip(),
             )
         )
     return papers
