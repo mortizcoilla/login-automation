@@ -6,7 +6,7 @@ TODAS las imagenes crudas del paciente y dejar UN unico
 exam_<pac>_<fecha>.md en EXAMENES_DIR.
 
 Politica del archivo unico: el markdown es un DERIVADO de las fotos
-crudas (la fuente inmutable en examenes_respaldos). Al consolidar:
+crudas (la fuente inmutable en examenes_crudos). Al consolidar:
   - si la transcripcion falla, el md anterior NO se toca, y
   - si tiene exito, los md previos del mismo paciente+fecha se
     reemplazan por uno nuevo con el nombre canonico, asi la segunda foto

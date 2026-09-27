@@ -30,6 +30,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
 from telegram.ext import (
@@ -167,6 +168,51 @@ def build_application(config: BotConfig) -> Application:
     return application
 
 
+def _pid_vivo(pid: int) -> bool:
+    """True si el proceso Windows con ese PID sigue corriendo."""
+    try:
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        handle = ctypes.windll.kernel32.OpenProcess(
+            PROCESS_QUERY_LIMITED_INFORMATION, 0, pid
+        )
+        if not handle:
+            return False
+        ctypes.windll.kernel32.CloseHandle(handle)
+        return True
+    except Exception:
+        return False
+
+
+def _adquirir_lock(lock_path: Path) -> bool:
+    """REQ-094: single-instance. True si ESTA instancia toma el lock.
+
+    Dos procesos con el mismo token compiten por getUpdates y Telegram
+    responde 409: los updates se pierden o se reparten al azar entre
+    ambos. El candado guarda el PID; si el proceso anterior murio sin
+    limpiar (pythonw/tarea reiniciada), el lock se recupera en vez de
+    dejar el bot muerto para siempre (por eso NO alcanza con O_EXCL).
+    """
+    import os
+
+    if lock_path.exists():
+        try:
+            pid = int(lock_path.read_text(encoding="utf-8").strip() or 0)
+        except (OSError, ValueError):
+            pid = 0
+        if pid and pid != os.getpid() and _pid_vivo(pid):
+            return False
+        lock_path.unlink(missing_ok=True)  # corrupto o proceso muerto
+    try:
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry-point: lee config, construye bot, hace polling."""
     try:
@@ -201,6 +247,18 @@ def main(argv: list[str] | None = None) -> int:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("telegram").setLevel(logging.WARNING)
 
+    # REQ-094: single-instance — si otra instancia viva tiene el lock,
+    # salir limpio (la tarea de Windows no debe duplicar el bot).
+    from src.core.rutas import DATA_DIR
+
+    lock_bot = DATA_DIR / "telegram_bot.lock"
+    if not _adquirir_lock(lock_bot):
+        logger.error(
+            "Otra instancia del bot (PID en %s) ya corre: me apago.",
+            lock_bot,
+        )
+        return 3
+
     application = build_application(config)
 
     logger.info(
@@ -208,11 +266,14 @@ def main(argv: list[str] | None = None) -> int:
         len(config.allowed_user_ids),
         config.polling_interval,
     )
-    application.run_polling(
-        poll_interval=config.polling_interval,
-        allowed_updates=["message"],
-    )
-    return 0
+    try:
+        application.run_polling(
+            poll_interval=config.polling_interval,
+            allowed_updates=["message"],
+        )
+        return 0
+    finally:
+        lock_bot.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Registrar/operar la tarea de Windows del bot Rubicita (paso 2a).
 # Invocado por el operador o documentado en INSTALACION. Requiere que
-# el repo este instalado en C:\login-automation-bot (worktree de la
+# el repo esta instalado en C:\login-automation (proyecto unico desde
 # rama feat/telegram-bot-rubicita) con su venv.
 #
 # La tarea arranca el bot al iniciar sesion (pythonw, sin ventana) y
