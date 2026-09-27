@@ -504,42 +504,42 @@ def test_enriquecer_extrae_motivo_y_edad_de_nota_real():
 
 
 def test_edad_a_decimal_caso_canonico():
-    """'19 anios 2 meses 10 dias' -> '19,19'."""
-    assert _edad_a_decimal("19 anios 2 meses 10 dias") == "19,19"
+    """'19 anios 2 meses 10 dias' -> '19,2' (1 decimal, REQ-087)."""
+    assert _edad_a_decimal("19 anios 2 meses 10 dias") == "19,2"
 
 
 def test_edad_a_decimal_con_tildes():
     """Acepta 'años' (con tilde)."""
-    assert _edad_a_decimal("19 años 2 meses 10 días") == "19,19"
+    assert _edad_a_decimal("19 años 2 meses 10 días") == "19,2"
 
 
 def test_edad_a_decimal_sin_meses():
     """Sin meses, solo anos: '67 años' -> '67,00'."""
-    assert _edad_a_decimal("67 años") == "67,00"
+    assert _edad_a_decimal("67 años") == "67,0"
 
 
 def test_edad_a_decimal_sin_dias():
     """Sin dias: '40 años 6 meses' -> '40,50'."""
     # 40 + 6/12 + 0/365.25 = 40.5 -> 40,50
-    assert _edad_a_decimal("40 años 6 meses") == "40,50"
+    assert _edad_a_decimal("40 años 6 meses") == "40,5"
 
 
 def test_edad_a_decimal_sin_tildes_en_label():
     """OCR variante sin tildes en 'anos'/'dias'."""
     # 17 + 4/12 + 12/365.25 = 17 + 0.3333 + 0.0328 = 17.3662 -> 17,37
-    assert _edad_a_decimal("17 anos 4 meses 12 dias") == "17,37"
+    assert _edad_a_decimal("17 anos 4 meses 12 dias") == "17,4"
 
 
 def test_edad_a_decimal_singular():
     """Acepta singular: '1 ano 1 mes 1 dia'."""
     # 1 + 1/12 + 1/365.25 = 1 + 0.0833 + 0.0027 = 1.0861 -> 1,09
-    assert _edad_a_decimal("1 ano 1 mes 1 dia") == "1,09"
+    assert _edad_a_decimal("1 ano 1 mes 1 dia") == "1,1"
 
 
 def test_edad_a_decimal_decimal_grande():
     """Decimal > 99 funciona (3 digitos)."""
-    # 100 + 0/12 + 0/365.25 = 100 -> 100,00
-    assert _edad_a_decimal("100 anos") == "100,00"
+    # 100 + 0/12 + 0/365.25 = 100 -> 100,0
+    assert _edad_a_decimal("100 anos") == "100,0"
 
 
 def test_edad_a_decimal_formato_invalido():
@@ -550,16 +550,15 @@ def test_edad_a_decimal_formato_invalido():
 
 def test_edad_a_decimal_strip_whitespace():
     """Strip whitespace alrededor."""
-    assert _edad_a_decimal("  19 anos 2 meses 10 dias  ") == "19,19"
+    assert _edad_a_decimal("  19 anos 2 meses 10 dias  ") == "19,2"
 
 
-def test_edad_a_decimal_precision_2_decimales():
-    """El formato es exactamente 2 decimales con coma."""
+def test_edad_a_decimal_precision_1_decimal():
+    """REQ-087: el formato es exactamente 1 decimal con coma."""
     result = _edad_a_decimal("19 anos 2 meses 10 dias")
-    assert result is not None
-    # '19,19' tiene exactamente 2 decimales despues de la coma
+    assert result == "19,2"
     parte_decimal = result.split(",")[1]
-    assert len(parte_decimal) == 2
+    assert len(parte_decimal) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -606,7 +605,7 @@ def test_formatear_incluye_columna_edad_decimal():
         {
             "fecha": "10-09-2026",
             "nombre": "Juan",
-            "edad": "19,19",  # sesion 17:35: edad ES el decimal
+            "edad": "19,2",  # sesion 17:35: edad ES el decimal
             "tipo_atencion": "Control",
             "motivo": "control sm",
             "examenes": True,
@@ -617,6 +616,6 @@ def test_formatear_incluye_columna_edad_decimal():
     out = _formatear_tabla(filas, "09-2026")
     # Sesion 17:35: el header es "Edad" (unico)
     assert "Edad" in out
-    assert "19,19" in out
+    assert "19,2" in out
     # NO debe aparecer el formato verbose en la salida
     assert "19 anos 2 meses" not in out

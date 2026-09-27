@@ -214,9 +214,9 @@ def _edad_a_decimal(edad_str: str) -> str | None:
     days = int(m.group(3) or 0)
     # Ano juliano: 365.25 dias. Conversion pediatrica estandar.
     decimal = years + months / 12 + days / 365.25
-    # Formato CL: coma decimal, 2 decimales. round() evita
-    # errores de coma flotante (ej 19.190000000000001).
-    return f"{decimal:.2f}".replace(".", ",")
+    # Formato CL: coma decimal, 1 decimal (ajuste usuaria 26-09-2026).
+    # round() evita errores de coma flotante (ej 19.190000000000001).
+    return f"{decimal:.1f}".replace(".", ",")
 
 
 # Keywords de requerimientos Yadira (en el trigger `** mortadelo` de la nota).
