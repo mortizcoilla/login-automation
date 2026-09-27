@@ -19,7 +19,12 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.estudios.pubmed import Paper, PubmedError, buscar_papers
+from src.estudios.pubmed import (
+    Paper,
+    PubmedError,
+    buscar_papers,
+    obtener_abstracts,
+)
 from src.estudios.temas import ResumenTemas, analizar_notas
 
 logger = logging.getLogger(__name__)
@@ -80,14 +85,23 @@ def _query_por_codigo(codigo: str) -> str:
     )
 
 
-def _traducir_resumen(llm_run, paper: Paper) -> str:
-    """Resume/traduce el paper al espanol (2-3 frases) via el LLM."""
+def _traducir_resumen(llm_run, paper: Paper, abstract: str = "") -> str:
+    """Resume/traduce el paper al espanol (2-3 frases) via el LLM.
+
+    Con abstract (efetch): resume el CONTENIDO real del paper. Sin
+    abstract: solo traduce titulo (lo unico que hay). Nunca agrega
+    recomendaciones clinicas.
+    """
+    cuerpo = f"Titulo: {paper.titulo}\nJournal: {paper.journal} ({paper.fecha})"
+    if abstract:
+        # Cap de longitud: prompts chicos, el abstract completo no hace
+        # falta para un resumen de 2-3 frases.
+        cuerpo += f"\n\nAbstract:\n{abstract[:1500]}"
     prompt = (
         "Eres asistente de una medica de familia en APS (Chile). "
         "Traduce al espanol y resume en 2-3 frases claras el siguiente "
-        "paper (titulo + datos). NO agregues recomendaciones clinicas, "
-        "solo describe que estudia y el hallazgo principal:\n\n"
-        f"Titulo: {paper.titulo}\nJournal: {paper.journal} ({paper.fecha})"
+        "paper. NO agregues recomendaciones clinicas, solo describe que "
+        "estudia y el hallazgo principal:\n\n" + cuerpo
     )
     try:
         texto, _modelo = llm_run(prompt)
@@ -142,8 +156,17 @@ def armar_boletin(
             papers=papers,
         )
         if llm_run is not None:
+            # Abstracts del tema en UN request (papers sin abstract no
+            # aparecen y su traduccion caera a solo-titulo).
+            try:
+                abstracts = obtener_abstracts([p.pmid for p in papers])
+            except PubmedError as e:
+                logger.warning("[boletin] efetch fallo para %s: %s", capitulo, e)
+                abstracts = {}
             for paper in papers:
-                resumen_es = _traducir_resumen(llm_run, paper)
+                resumen_es = _traducir_resumen(
+                    llm_run, paper, abstracts.get(paper.pmid, "")
+                )
                 if resumen_es:
                     tema.resumenes[paper.pmid] = resumen_es
         temas.append(tema)
@@ -203,6 +226,13 @@ def main(argv: list[str] | None = None) -> int:
         from src.core.rutas import NOTAS_DIR
 
         notas_dir = NOTAS_DIR
+    # Default de salida: carpeta Login-Automation de OneDrive (la misma
+    # raiz donde Yadira lee el informe de fichas abiertas).
+    if args.salida is None:
+        from src.core.fechas import fecha_hoy_str
+        from src.core.rutas import INFORMES_FICHAS_DIR
+
+        args.salida = INFORMES_FICHAS_DIR / f"boletin_lectura_{fecha_hoy_str()}.md"
 
     resumen = analizar_notas(notas_dir)
     if resumen.notas_leidas == 0:
@@ -217,10 +247,9 @@ def main(argv: list[str] | None = None) -> int:
         resumen, logger=logging.getLogger("boletin"), llm_run=llm
     )
     print(markdown)
-    if args.salida:
-        args.salida.parent.mkdir(parents=True, exist_ok=True)
-        args.salida.write_text(markdown, encoding="utf-8")
-        print(f"[boletin] guardado en: {args.salida}")
+    args.salida.parent.mkdir(parents=True, exist_ok=True)
+    args.salida.write_text(markdown, encoding="utf-8")
+    print(f"[boletin] guardado en: {args.salida}")
     print(f"[boletin] {len(temas)} tema(s) incluidos")
     return 0
 
