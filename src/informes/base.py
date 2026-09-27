@@ -313,7 +313,9 @@ def main() -> int:
     try:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         out_path.write_text(tee.get_output(), encoding="utf-8")
-        print(f"\n[output completo guardado en: {out_path.relative_to(BASE_DIR)}]")
+        # REQ-091: el informe vive en OneDrive, fuera del proyecto; no
+        # usar relative_to (rompe con rutas externas, exit 1 tonto).
+        print(f"\n[output completo guardado en: {out_path}]")
     except OSError as e:
         print(f"WARN: no se pudo guardar output: {e}", file=sys.stderr)
 

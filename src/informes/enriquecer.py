@@ -697,7 +697,7 @@ def main() -> int:
 
     try:
         informe_path.write_text(contenido, encoding="utf-8")
-        print(f"[output completo guardado en: {informe_path.relative_to(ROOT)}]")
+        print(f"[output completo guardado en: {informe_path.relative_to(ROOT) if informe_path.is_relative_to(ROOT) else informe_path}]")
     except OSError as e:
         print(f"WARN: no se pudo guardar: {e}", file=sys.stderr)
         return 1
