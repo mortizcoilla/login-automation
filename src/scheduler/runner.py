@@ -171,12 +171,12 @@ def _archivar_fichas_cerradas_seguro() -> None:
     try:
         import logging
 
-        from src.tools.archivar_fichas import archivar_fichas_cerradas
+        from src.tools.archivar_fichas import archivar_cerrados
 
-        movidas = archivar_fichas_cerradas(logger=logging.getLogger("scheduler"))
-        _log(f"fichas archivadas: {len(movidas)} movida(s)")
+        movidas = archivar_cerrados(logger=logging.getLogger("scheduler"))
+        _log(f"productos archivados: {len(movidas)} archivo(s)")
     except Exception as e:
-        _log(f"archivar fichas fallo (no critico): {e}")
+        _log(f"archivar fallo (no critico): {e}")
 
 
 def ejecutar_cadena(usuario: str) -> int:
