@@ -34,7 +34,10 @@ from src.examenes.ocr_opencode import _limpiar_salida
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_GEMINI = "gemini-3.6-flash"
-DEFAULT_MODEL_OPENCODE = "opencode/mimo-v2.6-flash-free"
+DEFAULT_MODEL_OPENCODE = "opencode/mimo-v2.6-flash-free"  # rapido: mini-resumenes
+# Calidad para traducciones largas (nvidia = free en opencode; GO es
+# el plan pago del usuario y NO se usa aqui). Lento pero mejor texto.
+DEFAULT_MODEL_TRADUCCION = "nvidia/z-ai/glm-5.3-flash"
 _TIMEOUT_GEMINI = 240  # papers largos tardan; generacion no es ping
 # El bot corre desde el Programador de Tareas (sin PATH de usuario):
 # respaldo absoluto al shim de npm.
@@ -97,8 +100,17 @@ def _exe_opencode() -> str:
     raise GeminiTextoError("CLI de opencode no encontrada (PATH ni npm).")
 
 
-def _generar_opencode(prompt: str, modelo: str | None) -> str:
-    modelo = modelo or os.getenv("PAPERS_OPENCODE_MODEL", "").strip() or DEFAULT_MODEL_OPENCODE
+def _generar_opencode(prompt: str, modelos: str | None) -> str:
+    """Corre opencode con una CADENA de modelos (separados por coma).
+
+    El primer modelo que devuelva texto gana; los muertos (HTTP 410 de
+    endpoints retirados) o vacios se saltan. El usuario paga GO; los
+    modelos por defecto aqui son los FREE (opencode/mimo y nvidia).
+    """
+    if not modelos:
+        modelos = os.getenv(
+            "PAPERS_OPENCODE_MODELS", ""
+        ).strip() or f"{DEFAULT_MODEL_OPENCODE},{DEFAULT_MODEL_TRADUCCION}"
     timeout = int(os.getenv("PAPERS_OPENCODE_TIMEOUT", "600"))
     # El CLI de opencode TRUNCA el mensaje en los saltos de linea reales
     # del argv (el modelo recibe solo la primera linea y responde que
@@ -110,31 +122,39 @@ def _generar_opencode(prompt: str, modelo: str | None) -> str:
     # vez de procesar el prompt tal cual.
     import tempfile
 
-    try:
-        resultado = subprocess.run(
-            # --standalone: servidor privado por corrida. Sin el flag, el
-            # servicio en background comparte el contexto del proyecto y
-            # el modelo lee el codigo fuente del repo en vez del prompt
-            # (mimo citaba oferta_papers.py dentro de sus respuestas).
-            [_exe_opencode(), "run", "--standalone", "--model", modelo, prompt_plano],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            cwd=tempfile.gettempdir(),
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired as e:
-        raise GeminiTextoError(f"opencode timeout de {timeout}s") from e
-    if resultado.returncode != 0:
-        detalle = (resultado.stderr or resultado.stdout or "")[:200]
-        raise GeminiTextoError(
-            f"opencode run ({modelo}) termino con codigo {resultado.returncode}: {detalle}"
-        )
-    limpio = _limpiar_salida(resultado.stdout or "")
-    if not limpio:
-        raise GeminiTextoError(f"opencode run ({modelo}) devolvio salida vacia")
-    return limpio
+    ultimo_error: Exception | None = None
+    for modelo in [m.strip() for m in modelos.split(",") if m.strip()]:
+        try:
+            resultado = subprocess.run(
+                # --standalone: servidor privado por corrida. Sin el flag,
+                # el servicio en background comparte el contexto del
+                # proyecto y el modelo lee el codigo fuente del repo.
+                [_exe_opencode(), "run", "--standalone", "--model", modelo, prompt_plano],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                cwd=tempfile.gettempdir(),
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as e:
+            ultimo_error = e
+            logger.warning("[papers-llm] %s timeout (%ss); siguiente", modelo, timeout)
+            continue
+        if resultado.returncode != 0:
+            detalle = (resultado.stderr or resultado.stdout or "")[:160]
+            ultimo_error = GeminiTextoError(
+                f"opencode run ({modelo}) codigo {resultado.returncode}: {detalle}"
+            )
+            logger.warning("[papers-llm] %s fallo; siguiente", modelo)
+            continue
+        limpio = _limpiar_salida(resultado.stdout or "")
+        if not limpio:
+            ultimo_error = GeminiTextoError(f"opencode run ({modelo}) salida vacia")
+            logger.warning("[papers-llm] %s salida vacia; siguiente", modelo)
+            continue
+        return limpio
+    raise GeminiTextoError(f"todos los modelos fallaron: {ultimo_error}")
 
 
 # ---- API publica ----
@@ -148,11 +168,13 @@ def generar_texto(
     """Genera texto con el motor configurado (ver docstring del modulo).
 
     auto (default): gemini primero; si falla (prepago agotado, 402/404,
-    red), cae a opencode/mimo sin perder la solicitud.
+    red), cae a opencode/mimo sin perder la solicitud. `modelo` admite
+    una cadena "modelo1,modelo2" (solo opencode: prueba en orden).
     """
     load_dotenv()
     engine = os.getenv("PAPERS_LLM_ENGINE", "auto").strip().lower()
-    if engine in ("gemini", "auto"):
+    es_cadena = modelo is not None and "," in modelo
+    if engine in ("gemini", "auto") and not es_cadena:
         try:
             return _generar_gemini(prompt, modelo, post)
         except GeminiTextoError as e:

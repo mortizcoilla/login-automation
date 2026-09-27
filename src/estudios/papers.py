@@ -23,7 +23,12 @@ import requests
 
 from src.core.fechas import fecha_hoy_str
 from src.core.rutas import PAPERS_DIR
-from src.estudios.gemini_texto import GeminiTextoError, generar_texto
+from src.estudios.gemini_texto import (
+    DEFAULT_MODEL_OPENCODE,
+    DEFAULT_MODEL_TRADUCCION,
+    GeminiTextoError,
+    generar_texto,
+)
 from src.estudios.pubmed import Paper, PubmedError, obtener_abstracts
 
 logger = logging.getLogger(__name__)
@@ -128,7 +133,11 @@ def traducir_paper(paper: Paper, texto: str, fuente: str) -> str:
         fuente=fuente,
         texto=texto,
     )
-    return generar_texto(prompt)
+    # Traduccion larga = calidad primero (glm-5.3-flash free), con mimo
+    # de respaldo si glm falla o expira (cadena, ver gemini_texto).
+    return generar_texto(
+        prompt, modelo=f"{DEFAULT_MODEL_TRADUCCION},{DEFAULT_MODEL_OPENCODE}"
+    )
 
 
 def guardar_paper(paper: Paper, fuente: str, resumen_es: str) -> Path:
