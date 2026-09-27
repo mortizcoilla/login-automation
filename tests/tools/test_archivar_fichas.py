@@ -84,8 +84,9 @@ def test_archivar_mueve_al_folder_unificado(tmp_path: Path) -> None:
         "anam_Cerrada_Total_10-09-2026.md",
     ]
     assert not cerrada.exists(), "salio de la carpeta activa"
-    assert (destino / "Cerrada_Total_10-09-2026.md").exists()
-    assert (destino / "anam_Cerrada_Total_10-09-2026.md").exists()
+    # REQ-097: subcarpeta del mes tomada del informe (09-2026)
+    assert (destino / "09-2026" / "Cerrada_Total_10-09-2026.md").exists()
+    assert (destino / "09-2026" / "anam_Cerrada_Total_10-09-2026.md").exists()
     assert (dirs["notas_clinicas"] / "Amalia_Jara_15-09-2026.md").exists()
 
 

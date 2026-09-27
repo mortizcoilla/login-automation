@@ -57,6 +57,11 @@ PASOS = [
         "Cargar fichas generadas en Rayen (login Rayen, Guardar automatico)",
         ["-m", "src.tools.cargar_ficha", "--todos", "--user", "yadira"],
     ),
+    (
+        "A",
+        "Archivar pacientes cerrados a OneDrive/archivados/<mes> (REQ-097)",
+        ["-m", "src.tools.archivar_fichas"],
+    ),
 ]
 
 # ---- Filtro de consola (todo lo suprimido va igual al log de corrida) ----

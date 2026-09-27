@@ -1,14 +1,19 @@
-"""CLI del archivo de productos cerrados (REQ-082/088).
+"""CLI del archivo de productos cerrados (REQ-082/088/097).
 
-Mueve a `archivados` los productos de pacientes que YA NO estan en el
-informe de fichas abiertas del mes (pacientes cerrados). Productos:
-notas clinicas, info paciente, anamnesis, fichas generadas e informes
-de trazabilidad — las carpetas activas quedan SOLO con pacientes del
-informe (lectura facil para Yadira).
+Mueve a archivados/<MM-AAAA>/ los productos de pacientes que YA NO
+estan en el informe de fichas abiertas del mes (pacientes cerrados).
+Productos: notas clinicas, info paciente, anamnesis, fichas generadas
+e informes de trazabilidad — las carpetas activas quedan SOLO con
+pacientes del informe (lectura facil para Yadira).
+
+Sistema de archivo (REQ-097): el archivo vive en OneDrive
+(``ARCHIVADOS_DIR``), una subcarpeta PLANA por mes tomado del informe
+(``09-2026``); los nombres de archivo ya llevan prefijo de producto +
+paciente + fecha, asi que el mes no necesita subdivision.
 
 Semantica:
-- Los archivos cerrados se MUEVEN a ARCHIVADOS_DIR (nunca se borra
-  nada; colisiones -> _v2, _v3...). Un solo folder de historial.
+- Los archivos cerrados se MUEVEN (nunca se borra nada; colisiones ->
+  _v2, _v3...).
 - Si el informe no existe o no se puede leer, NO se mueve nada
   (guardia: sin informe fresco no hay criterio de cierre).
 
@@ -106,13 +111,26 @@ def cerrados_por_producto(
     return resultado
 
 
+def _mes_del_informe(informe_path: Path) -> str:
+    """'09-2026' del nombre del informe; fallback = mes actual."""
+    m = re.search(r"_(\d{2}-\d{4})(?:\.txt)?$", informe_path.stem)
+    if m:
+        return m.group(1)
+    from datetime import date
+
+    return date.today().strftime("%m-%Y")
+
+
 def archivar_cerrados(
     logger=None,
     informe_path: Path | None = None,
     destino_dir: Path = ARCHIVADOS_DIR,
     dirs_override: dict[str, Path] | None = None,
 ) -> list[tuple[str, str]]:
-    """Mueve TODOS los productos cerrados al archivo.
+    """Mueve TODOS los productos cerrados a archivados/<MM-AAAA>/.
+
+    `destino_dir` es la RAIZ del archivo; la subcarpeta del mes sale
+    del nombre del informe (REQ-097).
 
     Returns:
         [(nombre_producto, nombre_archivo), ...] de lo movido.
@@ -124,10 +142,11 @@ def archivar_cerrados(
         if logger:
             logger.info("[archivar] nada para archivar (informe %s)", informe.name)
         return movidas
-    destino_dir.mkdir(parents=True, exist_ok=True)
+    destino_mes = destino_dir / _mes_del_informe(informe)
+    destino_mes.mkdir(parents=True, exist_ok=True)
     for nombre, cerrados in por_producto.items():
         for archivo in cerrados:
-            destino = _resolver_sin_colision(destino_dir, archivo.name)
+            destino = _resolver_sin_colision(destino_mes, archivo.name)
             try:
                 shutil.move(str(archivo), str(destino))
                 movidas.append((nombre, archivo.name))
@@ -137,7 +156,11 @@ def archivar_cerrados(
                 if logger:
                     logger.warning("[archivar] no se pudo mover %s: %s", archivo.name, e)
     if logger:
-        logger.info("[archivar] %d archivo(s) archivado(s)", len(movidas))
+        logger.info(
+            "[archivar] %d archivo(s) archivado(s) en %s",
+            len(movidas),
+            destino_mes.name,
+        )
     return movidas
 
 
@@ -160,15 +183,16 @@ def main(argv: list[str] | None = None) -> int:
     if total == 0:
         print(f"[archivar] nada para archivar (informe: {informe.name})")
         return 0
+    destino_mes = ARCHIVADOS_DIR / _mes_del_informe(informe)
     for nombre, cerrados in por_producto.items():
         for archivo in cerrados:
             if args.dry_run:
                 print(f"  ({nombre}) se moveria: {archivo.name}")
             else:
-                destino = _resolver_sin_colision(ARCHIVADOS_DIR, archivo.name)
+                destino = _resolver_sin_colision(destino_mes, archivo.name)
                 try:
                     shutil.move(str(archivo), str(destino))
-                    print(f"  ({nombre}) {archivo.name} -> {destino.name}")
+                    print(f"  ({nombre}) {archivo.name} -> {destino_mes.name}/{destino.name}")
                 except OSError as e:
                     print(f"  ERROR moviendo {archivo.name}: {e}")
     return 0
