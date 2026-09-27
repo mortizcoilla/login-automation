@@ -296,10 +296,55 @@ def _entrar_atencion_y_esperar_editor(
     return None
 
 
+def _esperar_panel_historia_clinica(
+    driver: WebDriver, logger: logging.Logger, budget_s: int, poll_s: float = 2.0
+):
+    """REQ-093: espera el panel de la vista 'Historia clinica'.
+
+    El doble click aterriza en esa vista; sus senales son la tabla de
+    identificacion (<th> en <tbody>), el arbol del historial (.rct-tree)
+    o el card de estratificacion ECICEP (g3 sin tabla visible).
+    NO entrar a 'Atencion actual': identificacion e historial se extraen
+    desde AQUI (regresion 26/27-09: el waiter del editor cambiaba de
+    vista antes de extraer y las notas salian sin tabla ni historial).
+
+    Devuelve el elemento del panel, o None si no aparecio en el
+    presupuesto (timeout o modal de pestañas — el caller decide).
+    """
+    import time as _time
+
+    from selenium.webdriver.common.by import By
+
+    senales = (
+        "//table[.//tbody/th]",
+        "//div[contains(@class,'side-card')]//*[contains(@class,'rct-tree')]",
+        "//*[contains(@class, 'stratification-card')]",
+    )
+    fin = _time.monotonic() + budget_s
+    while _time.monotonic() < fin:
+        # REQ-090: bloqueo por pestañas -> salir ya para que el caller
+        # libere el tablero en vez de quemar el presupuesto completo.
+        if pestanas.modal_pestanas_presente(driver):
+            logger.warning(
+                "[apertura] Modal de pestañas durante la espera del panel."
+            )
+            return None
+        for xp in senales:
+            try:
+                el = driver.find_element(By.XPATH, xp)
+                if el.is_displayed():
+                    return el
+            except Exception:
+                continue
+        _time.sleep(poll_s)
+    return None
+
+
 def abrir_ficha_por_nombre(
     driver: WebDriver,
     logger: logging.Logger,
     paciente: PacienteObjetivo,
+    entrar_atencion: bool = True,
 ) -> bool:
     """Abre la ficha del paciente en Rayen.
 
@@ -321,6 +366,12 @@ def abrir_ficha_por_nombre(
         paciente: el paciente a abrir. Se muta in-place: si hay match
             parcial, `paciente.nombre_rayen` queda seteado; si el
             panel no cargo, `paciente.panel_cargo` queda en False.
+        entrar_atencion: True (default, paso 8) entra a la pestaña
+            'Atencion actual' y espera la senal del editor (lapiz /
+            Agregar!). False (paso 3, REQ-093) se queda en la vista
+            'Historia clinica' — identificacion e historial se extraen
+            desde ahi y el click a 'Atencion actual' lo hace el caller
+            despues de extraerlos.
 
     Returns:
         True si la ficha esta abierta (panel haya cargado o no);
@@ -358,6 +409,51 @@ def abrir_ficha_por_nombre(
 
         # 3) Doble click en la fila para abrir la ficha
         _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
+
+        if not entrar_atencion:
+            # REQ-093 (paso 3): quedarse en 'Historia clinica' — la
+            # identificacion y el historial se extraen desde esta vista
+            # y el click a 'Atencion actual' lo hace crear_notas AFTER.
+            panel = _esperar_panel_historia_clinica(
+                driver, logger, PANEL_TIMEOUT_S
+            )
+            if (
+                panel is None
+                and intento == 1
+                and pestanas.modal_pestanas_presente(driver)
+            ):
+                logger.warning(
+                    "Rayen bloqueo la apertura por limite de pestañas (REQ-090). "
+                    "Liberando tablero y reintentando una vez..."
+                )
+                pestanas.liberar_pestanas(driver, logger)
+                volver_a_pacientes_citados(driver, logger)
+                continue
+            if panel is None:
+                logger.warning(
+                    f"Panel de Historia clinica no aparecio en {PANEL_TIMEOUT_S}s. "
+                    f"Extraccion procedera sobre lo que haya (flag REVISION)."
+                )
+                try:
+                    from src.core.rutas import SCREENSHOTS_DIR
+
+                    SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+                    ruta = SCREENSHOTS_DIR / (
+                        f"panel_timeout_{paciente.nombre.replace(' ', '_')}"
+                        f"_{PANEL_TIMEOUT_S}s.png"
+                    )
+                    driver.save_screenshot(str(ruta))
+                    logger.warning(f"Screenshot del timeout: {ruta.name}")
+                except Exception:
+                    pass
+                paciente.panel_cargo = False
+            else:
+                logger.info(
+                    f"Panel de Historia clinica cargado ({panel.tag_name})"
+                )
+                _cerrar_tutorial_onboarding(driver, logger)
+                paciente.panel_cargo = True
+            break
 
         # 4) Entrar a la atencion (pestaña 'Atencion actual' del nav
         #    vertical) y esperar la señal editable: lapiz (hay anamnesis) o

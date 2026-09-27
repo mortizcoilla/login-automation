@@ -181,3 +181,158 @@ def test_apertura_delega_a_select_date_con_fecha_paciente(
     mock_select.assert_called_once_with(
         fake_driver, logger, fecha_str=paciente_exacto.fecha
     )
+
+
+# ---- REQ-093: paso 3 se queda en 'Historia clinica' ----
+
+
+def test_paso3_queda_en_historia_clinica(
+    paciente_exacto: PacienteObjetivo, logger: logging.Logger
+) -> None:
+    """entrar_atencion=False: NO usa el waiter del editor (que cambia
+    de vista) y espera el panel de Historia clinica."""
+    fake_driver = MagicMock()
+    fake_row = MagicMock()
+    fake_panel = MagicMock()
+    fake_panel.tag_name = "table"
+
+    with (
+        patch("src.rayen.flujos.apertura_ficha.select_date"),
+        patch("src.rayen.flujos.apertura_ficha.sort_by_estado"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._buscar_paciente_en_tabla",
+            return_value=(fake_row, None),
+        ),
+        patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._cerrar_tutorial_onboarding"
+        ),
+        patch(
+            "src.rayen.flujos.apertura_ficha._esperar_panel_historia_clinica",
+            return_value=fake_panel,
+        ) as mock_panel,
+        patch(
+            "src.rayen.flujos.apertura_ficha._entrar_atencion_y_esperar_editor"
+        ) as mock_waiter,
+    ):
+        ok = abrir_ficha_por_nombre(
+            fake_driver, logger, paciente_exacto, entrar_atencion=False
+        )
+
+    assert ok is True
+    assert paciente_exacto.panel_cargo is True
+    mock_panel.assert_called_once()
+    mock_waiter.assert_not_called()  # el waiter es el que cambia de vista
+
+
+def test_paso3_modal_pestanas_libera_y_reintenta(
+    paciente_exacto: PacienteObjetivo, logger: logging.Logger
+) -> None:
+    """REQ-090 en modo paso 3: panel ausente + modal de pestañas ->
+    libera tablero y reintenta una vez."""
+    fake_driver = MagicMock()
+    fake_row = MagicMock()
+    fake_panel = MagicMock()
+    fake_panel.tag_name = "table"
+
+    with (
+        patch("src.rayen.flujos.apertura_ficha.select_date") as mock_sd,
+        patch("src.rayen.flujos.apertura_ficha.sort_by_estado"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._buscar_paciente_en_tabla",
+            return_value=(fake_row, None),
+        ),
+        patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
+        patch("src.rayen.flujos.apertura_ficha._cerrar_tutorial_onboarding"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._esperar_panel_historia_clinica",
+            side_effect=[None, fake_panel],
+        ),
+        patch(
+            "src.rayen.flujos.apertura_ficha.pestanas"
+        ) as mock_pestanas,
+        patch(
+            "src.rayen.flujos.apertura_ficha.volver_a_pacientes_citados"
+        ) as mock_volver,
+        patch(
+            "src.rayen.flujos.apertura_ficha._entrar_atencion_y_esperar_editor"
+        ),
+    ):
+        mock_pestanas.modal_pestanas_presente.return_value = True
+        ok = abrir_ficha_por_nombre(
+            fake_driver, logger, paciente_exacto, entrar_atencion=False
+        )
+
+    assert ok is True
+    assert paciente_exacto.panel_cargo is True
+    mock_pestanas.liberar_pestanas.assert_called_once()
+    mock_volver.assert_called_once()
+    assert mock_sd.call_count == 2  # reintento completo
+
+
+def test_paso3_panel_nunca_carga_degrada(
+    paciente_exacto: PacienteObjetivo, logger: logging.Logger
+) -> None:
+    """REQ-030 en modo paso 3: panel ausente sin modal -> flag False."""
+    fake_driver = MagicMock()
+    fake_row = MagicMock()
+
+    with (
+        patch("src.rayen.flujos.apertura_ficha.select_date"),
+        patch("src.rayen.flujos.apertura_ficha.sort_by_estado"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._buscar_paciente_en_tabla",
+            return_value=(fake_row, None),
+        ),
+        patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._esperar_panel_historia_clinica",
+            return_value=None,
+        ),
+        patch(
+            "src.rayen.flujos.apertura_ficha.pestanas"
+        ) as mock_pestanas,
+        patch(
+            "src.rayen.flujos.apertura_ficha._entrar_atencion_y_esperar_editor"
+        ),
+    ):
+        mock_pestanas.modal_pestanas_presente.return_value = False
+        ok = abrir_ficha_por_nombre(
+            fake_driver, logger, paciente_exacto, entrar_atencion=False
+        )
+
+    assert ok is True
+    assert paciente_exacto.panel_cargo is False
+    mock_pestanas.liberar_pestanas.assert_not_called()
+
+
+def test_paso8_por_defecto_sigue_usando_el_waiter(
+    paciente_exacto: PacienteObjetivo, logger: logging.Logger
+) -> None:
+    """Default (paso 8): usa el waiter del editor, no el panel de
+    Historia clinica."""
+    fake_driver = MagicMock()
+    fake_row = MagicMock()
+
+    with (
+        patch("src.rayen.flujos.apertura_ficha.select_date"),
+        patch("src.rayen.flujos.apertura_ficha.sort_by_estado"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._buscar_paciente_en_tabla",
+            return_value=(fake_row, None),
+        ),
+        patch("src.rayen.flujos.apertura_ficha._doble_click_en_paciente"),
+        patch(
+            "src.rayen.flujos.apertura_ficha._esperar_panel_historia_clinica"
+        ) as mock_panel,
+        patch(
+            "src.rayen.flujos.apertura_ficha._entrar_atencion_y_esperar_editor",
+            return_value=("lapiz", MagicMock()),
+        ) as mock_waiter,
+    ):
+        ok = abrir_ficha_por_nombre(fake_driver, logger, paciente_exacto)
+
+    assert ok is True
+    assert paciente_exacto.panel_cargo is True
+    mock_waiter.assert_called_once()
+    mock_panel.assert_not_called()

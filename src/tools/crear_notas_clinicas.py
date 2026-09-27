@@ -309,7 +309,7 @@ def iterar_pacientes(
         logger.info(f"[crear_notas] ({i}/{len(pacientes)}) Procesando: {p.nombre} ({p.fecha})")
         try:
             stats["procesados"] += 1
-            ok = abrir_ficha_por_nombre(driver, logger, p)
+            ok = abrir_ficha_por_nombre(driver, logger, p, entrar_atencion=False)
             if ok:
                 stats["abiertos"] += 1
             else:
@@ -492,7 +492,13 @@ def main() -> int:
                 # StaleElementReferenceException. Reciclar sesion y
                 # reintentar UNA vez antes de marcar error.
                 try:
-                    ok = abrir_ficha_por_nombre(driver, logger, paciente)
+                    # REQ-093: entrar_atencion=False — la apertura se
+                    # queda en 'Historia clinica' para que identificacion
+                    # e historial se extraigan desde esa vista; el click a
+                    # 'Atencion actual' lo hace la extraccion despues.
+                    ok = abrir_ficha_por_nombre(
+                        driver, logger, paciente, entrar_atencion=False
+                    )
                 except (TimeoutException, StaleElementReferenceException) as e_nav:
                     logger.warning(
                         f"[crear_notas] Navegacion rota con {paciente.nombre} "
@@ -500,7 +506,9 @@ def main() -> int:
                         f"reintentando una vez..."
                     )
                     driver = reciclar_sesion()
-                    ok = abrir_ficha_por_nombre(driver, logger, paciente)
+                    ok = abrir_ficha_por_nombre(
+                        driver, logger, paciente, entrar_atencion=False
+                    )
                 if not ok:
                     logger.warning(
                         f"[crear_notas] No se encontro a {paciente.nombre} en la tabla. Saltando."

@@ -953,7 +953,7 @@ class TestIterarPacientes:
 
         llamadas: list[str] = []
 
-        def fake_abrir(driver, logger, paciente):
+        def fake_abrir(driver, logger, paciente, entrar_atencion=True):
             llamadas.append(paciente.nombre)
             return True
 
@@ -971,7 +971,7 @@ class TestIterarPacientes:
 
         import src.tools.crear_notas_clinicas as cnn
 
-        monkeypatch.setattr(cnn, "abrir_ficha_por_nombre", lambda d, lg, p: False)
+        monkeypatch.setattr(cnn, "abrir_ficha_por_nombre", lambda d, lg, p, entrar_atencion=True: False)
         pacientes = [
             PacienteObjetivo(fecha="01-09-2026", nombre="X", tipo_atencion="", razon=""),
         ]
