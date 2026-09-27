@@ -71,6 +71,7 @@ from src.rayen.extraccion.plan import (
     extraer_recetas,
 )
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
+from src.rayen import pestanas
 from src.rayen.navegacion import volver_a_pacientes_citados
 from src.rayen.navegador import ensure_session_alive, run_login, safe_quit
 from src.tools.informe_tecnico import (
@@ -720,6 +721,19 @@ def main() -> int:
             pinfo.warnings = warnings_collector.snapshot()
             pinfo.tiempo_segundos = round(_time.time() - t_inicio, 2)
             pacientes_informe.append(pinfo)
+
+            # REQ-090: higiene de pestañas tras cada paciente — Rayen
+            # permite maximo 8 pestañas de ficha y el conteo es
+            # server-side (no se limpia al re-loguear). Cerrar la
+            # pestaña recien usada evita acumular el contador.
+            try:
+                cerradas = pestanas.cerrar_pestanas_ficha(driver, logger)
+                if cerradas:
+                    logger.info(
+                        f"[crear_notas] Pestañas de ficha cerradas: {cerradas}"
+                    )
+            except Exception as e:
+                logger.debug(f"[crear_notas] Higiene de pestañas falló: {e}")
 
             # Despues de CADA paciente (exitoso o no), volver a la lista
             # para el siguiente. Y si llegamos al limite, resetear sesion.

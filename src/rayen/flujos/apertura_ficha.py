@@ -30,7 +30,12 @@ import logging
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.notas.modelos import PacienteObjetivo
-from src.rayen.navegacion import select_date, sort_by_estado
+from src.rayen import pestanas
+from src.rayen.navegacion import (
+    select_date,
+    sort_by_estado,
+    volver_a_pacientes_citados,
+)
 from src.rayen.tabla import _buscar_paciente_en_tabla, _doble_click_en_paciente
 
 # Senal inequivoca de que la ficha del paciente esta abierta: aparece
@@ -257,6 +262,10 @@ def _entrar_atencion_y_esperar_editor(
     fin = _time.monotonic() + budget_s
     tab_hecho = False
     while _time.monotonic() < fin:
+        # REQ-090: modal de limite de pestañas -> senal especial; el
+        # caller libera pestañas y reintenta la apertura.
+        if pestanas.modal_pestanas_presente(driver):
+            return "pestanas", None
         # Senal 1: hay anamnesis -> lapiz (seccion editable).
         try:
             lapiz = driver.find_element(
@@ -322,56 +331,93 @@ def abrir_ficha_por_nombre(
         f"| tipo={paciente.tipo_atencion}"
     )
 
-    # 1) Filtrar por fecha
-    select_date(driver, logger, fecha_str=paciente.fecha)
-    sort_by_estado(driver, logger)
+    # REQ-090: si Rayen bloquea la apertura por limite de pestañas
+    # (modal "Supero maximo de pestañas", conteo server-side), se
+    # libera el tablero y se reintenta UNA vez. Un segundo bloqueo
+    # seguido se degrada igual que un timeout de panel.
+    for intento in (1, 2):
+        # 1) Filtrar por fecha
+        select_date(driver, logger, fecha_str=paciente.fecha)
+        sort_by_estado(driver, logger)
 
-    # 2) Buscar al paciente por nombre completo
-    resultado_busqueda = _buscar_paciente_en_tabla(driver, logger, paciente.nombre)
-    if resultado_busqueda is None:
-        logger.warning(
-            f"No se encontro a '{paciente.nombre}' en la tabla del {paciente.fecha}"
+        # 2) Buscar al paciente por nombre completo
+        resultado_busqueda = _buscar_paciente_en_tabla(
+            driver, logger, paciente.nombre
         )
-        return False
-    row, nombre_rayen = resultado_busqueda
-    if nombre_rayen is not None:
-        # Match parcial: guardar el nombre real de Rayen como metadato
-        # para que pipelines posteriores (Mortadelo, enriquecer, etc.)
-        # puedan matchear.
-        paciente.nombre_rayen = nombre_rayen
+        if resultado_busqueda is None:
+            logger.warning(
+                f"No se encontro a '{paciente.nombre}' en la tabla del {paciente.fecha}"
+            )
+            return False
+        row, nombre_rayen = resultado_busqueda
+        if nombre_rayen is not None:
+            # Match parcial: guardar el nombre real de Rayen como metadato
+            # para que pipelines posteriores (Mortadelo, enriquecer, etc.)
+            # puedan matchear.
+            paciente.nombre_rayen = nombre_rayen
 
-    # 3) Doble click en la fila para abrir la ficha
-    _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
+        # 3) Doble click en la fila para abrir la ficha
+        _doble_click_en_paciente(driver, logger, row, nombre_objetivo=paciente.nombre)
 
-    # 4) Entrar a la atencion (pestaña 'Atencion actual' del nav
-    #    vertical) y esperar la señal editable: lapiz (hay anamnesis) o
-    #    Agregar! (sin anamnesis — se creara una nueva). Maneja el
-    #    tutorial onboarding asincrono (REQ-030: sin re-click).
-    senal = _entrar_atencion_y_esperar_editor(
-        driver, logger, PANEL_TIMEOUT_S + 60
-    )
-    tipo_editor = senal[0] if senal else None
-    if tipo_editor is None:
-        # REQ-030: no re-clickear. Marcar flag y seguir.
-        logger.warning(
-            f"Senal editable (lapiz/Agregar) no aparecio en {PANEL_TIMEOUT_S + 30}s. "
-            f"El flujo procedera sobre lo que haya. "
-            f"El caller debera decidir si esto es aceptable."
+        # 4) Entrar a la atencion (pestaña 'Atencion actual' del nav
+        #    vertical) y esperar la señal editable: lapiz (hay anamnesis) o
+        #    Agregar! (sin anamnesis — se creara una nueva). Maneja el
+        #    tutorial onboarding asincrono (REQ-030: sin re-click).
+        senal = _entrar_atencion_y_esperar_editor(
+            driver, logger, PANEL_TIMEOUT_S + 60
         )
-        # Evidencia para diagnostico: que habia en pantalla.
-        try:
-            from src.core.rutas import SCREENSHOTS_DIR
+        tipo_editor = senal[0] if senal else None
 
-            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-            ruta = SCREENSHOTS_DIR / f"panel_timeout_{paciente.nombre.replace(' ', '_')}_{PANEL_TIMEOUT_S}s.png"
-            driver.save_screenshot(str(ruta))
-            logger.warning(f"Screenshot del timeout: {ruta.name}")
-        except Exception:
-            pass
-        paciente.panel_cargo = False
-    else:
-        logger.info("Seccion anamnesis de la atencion disponible (lapiz presente)")
-        paciente.panel_cargo = True
+        if tipo_editor == "pestanas":
+            if intento == 1:
+                logger.warning(
+                    "Rayen bloqueo la apertura por limite de pestañas (REQ-090). "
+                    "Liberando tablero y reintentando una vez..."
+                )
+                pestanas.liberar_pestanas(driver, logger)
+                volver_a_pacientes_citados(driver, logger)
+                continue
+            logger.error(
+                "Rayen SIGUE bloqueado por pestañas tras liberar. "
+                "Correr: python -m src.tools.cerrar_pestanas_rayen"
+            )
+            try:
+                from src.core.rutas import SCREENSHOTS_DIR
+
+                SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+                ruta = SCREENSHOTS_DIR / (
+                    "pestanas_bloqueo_"
+                    f"{paciente.nombre.replace(' ', '_')}.png"
+                )
+                driver.save_screenshot(str(ruta))
+                logger.warning(f"Screenshot del bloqueo: {ruta.name}")
+            except Exception:
+                pass
+            paciente.panel_cargo = False
+            break
+
+        if tipo_editor is None:
+            # REQ-030: no re-clickear. Marcar flag y seguir.
+            logger.warning(
+                f"Senal editable (lapiz/Agregar) no aparecio en {PANEL_TIMEOUT_S + 30}s. "
+                f"El flujo procedera sobre lo que haya. "
+                f"El caller debera decidir si esto es aceptable."
+            )
+            # Evidencia para diagnostico: que habia en pantalla.
+            try:
+                from src.core.rutas import SCREENSHOTS_DIR
+
+                SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+                ruta = SCREENSHOTS_DIR / f"panel_timeout_{paciente.nombre.replace(' ', '_')}_{PANEL_TIMEOUT_S}s.png"
+                driver.save_screenshot(str(ruta))
+                logger.warning(f"Screenshot del timeout: {ruta.name}")
+            except Exception:
+                pass
+            paciente.panel_cargo = False
+        else:
+            logger.info("Seccion anamnesis de la atencion disponible (lapiz presente)")
+            paciente.panel_cargo = True
+        break
 
     logger.info(
         f"Ficha abierta para {paciente.nombre} (URL actual: {driver.current_url})"

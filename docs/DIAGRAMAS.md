@@ -50,6 +50,11 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
 ┃                        atencion actual → dx → plan                  ┃
 ┃                  ──► src/notas/ (escribe los 3 documentos)          ┃
 ┃     Reset de sesion cada 8 fichas (REQ-017)                         ┃
+┃     REQ-090: higiene de pestañas por paciente via src/rayen/        ┃
+┃     pestanas.py — el limite de 8 pestañas de Rayen es SERVER-SIDE;  ┃
+┃     ante el modal 'Supero maximo de pestañas' se libera el tablero  ┃
+┃     y se reintenta. Desbloqueo manual:                              ┃
+┃     python -m src.tools.cerrar_pestanas_rayen --user yadira         ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
                            ▼
         data/notas_clinicas/<pac>_<fecha>.md      (nota completa)
