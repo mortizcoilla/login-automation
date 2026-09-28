@@ -184,6 +184,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[archivar] nada para archivar (informe: {informe.name})")
         return 0
     destino_mes = ARCHIVADOS_DIR / _mes_del_informe(informe)
+    if not args.dry_run:
+        destino_mes.mkdir(parents=True, exist_ok=True)
     for nombre, cerrados in por_producto.items():
         for archivo in cerrados:
             if args.dry_run:

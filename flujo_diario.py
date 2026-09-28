@@ -218,6 +218,12 @@ def main() -> int:
                 if num == "7" and codigo == 1 and i < len(pasos):
                     print("   [AVISO] Mortadelo termino parcial; se continua con las fichas generadas.")
                     continue
+                # Paso 8 fallido: igual archivar (paso A), que solo
+                # depende del informe (pasos 5/6), no de la carga.
+                if num == "8" and i < len(pasos):
+                    print("   [AVISO] El paso 8 fallo; se archivan igual los cerrados (paso A).")
+                    fallo = codigo
+                    continue
                 fallo = codigo
                 break
 

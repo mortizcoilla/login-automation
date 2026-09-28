@@ -56,6 +56,10 @@ from src.rayen.escritura.editor_anamnesis import (
 from src.rayen.escritura.editor_anamnesis import _historia_de_ficha as _historia_de_ficha_rayen
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
 from src.rayen.navegacion import volver_a_pacientes_citados
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from src.rayen.navegador import run_login, safe_quit
 
 
@@ -290,44 +294,74 @@ def iterar_pacientes(
 
     for i, p in enumerate(pacientes, 1):
         logger.info(f"[cargar_ficha] ({i}/{len(pacientes)}) {p.nombre} ({p.fecha})")
-        try:
-            # Limite de Rayen: 8 fichas abiertas -> cerrar y re-loguear.
-            if driver is not None and abiertas >= max_abiertas:
-                logger.info(
-                    "[cargar_ficha] limite de fichas abiertas: cerrando "
-                    "sesion y volviendo a loguear..."
-                )
-                safe_quit(driver, logger)
-                driver = None
-                abiertas = 0
-                en_ficha = False
-
-            # Volver a la lista si venimos de una ficha abierta.
-            if driver is not None and en_ficha:
-                volver_a_pacientes_citados(driver, logger)
-                en_ficha = False
-
-            if driver is None:
-                driver = _abrir_sesion(credenciales or {}, logger)
-                if driver is None:
-                    resultados.append(
-                        _error(p.nombre, p.fecha, "login fallo")
+        r = None
+        for intento in (1, 2):
+            try:
+                # Limite de Rayen: 8 fichas abiertas -> cerrar y re-loguear.
+                if driver is not None and abiertas >= max_abiertas:
+                    logger.info(
+                        "[cargar_ficha] limite de fichas abiertas: cerrando "
+                        "sesion y volviendo a loguear..."
                     )
-                    for restante in pacientes[i:]:
-                        resultados.append(
-                            _error(restante.nombre, restante.fecha, "login fallo")
-                        )
-                    return resultados
-                abiertas = 0
+                    safe_quit(driver, logger)
+                    driver = None
+                    abiertas = 0
+                    en_ficha = False
 
-            r = cargar_ficha_de_paciente(driver, logger, p, fichas_dir=fichas_dir)
-            abiertas += 1 if r.abierta else 0
-            en_ficha = r.abierta
-        except Exception as e:
-            logger.exception(
-                f"[cargar_ficha] excepcion no controlada con {p.nombre}: {e}"
-            )
-            r = _error(p.nombre, p.fecha, f"excepcion no controlada: {type(e).__name__}: {e}")
+                # Volver a la lista si venimos de una ficha abierta.
+                if driver is not None and en_ficha:
+                    volver_a_pacientes_citados(driver, logger)
+                    en_ficha = False
+
+                if driver is None:
+                    driver = _abrir_sesion(credenciales or {}, logger)
+                    if driver is None:
+                        resultados.append(
+                            _error(p.nombre, p.fecha, "login fallo")
+                        )
+                        for restante in pacientes[i:]:
+                            resultados.append(
+                                _error(restante.nombre, restante.fecha, "login fallo")
+                            )
+                        return resultados
+                    abiertas = 0
+
+                r = cargar_ficha_de_paciente(driver, logger, p, fichas_dir=fichas_dir)
+                abiertas += 1 if r.abierta else 0
+                en_ficha = r.abierta
+                break
+            except (TimeoutException, StaleElementReferenceException) as e_nav:
+                # REQ-092: pagina 'Pacientes citados' colgada. Reciclar
+                # sesion y reintentar el paciente UNA vez (incidente
+                # 28-09 00:37: 7 errores consecutivos de input.date_input).
+                if intento == 1:
+                    logger.warning(
+                        f"[cargar_ficha] navegacion rota con {p.nombre} "
+                        f"({type(e_nav).__name__}). Reciclando sesion y "
+                        f"reintentando una vez..."
+                    )
+                    if driver is not None:
+                        safe_quit(driver, logger)
+                    driver = None
+                    abiertas = 0
+                    en_ficha = False
+                    continue
+                r = _error(
+                    p.nombre, p.fecha,
+                    f"navegacion rota tras reciclar: {type(e_nav).__name__}: {e_nav}",
+                )
+            except Exception as e:
+                logger.exception(
+                    f"[cargar_ficha] excepcion no controlada con {p.nombre}: {e}"
+                )
+                r = _error(p.nombre, p.fecha, f"excepcion no controlada: {type(e).__name__}: {e}")
+        if r is not None and r.estado == "error" and driver is not None:
+            # Un error suele dejar la pagina muerta: reciclar para que el
+            # SIGUIENTE paciente arranque con sesion sana (REQ-092).
+            safe_quit(driver, logger)
+            driver = None
+            abiertas = 0
+            en_ficha = False
         resultados.append(r)
     if driver is not None:
         safe_quit(driver, logger)

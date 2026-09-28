@@ -319,6 +319,12 @@ def _correr_vencidas(
         enviado = avisos.enviar(avisos.armar_mensaje_inicio(date.today(), n_pacientes))
         _log(f"aviso inicio: {'enviado' if enviado else 'NO ENVIADO'}")
         paso_fallido = ejecutar_cadena(entrada.usuario)
+        # REQ-097: el archivo de cerrados (paso A) solo depende del
+        # informe (pasos 5/6). Si fallo el paso 8 (cargar fichas, paso
+        # 6/6 de la cadena = retorno 6), igual archivar — mismo criterio
+        # que flujo_diario.
+        if paso_fallido in (0, 6):
+            _archivar_fichas_cerradas_seguro()
         if paso_fallido == 0:
             _marcar_ok(entrada.usuario, estado)
             # REQ-080 (ajuste usuaria 25-09): el aviso de fichas abiertas
