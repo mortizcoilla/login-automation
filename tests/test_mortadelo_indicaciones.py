@@ -55,8 +55,8 @@ def test_indicaciones_del_llm_entran_en_la_seccion_vacia() -> None:
     ensamblada = ensamblar_ficha(_BASE, _LLM)
     texto = ensamblada.texto
     assert "5. INDICACIONES" in texto
-    assert "- Derivación a Cirugía (interconsulta generada)" in texto
-    assert "- Cuidado de la cicatriz labial" in texto
+    assert "   - Derivación a Cirugía (interconsulta generada)" in texto
+    assert "   - Cuidado de la cicatriz labial" in texto
     # los stubs vacios de la plantilla ya no estan
     assert "\t5.1." not in texto and "5.2.\n" not in texto.split("6. CONTROL")[0]
     # la seccion siguiente no se toca
@@ -76,8 +76,8 @@ def test_llm_con_bullets_normales_se_normaliza() -> None:
         "- Cuidado", "5.1. Cuidado"
     )
     ensamblada = ensamblar_ficha(_BASE, llm)
-    assert "- Derivación a Cirugía" in ensamblada.texto
-    assert "- Cuidado de la cicatriz labial" in ensamblada.texto
+    assert "   - Derivación a Cirugía" in ensamblada.texto
+    assert "   - Cuidado de la cicatriz labial" in ensamblada.texto
     assert ">" not in ensamblada.texto
 
 

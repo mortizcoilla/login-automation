@@ -282,10 +282,11 @@ def _cuerpo_seccion_indicaciones(lineas: list[str]) -> list[str] | None:
 
 
 def _normalizar_item_indicacion(ln: str) -> str | None:
-    """Una linea del LLM -> item '- texto' (sin blockquote '>').
+    """Una linea del LLM -> item '   - texto' (indent 3 espacios, sin '>').
 
-    Acepta '> - x', '- x', '* x', '5.1. x' o texto plano; devuelve None
-    para lineas vacias o stubs.
+    Igual que las vinetas de las otras secciones de la plantilla
+    ('   - Edad: 28 años'). Acepta '> - x', '- x', '* x', '5.1. x' o
+    texto plano; devuelve None para lineas vacias o stubs.
     """
     texto = ln.strip()
     if not texto or _STUB_VACIO_RE.match(texto):
@@ -294,7 +295,7 @@ def _normalizar_item_indicacion(ln: str) -> str | None:
     texto = re.sub(r"^\s*[-*•]\s*", "", texto)
     texto = re.sub(r"^\s*\d+(\.\d+)*\.?\s*", "", texto)
     texto = texto.strip()
-    return f"- {texto}" if texto else None
+    return f"   - {texto}" if texto else None
 
 
 def _llenar_indicaciones_desde_llm(

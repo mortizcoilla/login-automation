@@ -233,6 +233,21 @@ def generar_fichas(
             llm=llm,
             logger=logger,
         )
+        if not r.ok:
+            # REQ-099: segunda pasada para el paciente fallido (fallos
+            # tipicos: LLM lento/timeout, seccion faltante).
+            logger.warning(
+                f"[mortadelo] {pac.nombre}: fallo ({r.error}). "
+                f"SEGUNDA PASADA..."
+            )
+            r = generar_paciente(
+                pac.nombre,
+                pac.fecha,
+                fichas_dir=fichas_dir,
+                informes_dir=informes_dir,
+                llm=llm,
+                logger=logger,
+            )
         logger.info(
             f"[mortadelo] {pac.nombre}: ok={r.ok} "
             f"ficha={'si' if r.ficha_path else 'no'} "
