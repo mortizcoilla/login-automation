@@ -146,10 +146,15 @@ def _rotulo(linea: str) -> str | None:
 
 
 def _extraer_indicaciones(llm_lineas: list[str]) -> str | None:
-    """Cuerpo de la seccion INDICACIONES escrita por el LLM (o None)."""
+    """Cuerpo de la seccion INDICACIONES escrita por el LLM (o None).
+
+    Las lineas salen sin prefijo blockquote '>' (REQ-098).
+    """
     for i, ln in enumerate(llm_lineas):
         if _SECCION_INDICACIONES_RE.match(ln):
-            cuerpo = '\n'.join(llm_lineas[i + 1 :]).strip()
+            cuerpo = "\n".join(
+                re.sub(r"^\s*>\s*", "", x) for x in llm_lineas[i + 1 :]
+            ).strip()
             return cuerpo or None
     return None
 
@@ -277,7 +282,7 @@ def _cuerpo_seccion_indicaciones(lineas: list[str]) -> list[str] | None:
 
 
 def _normalizar_item_indicacion(ln: str) -> str | None:
-    """Una linea del LLM -> item '> - texto' (formato de la plantilla).
+    """Una linea del LLM -> item '- texto' (sin blockquote '>').
 
     Acepta '> - x', '- x', '* x', '5.1. x' o texto plano; devuelve None
     para lineas vacias o stubs.
@@ -289,7 +294,7 @@ def _normalizar_item_indicacion(ln: str) -> str | None:
     texto = re.sub(r"^\s*[-*•]\s*", "", texto)
     texto = re.sub(r"^\s*\d+(\.\d+)*\.?\s*", "", texto)
     texto = texto.strip()
-    return f"> - {texto}" if texto else None
+    return f"- {texto}" if texto else None
 
 
 def _llenar_indicaciones_desde_llm(
