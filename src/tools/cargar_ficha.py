@@ -57,7 +57,10 @@ from src.rayen.escritura.editor_anamnesis import (
     pegar_en_editor,
     verificar_anamnesis_guardada,
 )
-from src.rayen.escritura.editor_anamnesis import _historia_de_ficha as _historia_de_ficha_rayen
+from src.rayen.escritura.editor_anamnesis import (
+    _historia_de_ficha as _historia_de_ficha_rayen,
+    _motivo_de_ficha as _motivo_de_ficha_rayen,
+)
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
 from src.rayen.navegacion import volver_a_pacientes_citados
 from selenium.common.exceptions import (
@@ -254,7 +257,23 @@ def cargar_ficha_de_paciente(
         return resultado
     resultado.tipo_editor = "formulario"
 
-    if not llenar_editor_nuevo(driver, logger, texto):
+    # Motivo para #motivoConsulta: la ficha ya no trae el marcador
+    # (REQ-098) — se lee del respaldo anam_* (su primera linea blockquote).
+    motivo = _motivo_de_ficha_rayen(texto)
+    if not motivo:
+        respaldo_motivo = ANAMNESIS_DIR / (
+            f"anam_{safe_filename(paciente.nombre)}_{paciente.fecha}.md"
+        )
+        if respaldo_motivo.exists():
+            try:
+                primera = respaldo_motivo.read_text(
+                    encoding="utf-8"
+                ).splitlines()[0]
+                if primera.strip().startswith(">"):
+                    motivo = _motivo_de_ficha_rayen(primera)
+            except OSError:
+                pass
+    if not llenar_editor_nuevo(driver, logger, texto, motivo=motivo or None):
         resultado.estado = "error"
         resultado.motivo = "no se pudo llenar el editor nuevo (campos no aparecieron)"
         logger.error(f"[cargar_ficha] {resultado.motivo}")

@@ -12,6 +12,14 @@ Este modulo reconstruye la ficha con GARANTIAS:
       o UNA sola edicion por palabra, mismo numero de palabras),
   (c) nada mas.
 - El bloque ** mortadelo se ELIMINA siempre.
+- La primera linea blockquote del motivo ('> **Motivo de atencion:** X')
+  NO va en la ficha (decision usuaria 29-09): el motivo vive en su campo
+  propio del editor de Rayen, no en el documento.
+- Los PEDIDOS de la doctora (lineas del bloque ** mortadelo) se escriben
+  en la seccion INDICACIONES de la plantilla (p.ej. punto 5 de
+  morbilidad) via rellenar_indicaciones() (decision usuaria 29-09; el
+  informe de trazabilidad mantiene ademas su seccion 'Solicitudes de
+  la doctora').
 - Las secciones pedidas (INDICACIONES / INTERCONSULTA A X) se extraen
   de la salida del LLM y se AGREGAN al final, tal cual.
 
@@ -221,5 +229,84 @@ def ensamblar_ficha(base: str, salida_llm: str) -> FichaEnsamblada:
             finales += ["", "INDICACIONES:", cuerpo]
             resultado.secciones_agregadas.append("INDICACIONES")
 
+    # Decision usuaria 29-09: sin blockquote de motivo en la ficha.
+    while finales and re.match(r"^\s*>", finales[0]):
+        finales.pop(0)
+
     resultado.texto = "\n".join(finales).strip() + "\n"
     return resultado
+
+
+# ---------------------------------------------------------------------------
+# INDICACIONES: los pedidos de la doctora en la plantilla (REQ-098)
+# ---------------------------------------------------------------------------
+
+_SECCION_INDICACIONES_NUM_RE = re.compile(
+    r"^\s*(\d+)\.\s*INDICACIONES\s*:?\s*$", re.IGNORECASE
+)
+_SIGUIENTE_SECCION_RE = re.compile(r"^\s*\d+\.\s+\S")
+
+
+def rellenar_indicaciones(texto: str, pedidos: list[str]) -> tuple[str, int]:
+    """Escribe los pedidos de la doctora en la seccion INDICACIONES.
+
+    - Seccion numerada de plantilla ('5. INDICACIONES'): los pedidos van
+      como items '5.1.', '5.2.', ... Si la seccion tenia contenido, los
+      pedidos se agregan despues (renumerando).
+    - Seccion sin numero ('INDICACIONES:'): items como vinetas.
+    - Sin seccion: se agrega 'INDICACIONES:' al final (REQ-079).
+
+    Returns:
+        (texto_final, cantidad_de_pedidos_escritos).
+    """
+    pedidos = [p.strip() for p in pedidos if p.strip()]
+    if not pedidos:
+        return texto, 0
+
+    lineas = texto.splitlines()
+    idx_seccion = None
+    numero = None
+    for i, ln in enumerate(lineas):
+        m_num = _SECCION_INDICACIONES_NUM_RE.match(ln)
+        if m_num:
+            idx_seccion, numero = i, m_num.group(1)
+            break
+        if _SECCION_INDICACIONES_RE.match(ln):
+            idx_seccion, numero = i, None
+            break
+
+    if idx_seccion is None:
+        nuevas = ["", "INDICACIONES:"] + [f"- {p}" for p in pedidos]
+        return "\n".join(lineas + nuevas).strip() + "\n", len(pedidos)
+
+    # Fin del cuerpo: siguiente seccion numerada o fin del documento.
+    fin = len(lineas)
+    for j in range(idx_seccion + 1, len(lineas)):
+        if _SIGUIENTE_SECCION_RE.match(lineas[j]):
+            fin = j
+            break
+
+    cuerpo = lineas[idx_seccion + 1 : fin]
+    # Lineas vacias de plantilla ('5.1.', '...', '-', '*') = seccion vacia.
+    vacia = all(
+        re.match(r"^(\s*(\d+\.\d+\.?|\.\.\.|-|\*)?\s*)$", ln) for ln in cuerpo
+    )
+
+    if numero:
+        base_num = int(numero)
+        if vacia:
+            inicio = 1
+        else:
+            usados = [
+                int(m.group(1))
+                for ln in cuerpo
+                if (m := re.match(r"^\s*\d+\.(\d+)\.?\s*\S", ln))
+            ]
+            inicio = (max(usados) + 1) if usados else 1
+        items = [f"   {base_num}.{k}. {p}" for k, p in enumerate(pedidos, inicio)]
+    else:
+        items = [f"- {p}" for p in pedidos]
+
+    nuevo_cuerpo = ([] if vacia else [ln for ln in cuerpo if ln.strip()]) + items
+    finales = lineas[: idx_seccion + 1] + nuevo_cuerpo + lineas[fin:]
+    return "\n".join(finales).strip() + "\n", len(pedidos)

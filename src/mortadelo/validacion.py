@@ -30,8 +30,16 @@ def validar_ficha(
     """Corre las 5 reglas sobre la ficha ensamblada."""
     advertencias: list[Advertencia] = []
 
-    # V1: primera linea de la base presente al inicio de la ficha.
-    primera_base = next((ln for ln in base.splitlines() if ln.strip()), "")
+    # V1: primera linea UTIL de la base presente al inicio de la ficha.
+    # El blockquote del motivo ya no va en la ficha (REQ-098): se salta.
+    primera_base = next(
+        (
+            ln
+            for ln in base.splitlines()
+            if ln.strip() and not ln.strip().startswith(">")
+        ),
+        "",
+    )
     if primera_base and not ficha.startswith(primera_base):
         advertencias.append(
             Advertencia(
@@ -61,7 +69,12 @@ def validar_ficha(
     # (truncamiento). Tolerancia generosa: las secciones agregadas
     # alargan, nunca acortan.
     base_sin_trigger = TRIGGER_RE.split(base)[0]
-    if len(ficha.strip()) < len(base_sin_trigger.strip()) * 0.8:
+    # El blockquote del motivo tampoco va en la ficha (REQ-098): se
+    # descuenta de la base para comparar manzanas con manzanas.
+    base_sin_motivo = "\n".join(
+        ln for ln in base_sin_trigger.splitlines() if not ln.strip().startswith(">")
+    )
+    if len(ficha.strip()) < len(base_sin_motivo.strip()) * 0.8:
         advertencias.append(
             Advertencia("V4_TRUNCADA", "La ficha es notablemente mas corta que la anamnesis base")
         )

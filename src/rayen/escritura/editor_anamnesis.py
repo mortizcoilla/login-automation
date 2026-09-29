@@ -377,11 +377,17 @@ def _historia_de_ficha(ficha: str) -> str:
 
 
 def llenar_editor_nuevo(
-    driver: WebDriver, logger: logging.Logger, ficha: str, timeout: int = 45
+    driver: WebDriver,
+    logger: logging.Logger,
+    ficha: str,
+    timeout: int = 45,
+    motivo: str | None = None,
 ) -> bool:
     """Llena el editor nuevo: motivo + ciclo vital + historia (ficha).
 
-    - #motivoConsulta <- el motivo de la primera linea de la ficha.
+    - #motivoConsulta <- `motivo` si se pasa; si no, el de la primera
+      linea de la ficha (la ficha ya NO trae el marcador desde REQ-098:
+      el caller — cargar_ficha — lo lee del respaldo anam_*).
     - #etapa <- Ciclo vital femenino detectado en la ficha (default:
       No Aplica; Yadira lo revisa en el informe de trazabilidad).
     - #historiaEnfermedad <- la ficha completa (sin la linea del motivo).
@@ -389,7 +395,7 @@ def llenar_editor_nuevo(
     Returns:
         True si los tres campos quedaron seteados con verificacion.
     """
-    motivo = _motivo_de_ficha(ficha)
+    motivo = (motivo if motivo is not None else _motivo_de_ficha(ficha)) or ""
     historia = _historia_de_ficha(ficha)
     logger.info(
         f"[editor_anamnesis] llenando editor nuevo: motivo={motivo!r} "
