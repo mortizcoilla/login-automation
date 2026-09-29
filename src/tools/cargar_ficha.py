@@ -50,8 +50,12 @@ from src.rayen.escritura.editor_anamnesis import (
     ResultadoPegado,
     TipoEditor,
     abrir_editor_anamnesis,
+    agregar_anamnesis_nueva,
+    descartar_anamnesis,
     guardar_editor_anamnesis,
+    llenar_editor_nuevo,
     pegar_en_editor,
+    verificar_anamnesis_guardada,
 )
 from src.rayen.escritura.editor_anamnesis import _historia_de_ficha as _historia_de_ficha_rayen
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
@@ -203,52 +207,81 @@ def cargar_ficha_de_paciente(
         logger.error(f"[cargar_ficha] {resultado.motivo}")
         return resultado
 
-    # 3) Pegar en el editor
-    pegado = pegar_en_editor(driver, texto, logger)
-    resultado.tipo_editor = pegado.tipo_editor.value
-    if not pegado.ok:
-        resultado.estado = "pendiente_selector" if "pendiente selector" in pegado.motivo else "error"
-        resultado.motivo = pegado.motivo
-        return resultado
+    # 3) Flujo de reemplazo (Yadira 23/24-09-2026, probado con caso
+    #    real): descartar la anamnesis vieja (con guardia de respaldo)
+    #    -> 'Agregar!' -> llenar motivo+historia -> Agregar (guardado
+    #    automatico REQ-073) -> verificacion post-guardado.
+    #    El flujo viejo de pegar directo en el lapiz ya no existe en la
+    #    UI de Rayen (incidente 28/29-09: 7/8 errores 'el editor
+    #    #historiaEnfermedad no aparecio').
+    from selenium.webdriver.common.by import By
 
-    # Guardar (REQ-073 revisada 23-09-2026: guardado automatico).
-    if not guardar_editor_anamnesis(driver, logger):
-        resultado.estado = "error"
-        resultado.motivo = "guardar: el editor no cerro tras presionar Guardar"
-        logger.error(f"[cargar_ficha] {resultado.motivo}")
-        return resultado
+    try:
+        driver.find_element(By.CSS_SELECTOR, "li#anamnesis")
+        hay_anamnesis = True
+    except Exception:
+        hay_anamnesis = False
+    logger.info(
+        "[cargar_ficha] entrada de anamnesis en Rayen: %s",
+        "presente" if hay_anamnesis else "AUSENTE (se omite descarte)",
+    )
 
-    # Verificacion post-guardado: reabrir el editor y comparar el
-    # contenido contra la ficha generada (la anamnesis completa debe
-    # quedar cargada en Rayen). Solo lectura: no se vuelve a guardar.
-    textarea = abrir_editor_anamnesis(driver, logger)
-    if textarea is not None:
-        contenido_rayen = textarea.get_attribute("value") or ""
-        if _normalizar_contenido(contenido_rayen) != _normalizar_contenido(texto):
+    if hay_anamnesis:
+        # Guardia dura: sin respaldo en OneDrive no se descarta nada.
+        respaldo = ANAMNESIS_DIR / (
+            f"anam_{safe_filename(paciente.nombre)}_{paciente.fecha}.md"
+        )
+        if not respaldo.exists():
             resultado.estado = "error"
             resultado.motivo = (
-                "verificacion post-guardado: el contenido de Rayen difiere "
-                "de la ficha generada"
+                f"descartar bloqueado: sin respaldo en OneDrive ({respaldo.name})"
             )
             logger.error(f"[cargar_ficha] {resultado.motivo}")
             return resultado
-        logger.info("[cargar_ficha] verificacion post-guardado OK")
-        # El editor reabierto se deja asi (sin cambios pendientes: solo
-        # se leyo). La salida al siguiente paciente es por el menu
-        # lateral 'Pacientes citados' (volver_a_pacientes_citados).
-        # Regla de la usuaria: nunca se presionan botones de cerrar.
-    else:
-        logger.warning(
-            "[cargar_ficha] no se pudo reabrir el editor para verificar; "
-            "el guardado se asume OK por el cierre del editor"
+        if not descartar_anamnesis(driver, logger, respaldo_existe=True):
+            resultado.estado = "error"
+            resultado.motivo = (
+                "el descarte no se confirmo (el respaldo esta a salvo en OneDrive)"
+            )
+            logger.error(f"[cargar_ficha] {resultado.motivo}")
+            return resultado
+
+    textarea = agregar_anamnesis_nueva(driver, logger)
+    if textarea is None:
+        resultado.estado = "error"
+        resultado.motivo = "el boton 'Agregar!' o el editor no aparecieron"
+        logger.error(f"[cargar_ficha] {resultado.motivo}")
+        return resultado
+    resultado.tipo_editor = "formulario"
+
+    if not llenar_editor_nuevo(driver, logger, texto):
+        resultado.estado = "error"
+        resultado.motivo = "no se pudo llenar el editor nuevo (campos no aparecieron)"
+        logger.error(f"[cargar_ficha] {resultado.motivo}")
+        return resultado
+
+    # Agregar = guardado automatico del formulario (REQ-073).
+    if not guardar_editor_anamnesis(driver, logger):
+        resultado.estado = "error"
+        resultado.motivo = "guardar: el editor no cerro tras presionar el boton"
+        logger.error(f"[cargar_ficha] {resultado.motivo}")
+        return resultado
+
+    ficha_cuerpo = _historia_de_ficha_rayen(texto)
+    if not verificar_anamnesis_guardada(driver, logger, ficha_cuerpo):
+        resultado.estado = "error"
+        resultado.motivo = (
+            "verificacion post-guardado: Rayen NO contiene la ficha completa"
         )
+        logger.error(f"[cargar_ficha] {resultado.motivo}")
+        return resultado
 
     resultado.estado = "ok"
-    resultado.caracteres_pegados = pegado.caracteres_pegados or len(texto)
+    resultado.caracteres_pegados = len(texto)
     logger.info(
-        f"[cargar_ficha] pegado OK: {paciente.nombre} | "
-        f"tipo_editor={pegado.tipo_editor.value} | "
-        f"{resultado.caracteres_pegados} chars"
+        f"[cargar_ficha] carga OK: {paciente.nombre} | "
+        f"tipo_editor=formulario | {resultado.caracteres_pegados} chars | "
+        f"verificada"
     )
     return resultado
 

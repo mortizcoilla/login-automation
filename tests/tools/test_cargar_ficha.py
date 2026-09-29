@@ -159,16 +159,23 @@ def test_cargar_ficha_de_paciente_exitoso(
         texto, encoding="utf-8"
     )
     fake_driver = MagicMock()
+    fake_driver.find_element.side_effect = Exception("no anamnesis")
     paciente.panel_cargo = True
 
     with patch(
         "src.tools.cargar_ficha.abrir_ficha_por_nombre",
         return_value=True,
     ), patch(
-        "src.tools.cargar_ficha.pegar_en_editor",
-        return_value=cargar_ficha.pegador_fake_ok(len(texto)),
+        "src.tools.cargar_ficha.agregar_anamnesis_nueva",
+        return_value=MagicMock(),
+    ), patch(
+        "src.tools.cargar_ficha.llenar_editor_nuevo",
+        return_value=True,
     ), patch(
         "src.tools.cargar_ficha.guardar_editor_anamnesis",
+        return_value=True,
+    ), patch(
+        "src.tools.cargar_ficha.verificar_anamnesis_guardada",
         return_value=True,
     ):
         resultado = cargar_ficha.cargar_ficha_de_paciente(
@@ -176,35 +183,37 @@ def test_cargar_ficha_de_paciente_exitoso(
         )
 
     assert resultado.estado == "ok"
-    assert resultado.caracteres_pegados == len(texto)
+    # leer_ficha_generada quita el salto de linea final
+    assert resultado.caracteres_pegados == len(texto.rstrip("\n"))
     assert resultado.ficha_path != ""
 
 
-def test_cargar_ficha_de_paciente_pendiente_selector(
+def test_cargar_ficha_de_paciente_sin_respaldo_bloquea_descarte(
     paciente: PacienteObjetivo,
     logger: logging.Logger,
     tmp_path: Path,
 ) -> None:
-    """Si el pegador devuelve 'pendiente selector' -> estado asi."""
-    texto = "contenido"
+    """Hay anamnesis vieja en Rayen pero NO respaldo en OneDrive:
+    el descarte se BLOQUEA (guardia dura) y el estado es error."""
     (tmp_path / "ficha_Amalia_Andrea_Jara_Irarrázabal_15-09-2026.md").write_text(
-        texto, encoding="utf-8"
+        "> **Motivo:** control\n\nanamnesis\n", encoding="utf-8"
     )
-    fake_driver = MagicMock()
+    fake_driver = MagicMock()  # find_element retorna -> hay_anamnesis True
     paciente.panel_cargo = True
 
     with patch(
         "src.tools.cargar_ficha.abrir_ficha_por_nombre",
         return_value=True,
     ), patch(
-        "src.tools.cargar_ficha.pegar_en_editor",
-        return_value=cargar_ficha.pegador_fake_pendiente_selector(),
+        "src.tools.cargar_ficha.ANAMNESIS_DIR",
+        tmp_path / "anam_vacia",
     ):
         resultado = cargar_ficha.cargar_ficha_de_paciente(
             fake_driver, logger, paciente, fichas_dir=tmp_path
         )
 
-    assert resultado.estado == "pendiente_selector"
+    assert resultado.estado == "error"
+    assert "respaldo" in resultado.motivo
 
 
 # ---------------------------------------------------------------------------
@@ -247,7 +256,9 @@ def test_iterar_pacientes_mezcla_estados(
 
     def fake_abrir_sesion(creds, log):
         sesiones.append(1)
-        return MagicMock()
+        d = MagicMock()
+        d.find_element.side_effect = Exception("no anamnesis")
+        return d
 
     with patch(
         "src.tools.cargar_ficha._abrir_sesion",
@@ -260,10 +271,16 @@ def test_iterar_pacientes_mezcla_estados(
         "src.tools.cargar_ficha.abrir_ficha_por_nombre",
         side_effect=fake_abrir,
     ), patch(
-        "src.tools.cargar_ficha.pegar_en_editor",
-        return_value=cargar_ficha.pegador_fake_ok(1),
+        "src.tools.cargar_ficha.agregar_anamnesis_nueva",
+        return_value=MagicMock(),
+    ), patch(
+        "src.tools.cargar_ficha.llenar_editor_nuevo",
+        return_value=True,
     ), patch(
         "src.tools.cargar_ficha.guardar_editor_anamnesis",
+        return_value=True,
+    ), patch(
+        "src.tools.cargar_ficha.verificar_anamnesis_guardada",
         return_value=True,
     ):
         resultados = cargar_ficha.iterar_pacientes(
@@ -400,7 +417,9 @@ def test_recicla_sesion_cada_8_fichas(logger: logging.Logger, tmp_path: Path) ->
 
     def fake_abrir_sesion(creds, log):
         sesiones.append(1)
-        return MagicMock()
+        d = MagicMock()
+        d.find_element.side_effect = Exception("no anamnesis")
+        return d
 
     def fake_safe_quit(driver, log):
         safe_quits.append(1)
@@ -418,8 +437,10 @@ def test_recicla_sesion_cada_8_fichas(logger: logging.Logger, tmp_path: Path) ->
         patch("src.tools.cargar_ficha.safe_quit", side_effect=fake_safe_quit),
         patch("src.tools.cargar_ficha.volver_a_pacientes_citados", side_effect=fake_volver),
         patch("src.tools.cargar_ficha.abrir_ficha_por_nombre", side_effect=fake_abrir),
-        patch("src.tools.cargar_ficha.pegar_en_editor", return_value=cargar_ficha.pegador_fake_ok(1)),
+        patch("src.tools.cargar_ficha.agregar_anamnesis_nueva", return_value=MagicMock()),
+        patch("src.tools.cargar_ficha.llenar_editor_nuevo", return_value=True),
         patch("src.tools.cargar_ficha.guardar_editor_anamnesis", return_value=True),
+        patch("src.tools.cargar_ficha.verificar_anamnesis_guardada", return_value=True),
     ):
         resultados = cargar_ficha.iterar_pacientes(
             logger, pacientes, credenciales={"u": "1"}, fichas_dir=tmp_path
