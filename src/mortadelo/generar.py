@@ -38,7 +38,7 @@ from src.core.rutas import (
 )
 from src.informes.enriquecer import KEYWORDS_REQUERIMIENTOS, TRIGGER_RE
 from src.informes.parser import parsear_pacientes_objetivo
-from src.mortadelo.ensamblador import ensamblar_ficha, rellenar_indicaciones
+from src.mortadelo.ensamblador import ensamblar_ficha
 from src.mortadelo.llm_cli import LLMError, llm_run
 from src.mortadelo.prompt import Pedidos, construir_prompt_ficha, construir_prompt_informe
 from src.mortadelo.validacion import validar_ficha, validar_informe
@@ -125,26 +125,6 @@ def _pedidos_libres(texto_trigger: str) -> list[str]:
     return libres
 
 
-def _pedidos_crudos(texto_trigger: str) -> list[str]:
-    """TODAS las lineas de pedido del bloque ** mortadelo, tal como las
-    escribio la doctora (estructurados y libres). Van a la seccion
-    INDICACIONES de la ficha (REQ-098).
-    """
-    crudos: list[str] = []
-    for bloque in texto_trigger.split("\n---\n"):
-        for linea in bloque.splitlines():
-            linea = linea.strip()
-            if not linea:
-                continue
-            linea = re.sub(r"^.*mortadelo\s*:?\s*", "", linea, flags=re.IGNORECASE)
-            if not linea or linea == "**":
-                continue
-            linea = re.sub(r"^[-*•]\s*", "", linea).strip()
-            if linea and linea not in crudos:
-                crudos.append(linea)
-    return crudos
-
-
 def _texto_trigger(anamnesis: str) -> str:
     matches = list(TRIGGER_RE.finditer(anamnesis))
     if not matches:
@@ -191,24 +171,6 @@ def generar_paciente(
     resultado.modelo_ficha = modelo
 
     ensamblada = ensamblar_ficha(base, salida_llm)
-
-    # REQ-098: los pedidos de la doctora (lineas del bloque ** mortadelo)
-    # van en la seccion INDICACIONES de la ficha (p.ej. 5.1, 5.2 de la
-    # plantilla de morbilidad). El informe de trazabilidad sigue
-    # trayendo ademas 'Solicitudes de la doctora'.
-    pedidos_crudos = _pedidos_crudos(pedidos.trigger_texto)
-    if pedidos_crudos:
-        ensamblada.texto, n_escritos = rellenar_indicaciones(
-            ensamblada.texto, pedidos_crudos
-        )
-        if n_escritos:
-            resultado.advertencias.append(
-                f"PEDIDOS_FICHA: {n_escritos} indicacion(es) escritas en la ficha"
-            )
-            logger.info(
-                f"[mortadelo] {nombre}: {n_escritos} pedido(s) de la doctora "
-                f"escritos en INDICACIONES de la ficha"
-            )
 
     for adv in validar_ficha(ensamblada.texto, base, info):
         resultado.advertencias.append(f"{adv.codigo}: {adv.mensaje}")

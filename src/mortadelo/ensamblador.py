@@ -15,11 +15,11 @@ Este modulo reconstruye la ficha con GARANTIAS:
 - La primera linea blockquote del motivo ('> **Motivo de atencion:** X')
   NO va en la ficha (decision usuaria 29-09): el motivo vive en su campo
   propio del editor de Rayen, no en el documento.
-- Los PEDIDOS de la doctora (lineas del bloque ** mortadelo) se escriben
-  en la seccion INDICACIONES de la plantilla (p.ej. punto 5 de
-  morbilidad) via rellenar_indicaciones() (decision usuaria 29-09; el
-  informe de trazabilidad mantiene ademas su seccion 'Solicitudes de
-  la doctora').
+- Los PEDIDOS de la doctora NO van crudos a la ficha: la seccion
+  INDICACIONES de la plantilla se llena con las INDICACIONES CLINICAS
+  que escribe el LLM (vinyetas '> - '), que incluyen lo pedido por la
+  doctora convertido en indicacion (decision usuaria 29-09; el informe
+  de trazabilidad mantiene su seccion 'Solicitudes de la doctora').
 - Las secciones pedidas (INDICACIONES / INTERCONSULTA A X) se extraen
   de la salida del LLM y se AGREGAN al final, tal cual.
 
@@ -215,13 +215,20 @@ def ensamblar_ficha(base: str, salida_llm: str) -> FichaEnsamblada:
 
         finales.append(aceptada if aceptada is not None else linea_base)
 
-    # REQ-079: indicaciones obligatorias al final del documento.
-    # - Si la base ya trae un campo indicac con contenido (escrito por la
-    #   doctora) o el LLM lleno el campo vacio en linea: no se agrega nada.
-    # - Si el LLM escribio una seccion INDICACIONES y la base no trae
-    #   campo con contenido: se agrega al final.
+    # REQ-098: si la plantilla trae seccion INDICACIONES VACIA (stubs
+    # '5.1.', '-'...) y el LLM la lleno, entra su contenido (vinyetas
+    # '> - '). Si la doctora ya escribio indicaciones, no se toca.
+    finales, llenadas = _llenar_indicaciones_desde_llm(finales, llm_lineas)
+    if llenadas:
+        resultado.secciones_agregadas.append("INDICACIONES")
+
+    # REQ-079 (docs SIN plantilla): campo 'indicac' con contenido o
+    # seccion INDICACIONES: del LLM al final.
     tiene_indicaciones = any(
         _INDICACIONES_CON_CONTENIDO_RE.match(ln) for ln in finales
+    ) or any(
+        _SECCION_INDICACIONES_RE.match(ln) or _SECCION_INDICACIONES_NUM_RE.match(ln)
+        for ln in finales
     )
     if not tiene_indicaciones:
         cuerpo = _extraer_indicaciones(llm_lineas)
@@ -238,75 +245,86 @@ def ensamblar_ficha(base: str, salida_llm: str) -> FichaEnsamblada:
 
 
 # ---------------------------------------------------------------------------
-# INDICACIONES: los pedidos de la doctora en la plantilla (REQ-098)
+# INDICACIONES: seccion de la plantilla llenada por el LLM (REQ-098)
 # ---------------------------------------------------------------------------
 
 _SECCION_INDICACIONES_NUM_RE = re.compile(
     r"^\s*(\d+)\.\s*INDICACIONES\s*:?\s*$", re.IGNORECASE
 )
 _SIGUIENTE_SECCION_RE = re.compile(r"^\s*\d+\.\s+\S")
+_STUB_VACIO_RE = re.compile(r"^(\s*(\d+\.\d+\.?|\.\.\.|-|\*)?\s*)$")
 
 
-def rellenar_indicaciones(texto: str, pedidos: list[str]) -> tuple[str, int]:
-    """Escribe los pedidos de la doctora en la seccion INDICACIONES.
+def _cuerpo_seccion_indicaciones(lineas: list[str]) -> list[str] | None:
+    """Lineas del cuerpo de la seccion INDICACIONES (o None si no existe).
 
-    - Seccion numerada de plantilla ('5. INDICACIONES'): los pedidos van
-      como items '5.1.', '5.2.', ... Si la seccion tenia contenido, los
-      pedidos se agregan despues (renumerando).
-    - Seccion sin numero ('INDICACIONES:'): items como vinetas.
-    - Sin seccion: se agrega 'INDICACIONES:' al final (REQ-079).
-
-    Returns:
-        (texto_final, cantidad_de_pedidos_escritos).
+    Busca '5. INDICACIONES' (numerada) o 'INDICACIONES:' y toma hasta la
+    siguiente seccion numerada o fin.
     """
-    pedidos = [p.strip() for p in pedidos if p.strip()]
-    if not pedidos:
-        return texto, 0
-
-    lineas = texto.splitlines()
-    idx_seccion = None
-    numero = None
+    idx = None
     for i, ln in enumerate(lineas):
-        m_num = _SECCION_INDICACIONES_NUM_RE.match(ln)
-        if m_num:
-            idx_seccion, numero = i, m_num.group(1)
+        if _SECCION_INDICACIONES_NUM_RE.match(ln) or _SECCION_INDICACIONES_RE.match(ln):
+            idx = i
             break
-        if _SECCION_INDICACIONES_RE.match(ln):
-            idx_seccion, numero = i, None
-            break
-
-    if idx_seccion is None:
-        nuevas = ["", "INDICACIONES:"] + [f"- {p}" for p in pedidos]
-        return "\n".join(lineas + nuevas).strip() + "\n", len(pedidos)
-
-    # Fin del cuerpo: siguiente seccion numerada o fin del documento.
+    if idx is None:
+        return None
     fin = len(lineas)
-    for j in range(idx_seccion + 1, len(lineas)):
+    for j in range(idx + 1, len(lineas)):
         if _SIGUIENTE_SECCION_RE.match(lineas[j]):
             fin = j
             break
+    return lineas[idx + 1 : fin]
 
-    cuerpo = lineas[idx_seccion + 1 : fin]
-    # Lineas vacias de plantilla ('5.1.', '...', '-', '*') = seccion vacia.
-    vacia = all(
-        re.match(r"^(\s*(\d+\.\d+\.?|\.\.\.|-|\*)?\s*)$", ln) for ln in cuerpo
-    )
 
-    if numero:
-        base_num = int(numero)
-        if vacia:
-            inicio = 1
-        else:
-            usados = [
-                int(m.group(1))
-                for ln in cuerpo
-                if (m := re.match(r"^\s*\d+\.(\d+)\.?\s*\S", ln))
-            ]
-            inicio = (max(usados) + 1) if usados else 1
-        items = [f"   {base_num}.{k}. {p}" for k, p in enumerate(pedidos, inicio)]
-    else:
-        items = [f"- {p}" for p in pedidos]
+def _normalizar_item_indicacion(ln: str) -> str | None:
+    """Una linea del LLM -> item '> - texto' (formato de la plantilla).
 
-    nuevo_cuerpo = ([] if vacia else [ln for ln in cuerpo if ln.strip()]) + items
-    finales = lineas[: idx_seccion + 1] + nuevo_cuerpo + lineas[fin:]
-    return "\n".join(finales).strip() + "\n", len(pedidos)
+    Acepta '> - x', '- x', '* x', '5.1. x' o texto plano; devuelve None
+    para lineas vacias o stubs.
+    """
+    texto = ln.strip()
+    if not texto or _STUB_VACIO_RE.match(texto):
+        return None
+    texto = re.sub(r"^\s*>\s*", "", texto)
+    texto = re.sub(r"^\s*[-*•]\s*", "", texto)
+    texto = re.sub(r"^\s*\d+(\.\d+)*\.?\s*", "", texto)
+    texto = texto.strip()
+    return f"> - {texto}" if texto else None
+
+
+def _llenar_indicaciones_desde_llm(
+    finales: list[str], llm_lineas: list[str]
+) -> tuple[list[str], bool]:
+    """Si la seccion INDICACIONES de la base esta VACIA (stubs de
+    plantilla) y el LLM escribio contenido, reemplaza los stubs por las
+    lineas del LLM normalizadas a '> - '.
+
+    Si la base ya tiene contenido (la doctora escribio indicaciones), no
+    se toca (el matching normal del ensamblador ya decidio).
+    """
+    idx = None
+    for i, ln in enumerate(finales):
+        if _SECCION_INDICACIONES_NUM_RE.match(ln) or _SECCION_INDICACIONES_RE.match(ln):
+            idx = i
+            break
+    if idx is None:
+        return finales, False
+
+    fin = len(finales)
+    for j in range(idx + 1, len(finales)):
+        if _SIGUIENTE_SECCION_RE.match(finales[j]):
+            fin = j
+            break
+
+    cuerpo_base = finales[idx + 1 : fin]
+    if not all(_STUB_VACIO_RE.match(ln) for ln in cuerpo_base):
+        return finales, False  # la doctora ya escribio indicaciones
+
+    cuerpo_llm = _cuerpo_seccion_indicaciones(llm_lineas) or []
+    items = [
+        item for item in (_normalizar_item_indicacion(ln) for ln in cuerpo_llm) if item
+    ]
+    if not items:
+        return finales, False
+
+    return finales[: idx + 1] + items + finales[fin:], True

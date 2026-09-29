@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-PROMPT_VERSION = 4
+PROMPT_VERSION = 5
 
 
 @dataclass
@@ -35,9 +35,10 @@ _REGLAS_FICHA = """Ejecucion:
 3. Lo que no este en los insumos y sea interpretable clinicamente, completalo con tu criterio experto, fundamentado.
 4. Los datos factuales del paciente (telefono, domicilio, acompanantes, fechas administrativas) que no existan en ninguna fuente quedan (-).
 5. INDICACIONES (OBLIGATORIAS): todo documento DEBE terminar con indicaciones para el paciente.
+   - Si el documento trae una SECCION NUMERADA de INDICACIONES con items vacios (p. ej. "5. INDICACIONES" seguido de "5.1.", "5.2." vacios): manteniendo el numero y titulo de la seccion EXACTAMENTE igual, reemplaza los items vacios por vinetas en el formato exacto "> - indicacion" (una por linea), con las indicaciones clinicas para el paciente: lo que la doctora pidio en el bloque ** mortadelo CONVERTIDO en indicacion clinica concreta (p. ej. si pidio interconsulta a cirugia: "Derivacion a Cirugia (interconsulta generada). Acudir con carnet y esta ficha.") MAS las indicaciones apropiadas segun diagnosticos, tratamiento e insumos (cuidados, ejercicios, higiene, signos de alarma, etc.).
    - Si el documento trae el campo "indicac"/"indicaciones" CON contenido, dejalo exactamente como esta.
    - Si trae el campo VACIO ("indicac:", "indicaciones:"), completalo EN ESA MISMA linea con las indicaciones para el paciente segun diagnosticos, tratamiento e insumos.
-   - Si el documento NO trae el campo, agregalo AL FINAL como una seccion "INDICACIONES:" con las indicaciones. Esta es la UNICA excepcion permitida a la prohibicion de agregar secciones.
+   - Si el documento NO trae ni seccion ni campo, agregalo AL FINAL como una seccion "INDICACIONES:" con las vinetas "> - ". Esta es la UNICA excepcion permitida a la prohibicion de agregar secciones.
 
 Correccion ortografica: corrige faltas de ortografia del texto de la doctora (letras faltantes o sobrantes, tildes, terminos medicos mal escritos) SIN cambiar el contenido, el estilo, las abreviaturas ni el formato. NO corrijas tiempos verbales, NO mejores la redaccion ni la puntuacion: solo ortografia objetiva.
 
