@@ -224,8 +224,18 @@ def test_estado_corrupto_se_trata_como_fresco(
 
 
 def test_listar_nada_vencido_en_domingo(
-    runner_aislado, tmp_path: Path, capsys: pytest.CaptureFixture
+    runner_aislado, tmp_path: Path, capsys: pytest.CaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Domingo ANTES de la hora programada: nada vencido. Con reloj
+    FIJO: con el reloj real el test fallaba todo domingo despues de
+    las 10:00 (la hora ya llego -> VENCIDO)."""
+
+    class _Domingo0900(datetime):
+        @classmethod
+        def now(cls) -> "datetime":
+            return cls(2026, 10, 11, 9, 0)  # domingo, 09:00
+
+    monkeypatch.setattr(runner, "datetime", _Domingo0900)
     cal = _escribir_calendario(
         tmp_path,
         {"doctores": [{"usuario": "yadira", "horarios": [{"dia": "domingo", "hora": "10:00"}]}]},

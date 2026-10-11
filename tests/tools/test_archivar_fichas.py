@@ -12,8 +12,12 @@ from src.tools.archivar_fichas import (
 
 
 def _informe(tmp_path: Path, pacientes: list[tuple[str, str]]) -> Path:
-    """Informe minimo con el layout del parser (5 columnas, 2+ espacios)."""
-    informe = tmp_path / "informe.txt"
+    """Informe minimo con el layout del parser (5 columnas, 2+ espacios).
+
+    El nombre lleva el MES: REQ-097 toma la subcarpeta del archivo del
+    nombre del informe ('_(MM-AAAA).txt'); un 'informe.txt' sin mes
+    cae al mes actual y el test seria dependiente del calendario."""
+    informe = tmp_path / "informe_fichas_abiertas_09-2026.txt"
     lineas = ["Fichas abiertas"]
     for nombre, fecha in pacientes:
         lineas.append(f"{fecha}  {nombre}  40  Control  motivo x")

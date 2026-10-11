@@ -98,7 +98,14 @@ def test_env_vacio_cae_al_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_informes_siguen_a_analysis_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
-    monkeypatch.setenv("ANALYSIS_DIR", str(tmp_path))
-    r = importlib.reload(rutas)
-    assert r.informe_mes_actual_path().parent == tmp_path
-    assert r.informe_anual_path().parent == tmp_path
+    """Los informes siguen a ANALYSIS_DIR SOLO si el .env real no trae
+    INFORMES_FICHAS_DIR (REQ-089/059: el override de .env manda y en
+    esta maquina apunta a OneDrive). Contexto + reload final para no
+    dejar el modulo contaminado al resto de la sesion."""
+    with monkeypatch.context() as m:
+        m.setenv("ANALYSIS_DIR", str(tmp_path))
+        m.delenv("INFORMES_FICHAS_DIR", raising=False)
+        r = importlib.reload(rutas)
+        assert r.informe_mes_actual_path().parent == tmp_path
+        assert r.informe_anual_path().parent == tmp_path
+    importlib.reload(rutas)
