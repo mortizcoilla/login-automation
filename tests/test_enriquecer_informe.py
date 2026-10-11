@@ -61,6 +61,24 @@ def test_extraer_requerimientos_examenes_si(tmp_path: Path):
     assert resultado["interconsulta"] is False
 
 
+def test_keyword_examenes_revisar_examenes_si():
+    """Frase real de Yadira en el trigger: '- revisar examenes' enciende
+    el pedido (antes solo calzaba 'examenes adjuntos')."""
+    rx = KEYWORDS_REQUERIMIENTOS["examenes"]
+    assert rx.search("- revisar examenes")
+    assert rx.search("- revisar los examenes")
+    assert rx.search("- revisar exámenes")
+    assert rx.search("- examenes adjuntos")  # regression: forma original
+
+
+def test_keyword_examenes_solicitar_examenes_no():
+    """'solicitar examenes' pide examenes NUEVOS (laboratorio), no la
+    revision de los adjuntos: NO debe encender el pedido."""
+    rx = KEYWORDS_REQUERIMIENTOS["examenes"]
+    assert not rx.search("- solicitar examenes de laboratorio")
+    assert not rx.search("- pedir examenes de sangre")
+
+
 def test_extraer_requerimientos_crear_interconsulta_si(tmp_path: Path):
     """Trigger con bullet 'crear interconsulta' -> crear_interconsulta=True."""
     nota = tmp_path / "paciente.md"

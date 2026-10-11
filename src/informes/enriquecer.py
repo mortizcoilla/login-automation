@@ -222,7 +222,8 @@ def _edad_a_decimal(edad_str: str) -> str | None:
 # Case-insensitive, tolerante a tildes y typos comunes.
 KEYWORDS_REQUERIMIENTOS = {
     "examenes": re.compile(
-        r"ex[aá]men(?:es)?\s+adjuntos?",  # examen/examenes/exámenes
+        r"ex[aá]men(?:es)?\s+adjuntos?"  # examen/examenes adjuntos
+        r"|revisar\s+(?:los\s+)?ex[aá]menes?",  # "revisar examenes" (Yadira)
         re.IGNORECASE,
     ),
     "interconsulta": re.compile(
