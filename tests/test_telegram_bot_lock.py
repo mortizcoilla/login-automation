@@ -50,6 +50,23 @@ def test_lock_con_pid_muerto_se_recupera(tmp_path: Path) -> None:
     assert _adquirir_lock(lock) is True
 
 
+def test_pid_vivo_pid_propio_es_true() -> None:
+    assert _pid_vivo(os.getpid()) is True
+
+
+def test_pid_vivo_proceso_terminado_es_false() -> None:
+    """Regresion 2026-10-11: un proceso TERMINADO cuyo objeto sigue
+    referenciado (Popen retiene el handle, igual que el Task
+    Scheduler) se abre con OpenProcess y el _pid_vivo viejo lo daba
+    por vivo -> el bot no recuperaba el lock y quedaba muerto tras
+    reiniciar la tarea. El codigo de salida (no STILL_ACTIVE) lo
+    delata como muerto."""
+    hijo = subprocess.Popen([sys.executable, "-c", "pass"])
+    hijo.wait(timeout=30)
+    assert hijo.poll() is not None  # terminado de verdad
+    assert _pid_vivo(hijo.pid) is False
+
+
 def test_lock_corrupto_se_recupera(tmp_path: Path) -> None:
     lock = tmp_path / "telegram_bot.lock"
     lock.write_text("no-es-un-pid", encoding="utf-8")

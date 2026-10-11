@@ -191,18 +191,32 @@ def build_application(config: BotConfig) -> Application:
 
 
 def _pid_vivo(pid: int) -> bool:
-    """True si el proceso Windows con ese PID sigue corriendo."""
+    """True si el proceso Windows con ese PID sigue corriendo.
+
+    No basta OpenProcess: un proceso TERMINADO cuyo objeto sigue
+    referenciado (el Task Scheduler retiene el handle) se abre igual y
+    hace parecer vivo un lock muerto — caso real 2026-10-11: tras
+    reiniciar la tarea, el bot nuevo veia el PID del viejo como vivo,
+    no recuperaba el lock y se apagaba, dejando el bot muerto para
+    siempre. Se consulta el codigo de salida: mientras corre es
+    STILL_ACTIVE (259); un terminado devuelve su codigo real.
+    """
     try:
         import ctypes
 
+        k32 = ctypes.windll.kernel32
         PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-        handle = ctypes.windll.kernel32.OpenProcess(
-            PROCESS_QUERY_LIMITED_INFORMATION, 0, pid
-        )
+        STILL_ACTIVE = 259
+        handle = k32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid)
         if not handle:
             return False
-        ctypes.windll.kernel32.CloseHandle(handle)
-        return True
+        try:
+            codigo = ctypes.c_ulong()
+            if not k32.GetExitCodeProcess(handle, ctypes.byref(codigo)):
+                return False
+            return codigo.value == STILL_ACTIVE
+        finally:
+            k32.CloseHandle(handle)
     except Exception:
         return False
 
