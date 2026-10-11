@@ -101,18 +101,44 @@ def test_fallo_total_de_transcripcion_conserva_md_previo(tmp_path: Path) -> None
     assert despues == antes, "el md previo no se toca si la transcripcion falla"
 
 
-def test_solo_pdf_sin_fotos_imagen(tmp_path: Path) -> None:
+def test_solo_pdf_se_procesa(tmp_path: Path) -> None:
+    """REQ-101: un PDF SOLO (sin fotos) tambien se consolida — regla
+    11-10-2026: todo examen archivado debe llegar al LLM."""
     crudos = tmp_path / "crudos"
     destino = tmp_path / "examenes"
     crudos.mkdir()
-    (crudos / f"Paciente_Prueba_1_{FECHA}.pdf").write_bytes(b"%PDF fake")
+    import pymupdf
+
+    doc = pymupdf.open()
+    pagina = doc.new_page()
+    pagina.insert_text((72, 72), "HEMOGRAMA: leucocitos 7.000")
+    doc.save(str(crudos / f"Paciente_Prueba_1_{FECHA}.pdf"))
+    doc.close()
+
+    fake, llamadas = _transcriptor_ok()
+    r = consolidar_desde_telegram(PAC, crudos_dir=crudos, destino_dir=destino, transcriptor=fake)
+
+    assert r["ok"] is True
+    md = destino / f"exam_Paciente_Prueba_{FECHA}.md"
+    contenido = md.read_text(encoding="utf-8")
+    assert "[pagina 1]" in contenido, "marcador de pagina del render"
+    assert "GLUCOSA" in contenido
+    assert llamadas  # el transcriptor si fue invocado (sobre la pagina renderizada)
+
+
+def test_sin_archivos_procesables_avisa(tmp_path: Path) -> None:
+    """Sin crudos del paciente: motivo renombrado (los PDF ya se
+    procesan, el motivo viejo 'sin_fotos_imagen' era mentira)."""
+    crudos = tmp_path / "crudos"
+    destino = tmp_path / "examenes"
+    crudos.mkdir()
 
     fake, llamadas = _transcriptor_ok()
     r = consolidar_desde_telegram(PAC, crudos_dir=crudos, destino_dir=destino, transcriptor=fake)
 
     assert r["ok"] is False
-    assert r["motivo"] == "sin_fotos_imagen"
-    assert llamadas == []  # nunca llamo a la API
+    assert r["motivo"] == "sin_archivos_procesables"
+    assert llamadas == []
 
 
 def test_fecha_inferida_de_los_crudos(tmp_path: Path) -> None:

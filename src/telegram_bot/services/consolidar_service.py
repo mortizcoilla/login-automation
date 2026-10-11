@@ -13,8 +13,10 @@ crudas (la fuente inmutable en examenes_crudos). Al consolidar:
     del mismo examen NO acumula _v2/_v3: siempre queda UN solo archivo
     con TODAS las imagenes encontradas.
 
-Los PDF se archivan (mision 1) pero NO se transcriben: la API de vision
-procesa imagenes; el aviso se le informa a Yadira en el reply.
+Los PDF se archivan (mision 1) y SI se transcriben (REQ-101): se
+renderizan a paginas y pasan por el mismo motor de vision, igual que
+las fotos. Regla 11-10-2026: TODO examen archivado debe quedar
+consolidado como insumo del LLM.
 """
 
 from __future__ import annotations
@@ -78,7 +80,7 @@ def consolidar_desde_telegram(
 
     Returns:
         El dict de consolidar_examenes() ({ok, path, fotos, ...}); si no
-        hay imagenes que procesar, {ok: False, motivo: "sin_fotos_imagen"}.
+        hay archivos procesables, {ok: False, motivo: "sin_archivos_procesables"}.
     """
     crudos = crudos_dir if crudos_dir is not None else EXAMENES_CRUDOS_DIR
     destino = destino_dir if destino_dir is not None else EXAMENES_DIR
@@ -90,11 +92,8 @@ def consolidar_desde_telegram(
             "ok": False,
             "path": "",
             "fotos": 0,
-            "motivo": "sin_fotos_imagen",
-            "error": (
-                "No hay imagenes archivadas de ese paciente "
-                "(los PDF se archivan sin OCR)"
-            ),
+            "motivo": "sin_archivos_procesables",
+            "error": "No hay examenes archivados de ese paciente (ni fotos ni PDF)",
         }
 
     fecha = _inferir_fecha(fotos, fecha_atencion)

@@ -1,34 +1,69 @@
 """Consolidacion de examenes: fotos crudas -> exam_<pac>_<fecha>.md (REQ-047).
 
-Paso 2b (opt-in por paciente). Lee las fotos de data/examenes_crudos/
-(paso 2a), las transcribe con la API de vision y consolida UN archivo
-exam_<pac>_<fecha>.md en data/examenes/. NUNCA sobrescribe (_v2, _v3...).
-Si la API falla, el archivado del 2a NO se ve afectado.
+Paso 2b (opt-in por paciente). Lee las fotos y PDFs de
+data/examenes_crudos/ (paso 2a), los transcribe con la API de vision
+(los PDF se renderizan a paginas primero, REQ-101) y consolida UN
+archivo exam_<pac>_<fecha>.md en data/examenes/. NUNCA sobrescribe
+(_v2, _v3...). Si la API falla, el archivado del 2a NO se ve afectado.
 """
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from pathlib import Path
 
 from src.core.fechas import fecha_hoy_str
 from src.core.nombres import nombre_a_filename, safe_filename
 from src.core.rutas import EXAMENES_CRUDOS_DIR, EXAMENES_DIR
+from src.examenes.pdf import renderizar_paginas
 from src.examenes.vision_api import DEFAULT_MODEL, transcribir_imagen
 
 # Extensiones que la API de vision procesa como imagen.
 EXTENSIONES_IMAGEN = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 
+# Lo que el paso 2b sabe procesar: imagenes + PDF (render previo a
+# paginas, REQ-101). Regla 11-10-2026: TODO examen archivado debe
+# terminar consolidado como insumo del LLM.
+EXTENSIONES_PROCESABLES = EXTENSIONES_IMAGEN | {".pdf"}
+
 
 def buscar_fotos_crudas(paciente: str, fecha: str | None, crudos_dir: Path) -> list[Path]:
-    """Fotos archivadas del paciente (y fecha si se dio), ordenadas por nombre."""
+    """Fotos/PDF archivados del paciente (y fecha si se dio), ordenados por nombre."""
     prefijo = nombre_a_filename(paciente) + "_"
     fotos = [
-        p for p in sorted(crudos_dir.glob(prefijo + "*")) if p.suffix.lower() in EXTENSIONES_IMAGEN
+        p
+        for p in sorted(crudos_dir.glob(prefijo + "*"))
+        if p.suffix.lower() in EXTENSIONES_PROCESABLES
     ]
     if fecha:
         fotos = [p for p in fotos if f"_{fecha}" in p.stem]
     return fotos
+
+
+def transcribir_archivo(ruta: Path, transcriptor: Callable[[Path], str]) -> str:
+    """OCR de un archivo procesable (REQ-101).
+
+    Imagen: pasa directo al transcriptor. PDF: renderiza cada pagina a
+    PNG y transcribe pagina a pagina, uniendo con marcadores '[pagina N]'
+    para que el LLM conserve el orden del documento. Las imagenes del
+    render son temporales y se borran al salir.
+    """
+    if ruta.suffix.lower() != ".pdf":
+        return transcriptor(ruta)
+    paginas = renderizar_paginas(ruta)
+    try:
+        partes = []
+        for i, pag in enumerate(paginas, start=1):
+            texto = (transcriptor(pag) or "").strip()
+            partes.append(f"[pagina {i}]\n{texto}" if texto else f"[pagina {i}] (sin texto)")
+        return "\n\n".join(partes)
+    finally:
+        for pag in paginas:
+            pag.unlink(missing_ok=True)
+        if paginas:
+            with contextlib.suppress(OSError):
+                paginas[0].parent.rmdir()
 
 
 def _resolver_destino(destino_dir: Path, nombre: str) -> Path:
@@ -86,7 +121,7 @@ def consolidar_examenes(
     textos: list[str] = []
     for foto in fotos:
         try:
-            texto = transcriptor(foto)
+            texto = transcribir_archivo(foto, transcriptor)
             transcripciones.append((foto.name, texto, ""))
         except Exception as e:
             transcripciones.append((foto.name, None, str(e)))

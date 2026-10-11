@@ -9,6 +9,7 @@ dependencies = [
     "requests>=2.31.0",
     "python-dotenv>=1.0.0",
     "python-telegram-bot>=22.8",
+    "pymupdf>=1.28.0",  # render de paginas PDF para el OCR (REQ-101)
 ]
 
 [project.optional-dependencies]

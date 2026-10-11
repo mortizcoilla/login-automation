@@ -7,7 +7,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.examenes.consolidar import buscar_fotos_crudas, consolidar_examenes
+from src.examenes import consolidar
+from src.examenes.consolidar import (
+    buscar_fotos_crudas,
+    consolidar_examenes,
+    transcribir_archivo,
+)
+from src.examenes.pdf import renderizar_paginas
 from src.examenes.vision_api import VisionAPIError
 
 
@@ -42,10 +48,6 @@ class TestBuscarFotosCrudas:
         _foto(tmp_path, "juan_perez_1_12-09-2026.jpg")
         fotos = buscar_fotos_crudas("Juan Perez", "12-09-2026", tmp_path)
         assert [f.name for f in fotos] == ["juan_perez_1_12-09-2026.jpg"]
-
-    def test_ignora_pdfs(self, tmp_path: Path) -> None:
-        (tmp_path / "juan_perez_1_10-09-2026.pdf").write_bytes(b"x")
-        assert buscar_fotos_crudas("Juan Perez", None, tmp_path) == []
 
 
 class TestConsolidar:
@@ -122,3 +124,105 @@ class TestConsolidar:
         texto = Path(r["path"]).read_text(encoding="utf-8")
         assert "transcripcion fallo: timeout" in texto
         assert "OK" in texto
+
+
+# --- REQ-101: PDF al OCR ------------------------------------------------------
+
+
+def _pdf_dos_paginas(ruta: Path) -> Path:
+    """PDF real de 2 paginas generado con pymupdf (sin red ni fixtures binarios)."""
+    import pymupdf
+
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+
+    doc = pymupdf.open()
+    for texto in ("HEMOGRAMA pagina uno", "GLUCOSA pagina dos"):
+        pagina = doc.new_page()
+        pagina.insert_text((72, 72), texto)
+    doc.save(str(ruta))
+    doc.close()
+    return ruta
+
+
+class TestRenderizarPaginas:
+    def test_un_png_por_pagina_en_orden(self, tmp_path: Path) -> None:
+        pdf = _pdf_dos_paginas(tmp_path / "lab.pdf")
+        destino = tmp_path / "paginas"
+        paginas = renderizar_paginas(pdf, destino_dir=destino)
+        assert len(paginas) == 2
+        assert [p.name for p in paginas] == ["lab_pag001.png", "lab_pag002.png"]
+        assert all(p.exists() for p in paginas)
+        assert all(p.stat().st_size > 0 for p in paginas)
+
+
+
+class TestTranscribirArchivo:
+    def test_imagen_pasa_directo_al_transcriptor(self, tmp_path: Path) -> None:
+        foto = tmp_path / "x.jpg"
+        foto.write_bytes(b"\xff\xd8fake")
+        assert transcribir_archivo(foto, _fake_ok) == "TRANSCRIPCION de x.jpg"
+
+    def test_pdf_una_llamada_por_pagina_con_marcadores(self, tmp_path: Path) -> None:
+        pdf = _pdf_dos_paginas(tmp_path / "lab.pdf")
+        texto = transcribir_archivo(pdf, _fake_ok)
+        assert "[pagina 1]" in texto and "[pagina 2]" in texto
+        assert texto.index("[pagina 1]") < texto.index("[pagina 2]")
+        assert "lab_pag001" in texto and "lab_pag002" in texto
+
+    def test_pdf_limpia_las_imagenes_del_render(self, tmp_path: Path, monkeypatch) -> None:
+        """Las paginas renderizadas son temporales: al salir no queda
+        rastro en el directorio temporal del render."""
+        pdf = _pdf_dos_paginas(tmp_path / "lab.pdf")
+        creadas: list[Path] = []
+
+        def render_falso(_pdf: Path, dpi: int = 150, destino_dir=None) -> list[Path]:
+            import tempfile
+
+            d = Path(tempfile.mkdtemp(prefix="ocr_pdf_test_"))
+            for i in (1, 2):
+                p = d / f"pag{i}.png"
+                p.write_bytes(b"png")
+                creadas.append(p)
+            return creadas
+
+        monkeypatch.setattr(consolidar, "renderizar_paginas", render_falso)
+        transcribir_archivo(pdf, _fake_ok)
+        assert all(not p.exists() for p in creadas), "paginas temporales borradas"
+        assert not creadas[0].parent.exists(), "directorio temporal del render borrado"
+
+    def test_pdf_con_pagina_sin_texto_marca_la_pagina(self, tmp_path: Path, monkeypatch) -> None:
+        pdf = _pdf_dos_paginas(tmp_path / "lab.pdf")
+
+        def solo_pagina_2(_p: Path) -> str:
+            return "TEXTO DOS" if "pag002" in _p.name else ""
+
+        monkeypatch.setattr(consolidar, "renderizar_paginas", lambda *_a, **_k: [
+            tmp_path / "lab_pag001.png",
+            tmp_path / "lab_pag002.png",
+        ])
+        texto = transcribir_archivo(pdf, solo_pagina_2)
+        assert "[pagina 1] (sin texto)" in texto
+        assert "TEXTO DOS" in texto
+
+
+class TestConsolidarConPdf:
+    def test_buscar_fotos_crudas_incluye_pdf(self, tmp_path: Path) -> None:
+        _foto(tmp_path, "juan_perez_1_10-09-2026.jpg")
+        _pdf_dos_paginas(tmp_path / "juan_perez_2_10-09-2026.pdf")
+        fotos = buscar_fotos_crudas("Juan Perez", None, tmp_path)
+        assert [f.suffix for f in fotos] == [".jpg", ".pdf"]
+
+    def test_consolidar_pdf_end_to_end(self, tmp_path: Path) -> None:
+        crudos = tmp_path / "crudos"
+        _pdf_dos_paginas(crudos / "juan_perez_1_10-09-2026.pdf")
+        r = consolidar_examenes(
+            "Juan Perez",
+            crudos_dir=crudos,
+            destino_dir=tmp_path / "out",
+            transcriptor=_fake_ok,
+        )
+        assert r["ok"] is True
+        texto = Path(r["path"]).read_text(encoding="utf-8")
+        assert "juan_perez_1_10-09-2026.pdf" in texto  # fuente
+        assert "[pagina 1]" in texto and "[pagina 2]" in texto
+        assert "pag001" in texto  # las paginas del render llevan el stem del PDF
