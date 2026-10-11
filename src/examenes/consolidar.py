@@ -66,6 +66,27 @@ def transcribir_archivo(ruta: Path, transcriptor: Callable[[Path], str]) -> str:
                 paginas[0].parent.rmdir()
 
 
+def transcriptor_por_ambiente() -> Callable[[Path], str]:
+    """Motor OCR segun OCR_ENGINE: opencode (default), gemini o zai.
+
+    Misma seleccion del bot de Telegram: el CLI, la conciliacion diaria
+    y el bot consolidan con el mismo motor.
+    """
+    import os
+
+    from src.examenes.gemini_api import transcribir_imagen as _gemini
+    from src.examenes.ocr_opencode import transcribir_imagen as _opencode
+    from src.examenes.vision_api import transcribir_imagen as _zai
+
+    motores: dict[str, Callable[[Path], str]] = {
+        "opencode": _opencode,
+        "gemini": _gemini,
+        "zai": _zai,
+    }
+    motor = os.getenv("OCR_ENGINE", "opencode").strip().lower()
+    return motores.get(motor, _opencode)
+
+
 def _resolver_destino(destino_dir: Path, nombre: str) -> Path:
     destino_dir.mkdir(parents=True, exist_ok=True)
     candidato = destino_dir / nombre
@@ -86,8 +107,14 @@ def consolidar_examenes(
     destino_dir: Path = EXAMENES_DIR,
     transcriptor: Callable[[Path], str] = transcribir_imagen,
     modelo: str | None = None,
+    fotos: list[Path] | None = None,
 ) -> dict:
     """Transcribe las fotos crudas de un paciente y consolida exam_<pac>_<fecha>.md.
+
+    Args:
+        fotos: override de la busqueda por prefijo (usado por la
+            conciliacion REQ-102 para reconslidar variantes crudas que
+            viven bajo OTRO prefijo). None = buscar_fotos_crudas().
 
     Returns:
         dict {ok, path, fotos, transcripciones: list[(nombre, texto|None, error)],
@@ -101,7 +128,7 @@ def consolidar_examenes(
         "fecha_resuelta": "",
         "error": "",
     }
-    fotos = buscar_fotos_crudas(paciente, fecha, crudos_dir)
+    fotos = fotos if fotos is not None else buscar_fotos_crudas(paciente, fecha, crudos_dir)
     if not fotos:
         resultado["error"] = (
             f"No hay fotos crudas de '{paciente}'"

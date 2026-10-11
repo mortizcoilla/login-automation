@@ -167,13 +167,15 @@ def runner_aislado(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     return llamadas
 
 
-def test_cadena_ok_corre_6_pasos(runner_aislado, tmp_path: Path) -> None:
+def test_cadena_ok_corre_7_pasos(runner_aislado, tmp_path: Path) -> None:
     assert runner.ejecutar_cadena("yadira") == 0
-    assert len(runner_aislado) == 6
+    assert len(runner_aislado) == 7
     assert runner_aislado[0] == ["-m", "src.analysis.actualizar_mes_actual", "yadira"]
     assert runner_aislado[2][-2:] == ["--user", "yadira"]
-    assert runner_aislado[4] == ["-m", "src.tools.mortadelo", "--todos"]
-    assert runner_aislado[5] == [
+    # REQ-102: conciliacion de examenes ANTES de Mortadelo
+    assert runner_aislado[4] == ["-m", "src.tools.consolidar_examenes", "--pendientes"]
+    assert runner_aislado[5] == ["-m", "src.tools.mortadelo", "--todos"]
+    assert runner_aislado[6] == [
         "-m", "src.tools.cargar_ficha", "--todos", "--user", "yadira"
     ]
 
@@ -259,7 +261,7 @@ def test_paso7_con_omitidos_pero_con_fichas_es_exito(
 
     def _fake_run(cmd: list[str], **kwargs: object) -> _Res:
         llamadas.append(cmd[1:])
-        if len(llamadas) == 5:
+        if len(llamadas) == 6:
             # mortadelo escribe su resumen y sale con omitidos
             with open(log, "a", encoding="utf-8") as fh:
                 fh.write("[mortadelo] === Resumen: 4/6 pacientes completos ===" + chr(10))
@@ -268,7 +270,7 @@ def test_paso7_con_omitidos_pero_con_fichas_es_exito(
 
     monkeypatch.setattr(runner.subprocess, "run", _fake_run)
     assert runner.ejecutar_cadena("yadira") == 0
-    assert len(llamadas) == 6
+    assert len(llamadas) == 7
 
 
 def test_paso7_fallo_total_sigue_siendo_fallo(

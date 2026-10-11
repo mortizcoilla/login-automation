@@ -82,7 +82,8 @@ def test_linea_vacia_suprimida() -> None:
     assert fd.clasificar_linea("   \n") is None
 
 
-def test_cadena_tiene_los_7_pasos_y_termina_en_archivo() -> None:
-    assert [num for num, _, _ in fd.PASOS] == ["4", "5", "3", "6", "7", "8", "A"]
+def test_cadena_tiene_los_8_pasos_y_termina_en_archivo() -> None:
+    assert [num for num, _, _ in fd.PASOS] == ["4", "5", "3", "6", "2b", "7", "8", "A"]
+    assert "consolidar_examenes" in " ".join(fd.PASOS[4][2])  # REQ-102
     assert "cargar_ficha" in " ".join(fd.PASOS[-2][2])
     assert "archivar_fichas" in " ".join(fd.PASOS[-1][2])  # REQ-097

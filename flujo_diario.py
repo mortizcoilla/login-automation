@@ -48,6 +48,11 @@ PASOS = [
     ),
     ("6", "Enriquecer el informe", ["-m", "src.analysis.enriquecer_informe"]),
     (
+        "2b",
+        "Conciliar examenes pendientes (OCR de TODO lo archivado, REQ-102)",
+        ["-m", "src.tools.consolidar_examenes", "--pendientes"],
+    ),
+    (
         "7",
         "Mortadelo: fichas completas + informes de trazabilidad (LLM)",
         ["-m", "src.tools.mortadelo", "--todos"],

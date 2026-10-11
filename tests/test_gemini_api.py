@@ -88,13 +88,18 @@ def test_transcripcion_vacia_levanta_error(monkeypatch: pytest.MonkeyPatch, tmp_
 
 
 def test_selector_de_motor_ocr(monkeypatch: pytest.MonkeyPatch) -> None:
-    from src.telegram_bot.services import consolidar_service
+    """El selector vive en examenes.consolidar (compartido por el bot,
+    el CLI y la conciliacion diaria, REQ-102)."""
+    from src.examenes import consolidar
+    from src.examenes.gemini_api import transcribir_imagen as gemini
+    from src.examenes.ocr_opencode import transcribir_imagen as opencode
+    from src.examenes.vision_api import transcribir_imagen as zai
 
     monkeypatch.delenv("OCR_ENGINE", raising=False)
-    assert consolidar_service._transcriptor_default() is consolidar_service._opencode
+    assert consolidar.transcriptor_por_ambiente() is opencode
     monkeypatch.setenv("OCR_ENGINE", "gemini")
-    assert consolidar_service._transcriptor_default() is consolidar_service._gemini
+    assert consolidar.transcriptor_por_ambiente() is gemini
     monkeypatch.setenv("OCR_ENGINE", "zai")
-    assert consolidar_service._transcriptor_default() is consolidar_service._zai
+    assert consolidar.transcriptor_por_ambiente() is zai
     monkeypatch.setenv("OCR_ENGINE", "motor-extrano")
-    assert consolidar_service._transcriptor_default() is consolidar_service._opencode
+    assert consolidar.transcriptor_por_ambiente() is opencode

@@ -21,29 +21,17 @@ consolidado como insumo del LLM.
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from pathlib import Path
 
 from src.core.fechas import fecha_hoy_str
 from src.core.nombres import safe_filename
 from src.core.rutas import EXAMENES_CRUDOS_DIR, EXAMENES_DIR
-from src.examenes.consolidar import buscar_fotos_crudas, consolidar_examenes
-from src.examenes.gemini_api import transcribir_imagen as _gemini
-from src.examenes.ocr_opencode import transcribir_imagen as _opencode
-from src.examenes.vision_api import transcribir_imagen as _zai
-
-_MOTORES: dict[str, Callable[[Path], str]] = {
-    "opencode": _opencode,
-    "gemini": _gemini,
-    "zai": _zai,
-}
-
-
-def _transcriptor_default() -> Callable[[Path], str]:
-    """Motor OCR segun OCR_ENGINE: opencode (default), gemini o zai."""
-    motor = os.getenv("OCR_ENGINE", "opencode").strip().lower()
-    return _MOTORES.get(motor, _opencode)
+from src.examenes.consolidar import (
+    buscar_fotos_crudas,
+    consolidar_examenes,
+    transcriptor_por_ambiente,
+)
 
 
 def _inferir_fecha(fotos: list[Path], fecha: str | None) -> str:
@@ -84,7 +72,7 @@ def consolidar_desde_telegram(
     """
     crudos = crudos_dir if crudos_dir is not None else EXAMENES_CRUDOS_DIR
     destino = destino_dir if destino_dir is not None else EXAMENES_DIR
-    transcriptor = transcriptor or _transcriptor_default()
+    transcriptor = transcriptor or transcriptor_por_ambiente()
 
     fotos = buscar_fotos_crudas(nombre_paciente, fecha_atencion, crudos)
     if not fotos:

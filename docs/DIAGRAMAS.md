@@ -74,6 +74,11 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
                            │
                            ▼
 +---------------------------------------------------------------+
+| (2b) src.tools.consolidar_examenes --pendientes   [OCR] REQ-102 |
+|     concilia todo examen crudo sin md ANTES de Mortadelo      |
++----------------------------+---------------------------------+
+                             v
++---------------------------------------------------------------+
 | (7) python -m src.tools.mortadelo --todos            [LLM]    |
 |     src/mortadelo/: 2 llamadas por paciente (opencode CLI,    |
 |     cascada de modelos)                                       |
@@ -199,11 +204,24 @@ REQ-009 (opt-in) / REQ-012 (2a, archivar) / REQ-047 (2b, vision z.ai).
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ (2b) python -m src.tools.consolidar_examenes               ┃
 ┃             --paciente "Nombre Apellido"                   ┃
-┃      src/examenes/vision_api.py ──► API z.ai (GLM vision)  ┃
+┃      fotos ──► vision API directo                          ┃
+┃      PDF   ──► pdf.py render paginas ──► vision por pagina ┃
+┃      (REQ-101: TODO examen archivado se consolida)         ┃
 ┃      Transcripcion FIEL: el modelo NO interpreta (REQ-001) ┃
 ┗━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
                    ▼
-   data/examenes/exam_<pac>_<fecha>.md  (nunca sobrescribe: _v2, _v3...)
+   data/examenes/exam_<pac>_<fecha>.md  (archivo unico; el bot lo
+   reemplaza al re-consolidar, REQ-061)
+                   │
+                   ▼  (si algo quedo sin md: fallo de OCR en su
+                   ▼   momento, foto llego antes de la nota, etc.)
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ (2b-conciliacion, REQ-102, paso diario)                    ┃
+┃      python -m src.tools.consolidar_examenes --pendientes  ┃
+┃      crudo sin aparecer en archivos_origen de ningun md    ┃
+┃      ──► re-resuelve nombre contra notas_clinicas/ y       ┃
+┃      consolida el md canonico. Best-effort, idempotente.   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
 ## 3. La arquitectura de capas (quien puede usar a quien)
