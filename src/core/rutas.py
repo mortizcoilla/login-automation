@@ -68,6 +68,10 @@ INFORMES_FICHAS_DIR = _dir_desde_env("INFORMES_FICHAS_DIR", ANALISIS_DIR)
 PAPERS_DIR = _dir_desde_env("PAPERS_DIR", INFORMES_FICHAS_DIR / "papers")
 # Estado del bot/scheduler (ofertas de papers, etc.) — local, no OneDrive.
 ESTADOS_DIR = _dir_desde_env("ESTADOS_DIR", DATA_DIR / "estados")
+# REQ-103: base del PCIC que el LLM llena cuando el bloque ** mortadelo
+# pide PCIC. La copia VIVA la edita el usuario en OneDrive: apuntar
+# PCIC_BASE_PATH ahi via .env; el default cubre una instalacion local.
+PCIC_BASE_PATH = _dir_desde_env("PCIC_BASE_PATH", DATA_DIR / "pcic_base.txt")
 SCREENSHOTS_DIR = _dir_desde_env("SCREENSHOTS_DIR", DATA_DIR / "logs" / "screenshots")
 LOGS_DIR = _dir_desde_env("LOGS_DIR", ROOT / "logs")
 

@@ -241,12 +241,113 @@ def ensamblar_ficha(base: str, salida_llm: str) -> FichaEnsamblada:
             finales += ["", "INDICACIONES:", cuerpo]
             resultado.secciones_agregadas.append("INDICACIONES")
 
+    # REQ-103: bloque PCIC que el LLM genero bajo la linea 'PCIC:'.
+    # Se coloca en la seccion 'plan individual de cuidados consensuados'
+    # de la plantilla (llenandola si esta vacia), o se agrega al final si
+    # la plantilla no la trae. Si la doctora ya escribio su PCIC, el suyo
+    # manda (Regla 10 del propio base) y el bloque del LLM se descarta.
+    cuerpo_pcic = _extraer_pcic(llm_lineas)
+    if cuerpo_pcic:
+        finales, colocado = _colocar_pcic(finales, cuerpo_pcic)
+        if colocado:
+            resultado.secciones_agregadas.append("PCIC")
+
     # Decision usuaria 29-09: sin blockquote de motivo en la ficha.
     while finales and re.match(r"^\s*>", finales[0]):
         finales.pop(0)
 
     resultado.texto = "\n".join(finales).strip() + "\n"
     return resultado
+
+
+# ---------------------------------------------------------------------------
+# PCIC: seccion de la plantilla llenada por el LLM (REQ-103)
+# ---------------------------------------------------------------------------
+
+# Marcador que la salida del LLM usa para entregar el bloque.
+_SECCION_PCIC_LLM_RE = re.compile(r"^\s*\**\s*PCIC\s*:?\s*\**\s*$", re.IGNORECASE)
+# Seccion del PCIC en la plantilla de la doctora, variantes reales:
+# 'PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS', 'ACTUALIZACION PLAN
+# INDIVIDUAL DE CUIDADOS CONSENSUADOS', '11. Plan individual de
+# cuidados consensuados y conducta clinica'.
+_SECCION_PCIC_PLANTILLA_RE = re.compile(
+    r"^\s*(?:\d+\s*[\.\)]\s*)?(?:actualizaci[oó]n\s+)?"
+    r"plan\s+individual\s+de\s+cuidados\s+consensuados",
+    re.IGNORECASE,
+)
+
+
+def _extraer_pcic(llm_lineas: list[str]) -> str | None:
+    """Cuerpo del bloque PCIC de la salida del LLM (lineas tras 'PCIC:').
+
+    El bloque va AL FINAL de la salida: se toma hasta el fin. None si no
+    hay marcador o el cuerpo queda vacio.
+    """
+    for i, ln in enumerate(llm_lineas):
+        if _SECCION_PCIC_LLM_RE.match(ln):
+            cuerpo = "\n".join(llm_lineas[i + 1 :]).strip()
+            return cuerpo or None
+    return None
+
+
+# Stubs del PCIC en la plantilla: '1.'-'5.' o '1)'-'5)' SIN contenido
+# (los stubs de INDICACIONES son anidados '5.1.'; los del PCIC son de
+# un nivel, y el regex general los leia como contenido real).
+_PCIC_STUB_RE = re.compile(r"^\s*(\d+\.\d+\.?|\d+[.\)]|-|\*|\.\.\.)?\s*$")
+
+
+def _fin_seccion_pcic(lineas: list[str], idx: int) -> int:
+    """Fin del cuerpo de la seccion PCIC que empieza en idx.
+
+    Las lineas del PCIC son numeradas SECUENCIALES (1., 2., ... 5. —
+    exacto al base). Un salto de numeracion (ej. 12. tras llegar al 5)
+    marca la siguiente seccion de la plantilla. Sin este criterio, el
+    detector generico de 'siguiente seccion numerada' veia CADA item
+    del PCIC como una seccion nueva y leia el cuerpo de la doctora
+    como vacio.
+    """
+    esperado = 1
+    fin = len(lineas)
+    for j in range(idx + 1, len(lineas)):
+        m = re.match(r"^\s*(\d+)[\.\)]\s*(.*)$", lineas[j])
+        if m:
+            num = int(m.group(1))
+            if num == esperado:
+                esperado += 1
+                continue
+            fin = j
+            break
+    return fin
+
+
+def _cuerpo_pcic_vacio(lineas: list[str]) -> bool:
+    """True si el cuerpo de la seccion PCIC de la plantilla esta vacio
+    (solo stubs). '1. Objetivo: X' es contenido; '1.' o '1)' es stub."""
+    return not any(ln.strip() and not _PCIC_STUB_RE.match(ln) for ln in lineas)
+
+
+def _colocar_pcic(finales: list[str], cuerpo_pcic: str) -> tuple[list[str], bool]:
+    """Coloca el bloque PCIC del LLM en la ficha (REQ-103).
+
+    - Plantilla con la seccion VACIA/STUBS -> se llena con el bloque.
+    - Plantilla con el PCIC ya escrito por la doctora -> intacta (el suyo
+      manda) y el bloque del LLM se descarta.
+    - Plantilla sin la seccion -> bloque agregado al final con el titulo
+      canonico.
+    Devuelve (finales, colocado).
+    """
+    bloque = cuerpo_pcic.splitlines()
+    idx = next(
+        (i for i, ln in enumerate(finales) if _SECCION_PCIC_PLANTILLA_RE.match(ln)),
+        None,
+    )
+    if idx is None:
+        return finales + ["", "PLAN INDIVIDUAL DE CUIDADOS CONSENSUADOS", *bloque], True
+
+    fin = _fin_seccion_pcic(finales, idx)
+    if _cuerpo_pcic_vacio(finales[idx + 1 : fin]):
+        return finales[: idx + 1] + bloque + finales[fin:], True
+    return finales, False  # la doctora ya lo escribio: el suyo manda
 
 
 # ---------------------------------------------------------------------------

@@ -44,6 +44,9 @@ from src.mortadelo.prompt import Pedidos, construir_prompt_ficha, construir_prom
 from src.mortadelo.validacion import validar_ficha, validar_informe
 
 _ESPECIALIDAD_RE = re.compile(r"interconsulta(?:\s+a|\s+de)?\s+([a-záéíóúñ]+)", re.IGNORECASE)
+# REQ-103: basta que el bloque mencione PCIC ("generar PCIC", "hacer
+# PCIC", "PCIC" a secas): la zona es de instrucciones de la doctora.
+_PCIC_RE = re.compile(r"pcic", re.IGNORECASE)
 
 Logger = logging.Logger
 LLMRun = Callable[[str], tuple[str, str]]
@@ -95,8 +98,31 @@ def detectar_pedidos(base_anamnesis: str) -> Pedidos:
         pedidos.interconsulta_especialidad = m.group(1).lower() if m else "especialidad"
     if KEYWORDS_REQUERIMIENTOS["indicaciones"].search(texto_trigger):
         pedidos.indicaciones = True
+    if _PCIC_RE.search(texto_trigger):
+        pedidos.pcic = True
     pedidos.pedidos_libres = _pedidos_libres(texto_trigger)
     return pedidos
+
+
+def cargar_pcic_base(logger: Logger | None = None) -> str | None:
+    """Contenido del base del PCIC (REQ-103) o None si no esta disponible.
+
+    La copia viva vive en OneDrive (PCIC_BASE_PATH via .env). Si falta,
+    se avisa y el pedido PCIC se ignora en esta corrida: mejor sin PCIC
+    que con un inventado por el LLM.
+    """
+    from src.core.rutas import PCIC_BASE_PATH
+
+    try:
+        texto = PCIC_BASE_PATH.read_text(encoding="utf-8-sig", errors="replace").strip()
+    except OSError as e:
+        (logger or logging.getLogger("mortadelo")).warning(
+            "PCIC_BASE_PATH no legible (%s): pedido PCIC sin base; se ignora. Error: %s",
+            PCIC_BASE_PATH,
+            e,
+        )
+        return None
+    return texto or None
 
 
 def _pedidos_libres(texto_trigger: str) -> list[str]:
@@ -159,11 +185,12 @@ def generar_paciente(
     info = _leer(INFO_PACIENTE_DIR / f"info_{safe_filename(nombre)}_{fecha}.md") or ""
     examenes = _leer(EXAMENES_DIR / f"exam_{safe_filename(nombre)}_{fecha}.md")
     pedidos = detectar_pedidos(base)
+    pcic_base = cargar_pcic_base(logger) if pedidos.pcic else None
 
     # LLAMADA 1: ficha -> ensamblar -> validar
     try:
         salida_llm, modelo = llm(
-            construir_prompt_ficha(nombre, fecha, base, info, examenes, pedidos)
+            construir_prompt_ficha(nombre, fecha, base, info, examenes, pedidos, pcic_base)
         )
     except LLMError as e:
         resultado.error = f"LLM ficha: {e}"

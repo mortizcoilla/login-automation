@@ -26,6 +26,7 @@ class Pedidos:
     examenes: bool = False
     interconsulta_especialidad: str | None = None
     indicaciones: bool = False
+    pcic: bool = False
     pedidos_libres: list[str] = field(default_factory=list)
 
 
@@ -56,6 +57,28 @@ def _bloque_trigger(pedidos: Pedidos) -> str:
     )
 
 
+def _bloque_pcic(pedidos: Pedidos, pcic_base: str | None) -> str:
+    """Insumo + regla del PCIC (REQ-103), solo cuando el bloque ** mortadelo
+    pide PCIC y la base esta disponible.
+
+    El LLM entrega el plan al final de su salida bajo la linea exacta
+    'PCIC:'; el ENSAMBLADOR decide donde va (la plantilla con la seccion
+    vacia se llena, la ya escrita por la doctora manda, la ausente se
+    agrega al final). Aca solo instruimos la generacion.
+    """
+    if not pedidos.pcic or not pcic_base:
+        return ""
+    return f"""=== INSUMO 3 - PCIC: base aprobada y reglas de customizacion ===
+{pcic_base.strip()}
+=== FIN INSUMO 3 ===
+
+PCIC (excepcion a la prohibicion de agregar secciones, igual que INDICACIONES):
+- Si la doctora YA escribio su PCIC en el documento (bloque numerado 1) Objetivo ... 5) Plazo bajo un titulo que diga 'plan individual de cuidados consensuados'), el de ella MANDA: no lo toques y NO agregues la seccion PCIC.
+- Si NO esta escrito, AGREGA AL FINAL de tu salida una seccion que empiece con la linea EXACTA 'PCIC:' y debajo el plan numerado 1) a 5) con el formato EXACTO del insumo:
+  1) Objetivo: customizalo con las 'Reglas de customizacion' del insumo usando los diagnosticos activos, signos vitales y examenes del paciente (combina con '/', omite las que no apliquen; sin condiciones claras usa el objetivo generico del insumo).
+  2) a 5) mantenlos del template con ajuste minimo de redaccion al contexto del paciente."""
+
+
 def construir_prompt_ficha(
     paciente: str,
     fecha: str,
@@ -63,6 +86,7 @@ def construir_prompt_ficha(
     info_paciente: str,
     examenes: str | None,
     pedidos: Pedidos,
+    pcic_base: str | None = None,
 ) -> str:
     """Prompt de la LLAMADA 1 (ficha completa).
 
@@ -87,6 +111,8 @@ def construir_prompt_ficha(
 === FIN INSUMO 2 ===
 
 {_bloque_trigger(pedidos)}
+
+{_bloque_pcic(pedidos, pcic_base)}
 
 {_REGLAS_FICHA}
 Salida: exclusivamente el contenido del documento actualizado, respetando el formato original. Sin comentarios ni explicaciones, sin bloques de codigo. OBLIGATORIO: la primera linea de tu salida es EXACTAMENTE la primera linea del documento original, copiada tal cual, incluidos sus simbolos '>':

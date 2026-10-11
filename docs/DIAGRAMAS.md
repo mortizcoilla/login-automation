@@ -85,6 +85,8 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
 |     1) prompt ficha -> ENSAMBLADOR: el CODIGO arma con        |
 |        garantias (base byte-identica + llenados + ortografia  |
 |        validada + trigger fuera + INDICACIONES/INTERCONSULTA  |
+|        + PCIC (REQ-103: pcic_base.txt como insumo al LLM,     |
+|        ensamblador lo coloca en la plantilla)                 |
 |        si el trigger las pidio) -> validacion (5 reglas)      |
 |     2) prompt informe -> encabezado con MODELO USADO por      |
 |        codigo                                                 |
