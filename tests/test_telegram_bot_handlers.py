@@ -11,10 +11,24 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from src.telegram_bot.handlers.photo import cmd_archivar
 from src.telegram_bot.handlers.start import WELCOME, cmd_start
 
 # --- helpers -------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _sin_consolidacion_ocr_real(monkeypatch):
+    """Los tests de handler NO deben llamar al OCR real: sin esto, un
+    crudo real cuyo nombre calce con el paciente de test dispararia la
+    API de vision desde la suite. Se re-mockea puntualmente donde se
+    quiere assertar la consolidacion (ver test de Gladys)."""
+    monkeypatch.setattr(
+        "src.telegram_bot.handlers.photo.consolidar_desde_telegram",
+        lambda **kwargs: {"ok": False, "error": "OCR desactivado en tests"},
+    )
 
 
 def _make_message(caption=None, photo=None, document=None):
@@ -312,6 +326,51 @@ def test_archivar_ok_reporta_match_de_paciente():
     assert "Marta Perez Diaz" in reply  # paciente resuelto
     assert "match:" in reply  # se reporta el match
     assert "Aviso:" in reply  # se reporta la fecha descartada
+
+
+def test_archivar_consolidacion_usa_nombre_y_fecha_resueltos():
+    """Regresion caso real Gladys (08/09-10-2026): Yadira escribio
+    'Gladys Castillo' y el archivado la completo a 'Gladys Valdes
+    Castillo' con fecha del informe. La consolidacion OCR DEBE buscar
+    con el nombre/fecha RESUELTOS (los crudos viven bajo ese prefijo);
+    con el parcial 'Gladys Castillo' no encuentra nada y el OCR nunca
+    corre ("No hay imagenes archivadas de ese paciente")."""
+    update = _make_update_with_message(
+        _make_message(caption="/archivar Gladys Castillo", photo=[_photo_mock()])
+    )
+    context = _make_context_with_bot()
+    resultado = {
+        "ok": True,
+        "nombre": "gladys_valdes_castillo_1_07-10-2026_v2.jpg",
+        "paciente_input": "Gladys Castillo",
+        "paciente_matcheado": "Gladys Valdes Castillo",
+        "paciente_resuelto": "Gladys Valdes Castillo",
+        "fecha_input": "",
+        "fecha_matcheada": "07-10-2026",
+        "fecha_resuelta": "07-10-2026",
+        "fecha_input_descartada": False,
+        "motivo_descarte": "",
+    }
+
+    with (
+        patch(
+            "src.telegram_bot.handlers.photo.archivar_foto_desde_telegram",
+            return_value=resultado,
+        ),
+        patch(
+            "src.telegram_bot.handlers.photo.consolidar_desde_telegram",
+            return_value={"ok": True, "path": "exam_Gladys_Valdes_Castillo_07-10-2026.md", "fotos": 2},
+        ) as consolidar,
+    ):
+        asyncio.run(cmd_archivar(update, context))
+
+    call_kwargs = consolidar.call_args.kwargs
+    assert call_kwargs["nombre_paciente"] == "Gladys Valdes Castillo"
+    assert call_kwargs["fecha_atencion"] == "07-10-2026"
+    # El reply informa la transcripcion, no el aviso de fallo.
+    reply = update.effective_message.reply_text.await_args.args[0]
+    assert "Examenes transcritos a" in reply
+    assert "no corrio" not in reply
 
 
 def test_archivar_error_reporta_mensaje_del_service():

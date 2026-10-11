@@ -205,14 +205,17 @@ async def cmd_archivar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Mision 2 (REQ-061): transcribir con vision y consolidar TODAS las
         # imagenes archivadas del paciente en un unico exam_<pac>_<fecha>.md.
         # El archivado ya esta hecho: un fallo aqui es un aviso, no un error.
+        # Se busca por el nombre/fecha RESUELTOS del archivado: los crudos
+        # viven bajo el nombre completo del match (gladys_valdes_castillo_*),
+        # nunca bajo el parcial que Yadira escribio (gladys_castillo_*).
         # OBSERVABILIDAD (REQ-061): el resultado de la consolidacion
         # queda en el log del bot — antes solo iba al Telegram de Yadira
         # y un fallo de OCR era indetectable desde aca.
         try:
             consolidado = await asyncio.to_thread(
                 consolidar_desde_telegram,
-                nombre_paciente=paciente,
-                fecha_atencion=fecha,
+                nombre_paciente=resultado.get("paciente_resuelto") or paciente,
+                fecha_atencion=resultado.get("fecha_resuelta") or fecha,
                 crudos_dir=destino_dir_override,
             )
             if consolidado.get("ok"):

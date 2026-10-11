@@ -62,9 +62,14 @@ def consolidar_desde_telegram(
     """Transcribe y consolida los examenes archivados de un paciente.
 
     Args:
-        nombre_paciente: el nombre que Yadira escribio en el caption.
-        fecha_atencion: dd-mm-yyyy opcional; si falta, se infiere de los
-            archivos crudos.
+        nombre_paciente: el nombre RESUELTO del archivado (paciente_resuelto
+            del paso 2a). Con el parcial que Yadira escribio en el caption
+            los crudos NO aparecen: se archivan bajo el nombre completo del
+            match (prefijo gladys_valdes_castillo_*, no gladys_castillo_*).
+        fecha_atencion: dd-mm-yyyy opcional; debe ser la fecha RESUELTA del
+            archivado (si se da la que Yadira escribio y fue descartada por
+            el match, el filtro por fecha descarta los archivos). Si falta,
+            se infiere de los archivos crudos.
         crudos_dir: override del dir de fotos crudas (default:
             EXAMENES_CRUDOS_DIR; el handler pasa el destino del bot).
         destino_dir: override del dir del md (default: EXAMENES_DIR).
