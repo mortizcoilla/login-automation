@@ -196,6 +196,31 @@ opencode: prompts a UNA linea (el CLI trunca argv en saltos de linea),
 
 ---
 
+## 5b. Control del cron por Telegram (REQ-105: Go / Kill / Status)
+
+```
+  Yadira escribe texto plano al bot (Go / Kill / Status, con o sin
+  barra; el handler va ANTES del catch-all de texto)
+        |
+        v
+  bot Rubicita (src/telegram_bot/services/cron_service.py) lee el
+  candado data/scheduler.lock (PID del runner, REQ-060) = fuente de
+  verdad de "esta corriendo"
+        |-- Go    -> lanza DESPRENDIDO: venv\python -m src.scheduler.runner
+        |            --forzar yadira (log en logs/cron_go_<ts>.log);
+        |            si ya corre, NO lanza doble cadena
+        |-- Kill  -> taskkill /PID <pid> /T /F (mata runner + paso en
+        |            curso + Selenium) y limpia el candado huerfano
+        '-- Status-> corre o no + PID + ultimo paso del
+                     logs/scheduler.log de ESTA corrida + ultima
+                     actividad (inicio/completa/fallo/nada vencido)
+
+  Candado huerfano (runner muerto sin limpiar): los tres comandos lo
+  reportan; Go lo limpia antes de lanzar; Kill lo limpia igual.
+```
+
+---
+
 ## 2. El flujo opt-in de examenes (por paciente, cuando hay fotos)
 
 REQ-009 (opt-in) / REQ-012 (2a, archivar) / REQ-047 (2b, vision z.ai).

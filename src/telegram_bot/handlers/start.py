@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 WELCOME = (
     "Hola mama yadira, mandame los examenes en el formato\n"
     " /archivar <paciente> [dd-mm-yyyy]\n"
-    "una foto por mensaje. Para varias, envialas una a una."
+    "una foto por mensaje. Para varias, envialas una a una.\n"
+    "\n"
+    "Y del flujo diario (REQ-105):\n"
+    " Go = arrancarlo ya · Kill = detenerlo · Status = como va"
 )
 
 

@@ -17,7 +17,8 @@ Arquitectura:
     - Polling (no webhook) — el bot vive detras de NAT; no expone HTTPS.
     - Long-running process — correr como servicio Windows (Programador de tareas)
       o con un supervisor ligero (nssm, pm2, TaskScheduler).
-    - Handlers: /start, /help (alias), /archivar (mensaje con foto y caption).
+    - Handlers: /start, /help (alias), /archivar (mensaje con foto y caption),
+      papers 1/2/3+"enviar" (REQ-096), Go/Kill/Status del cron (REQ-105).
     - Auth: whitelist de user IDs (Yadira + operador si hay).
 
 NO pisa modulos existentes. Importa (solo lectura) desde:
@@ -43,6 +44,7 @@ from telegram.ext import (
 
 from src.core.rutas import LOGS_DIR
 from src.telegram_bot.config import BotConfig, ConfigurationError
+from src.telegram_bot.handlers.cron import cmd_go, cmd_kill, cmd_status
 from src.telegram_bot.handlers.debug import register as register_debug_handler
 from src.telegram_bot.handlers.papers import (
     cmd_elegir_paper,
@@ -173,6 +175,19 @@ def build_application(config: BotConfig) -> Application:
             filters.Regex(r"(?i)^\s*enviar\s*$"),
             auth(cmd_enviar_paper),
         )
+    )
+
+    # REQ-105 (control del cron): Go/Kill/Status — Yadira arranca, mata
+    # o consulta el flujo diario con texto plano. ANTES del catch-all
+    # de texto (si no, caeria al WELCOME generico).
+    application.add_handler(
+        MessageHandler(filters.Regex(r"(?i)^\s*/?\s*go\s*\.?\s*$"), auth(cmd_go))
+    )
+    application.add_handler(
+        MessageHandler(filters.Regex(r"(?i)^\s*/?\s*kill\s*\.?\s*$"), auth(cmd_kill))
+    )
+    application.add_handler(
+        MessageHandler(filters.Regex(r"(?i)^\s*/?\s*status\s*\.?\s*$"), auth(cmd_status))
     )
 
     # Catch-all de texto: cualquier mensaje de texto que no fue capturado
