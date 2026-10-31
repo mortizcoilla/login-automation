@@ -74,6 +74,7 @@ from src.rayen.extraccion.plan import (
     extraer_laboratorio,
     extraer_recetas,
 )
+from src.rayen.extraccion.receta_cronica import extraer_receta_cronica
 from src.rayen.flujos.apertura_ficha import abrir_ficha_por_nombre
 from src.rayen import pestanas
 from src.rayen.navegacion import volver_a_pacientes_citados
@@ -149,6 +150,7 @@ def _reintentar_extraccion_anamnesis(
     motivo_consulta: str,
     pautas: list[str],
     notas_dir: Path,
+    receta_cronica: dict[str, Any] | None = None,
     max_intentos: int = 3,
 ) -> Path | None:
     """Sesion 2026-09-16 14:50 (regla Yadira): si la extraccion de
@@ -211,6 +213,7 @@ def _reintentar_extraccion_anamnesis(
                     laboratorio,
                     notas_dir,
                     panel_cargo=paciente.panel_cargo,
+                    receta_cronica=receta_cronica,
                 )
         except Exception as re_err:
             logger.warning(
@@ -546,6 +549,13 @@ def main() -> int:
                 # Historial ANTES del click en "Atencion actual" porque ese
                 # click puede colapsar el panel del historial.
                 historial = extraer_historial(driver, logger)
+                # REQ-104: receta cronica vigente desde el arbol "Receta"
+                # del historial (busca tambien atenciones pasadas). Corre
+                # en Historia clinica, ANTES del click a "Atencion actual"
+                # (misma vista donde termina la apertura, REQ-093), y
+                # restaura la categoria "Diagnostico" al terminar. NUNCA
+                # bota el loop: fallo = estado indeterminado en la nota.
+                receta_cronica = extraer_receta_cronica(driver, logger)
                 # REQ-033: fuera de scope: examenes, pautas, otros items, imagenologia, interconsulta.
                 # Secciones fuera de scope (no se extraen, se pasan vacias):
                 examenes = ""
@@ -603,6 +613,7 @@ def main() -> int:
                     "estratificacion_grupo": ((estratificacion or {}).get("grupo")),
                     "estratificacion_cronicos": len((estratificacion or {}).get("cronicos") or []),
                     "estratificacion_agudos": len((estratificacion or {}).get("agudos") or []),
+                    "receta_cronica_estado": (receta_cronica or {}).get("estado", ""),
                 }
 
                 # Paso 4.3
@@ -624,6 +635,7 @@ def main() -> int:
                         laboratorio,
                         notas_dir,
                         panel_cargo=paciente.panel_cargo,
+                        receta_cronica=receta_cronica,
                     )
 
                     if out_path is None:
@@ -729,6 +741,7 @@ def main() -> int:
                         motivo_consulta,
                         pautas,
                         notas_dir,
+                        receta_cronica=receta_cronica,
                     )
                     if out_reintento is not None:
                         stats["guardados"] += 1

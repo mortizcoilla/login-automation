@@ -1,8 +1,9 @@
 """Tests de la receta cronica vigente en la ficha (REQ-104).
 
-Cadena completa: parseo de la nota del paso 3 -> nodo ganador
-([Cronica] con Vigencia mas reciente) -> inyeccion en la base ANTES del
-LLM (seccion SIEMPRE creada) -> ensamblador la mantiene byte-identica.
+Cadena: la nota del paso 3 porta el bloque verbatim del arbol "Receta"
+(src/rayen/extraccion/receta_cronica.py) -> esta funcion lo lee
+(cargar_estado_receta) y lo INYECTA en la base de anamnesis ANTES del
+LLM -> el ensamblador lo mantiene byte-identica.
 
 La suite NUNCA llama a la API real ni abre Rayen.
 """
@@ -15,137 +16,116 @@ import pytest
 
 from src.mortadelo.ensamblador import ensamblar_ficha
 from src.mortadelo.receta_cronica import (
-    PLACEHOLDER_SIN_RECETA,
-    TITULO_SECCION,
-    cargar_receta_cronica,
-    extraer_prescripciones,
-    ganadora,
+    NO_VERIFICADO,
+    SIN_MEDICAMENTOS,
+    TITULO_SECCION_NUEVA,
+    cargar_estado_receta,
     inyectar_receta_cronica,
 )
 
-# Formato REAL de la nota (marcadores duplicados por el escritor de
-# nota_clinica: '- ' + linea cruda '- [Cronica] ...' y '  - ' + '\t- F').
-_NOTA = """## Atencion actual
-- algo
-## Plan - Recetas
-
-- - [Cronica] Vigencia: 25 ago. 2026
-  - \t- Metformina 850 mg comprimidos (1 Comprimido cada 24 Horas por 90 Dias)
-- - [Cronica] Vigencia: 25 ago. 2027
-  - \t- Metformina 1000 mg comprimidos (1 Comprimido cada 24 Horas por 90 Dias)
-  - \t- Enalapril 10 mg comprimidos (1 Comprimido cada 24 Horas por 30 Dias)
-- - [Aguda] Vigencia: 1 oct. 2026
-  - \t- Ibuprofeno 400 mg comprimidos (1 Comprimido cada 8 Horas por 5 Dias)
-
-## Plan - Laboratorio
-
-_(sin ordenes de laboratorio)_
-"""
-
-_FARMACO_GANADOR = (
-    "  - Metformina 1000 mg comprimidos (1 Comprimido cada 24 Horas por 90 Dias)"
+_BLOQUE = (
+    "14-09-2026 12:05\n"
+    "(1) Receta Nro. 596039360, generada el 14-09-2026 12:13, tipo crónica , "
+    "estado despachada , fecha de despacho: 15-09-2026\n"
+    "Acetato de Medroxiprogesterona 104 mg/0,65 ml Suspension Inyectable , "
+    "ampolla: 1 Ampolla cada 90 días por 90 días de la Receta Nº 596039360"
 )
 
+_NOTA_CON_BLOQUE = f"""## Plan - Laboratorio
 
-class TestExtraerPrescripciones:
-    def test_tres_prescripciones_con_marcas_normalizadas(self) -> None:
-        ps = extraer_prescripciones(_NOTA)
-        assert len(ps) == 3
-        assert ps[0][0] == "- [Cronica] Vigencia: 25 ago. 2026"
-        assert ps[1][0] == "- [Cronica] Vigencia: 25 ago. 2027"
-        assert ps[2][0] == "- [Aguda] Vigencia: 1 oct. 2026"
+_(sin ordenes de laboratorio)_
 
-    def test_farmaco_verbatim_tras_una_sola_marca(self) -> None:
-        ps = extraer_prescripciones(_NOTA)
-        assert ps[1][1] == _FARMACO_GANADOR
-        assert ps[1][2] == (
-            "  - Enalapril 10 mg comprimidos (1 Comprimido cada 24 Horas por 30 Dias)"
-        )
+## Receta cronica
 
-    def test_sin_recetas(self) -> None:
-        nota = "## Plan - Recetas\n\n_(sin recetas)_\n\n## Plan - Laboratorio\n"
-        assert extraer_prescripciones(nota) == []
+{_BLOQUE}
+"""
 
-    def test_seccion_ausente(self) -> None:
-        assert extraer_prescripciones("## Atencion actual\n- x\n") == []
+_NOTA_SIN = "## Receta cronica\n\n(sin receta cronica vigente)\n"
+_NOTA_INDETERMINADA = "## Receta cronica\n\n(no verificado - revisar)\n"
 
 
-class TestGanadora:
-    def test_vigencia_mas_reciente_gana(self) -> None:
-        ps = extraer_prescripciones(_NOTA)
-        g = ganadora(ps)
-        assert g is not None
-        assert g[0] == "- [Cronica] Vigencia: 25 ago. 2027"
-        assert g[1] == _FARMACO_GANADOR
-
-    def test_aguda_mas_reciente_no_gana(self) -> None:
-        ps = extraer_prescripciones(_NOTA)
-        cronicas = [p for p in ps if "Cronica" in p[0]]
-        assert ganadora(cronicas + [ps[2]])[0] == "- [Cronica] Vigencia: 25 ago. 2027"
-
-    def test_solo_agudas_devuelve_none(self) -> None:
-        ps = extraer_prescripciones(_NOTA)
-        assert ganadora([ps[2]]) is None
-
-    def test_sin_fechas_parseables_queda_la_ultima(self) -> None:
-        a = ["- [Cronica]", "  - Farmaco A"]
-        b = ["- [Cronica]", "  - Farmaco B"]
-        assert ganadora([a, b]) == b
-
-    def test_una_sola_cronica_es_la_ganadora(self) -> None:
-        una = ["- [Cronica] Vigencia: 25 ago. 2026", "  - Metformina 850 mg"]
-        assert ganadora([una]) == una
+def _escribir_nota(tmp_path: Path, nota: str) -> Path:
+    (tmp_path / "Test_Paciente_10-09-2026.md").write_text(nota, encoding="utf-8")
+    return tmp_path
 
 
-class TestCargarRecetaCronica:
-    def test_lee_la_ganadora_de_la_nota(self, tmp_path: Path) -> None:
-        (tmp_path / "Test_Paciente_10-09-2026.md").write_text(_NOTA, encoding="utf-8")
-        bloque = cargar_receta_cronica("Test Paciente", "10-09-2026", notas_dir=tmp_path)
-        assert bloque is not None
-        assert bloque.startswith("- [Cronica] Vigencia: 25 ago. 2027")
-        assert _FARMACO_GANADOR in bloque
+class TestCargarEstadoReceta:
+    def test_encontrada_con_bloque_verbatim(self, tmp_path: Path) -> None:
+        _escribir_nota(tmp_path, _NOTA_CON_BLOQUE)
+        e = cargar_estado_receta("Test Paciente", "10-09-2026", notas_dir=tmp_path)
+        assert e == {"estado": "encontrada", "bloque": _BLOQUE}
+
+    def test_no_existe(self, tmp_path: Path) -> None:
+        _escribir_nota(tmp_path, _NOTA_SIN)
+        e = cargar_estado_receta("Test Paciente", "10-09-2026", notas_dir=tmp_path)
+        assert e == {"estado": "no_existe", "bloque": ""}
+
+    def test_indeterminado(self, tmp_path: Path) -> None:
+        _escribir_nota(tmp_path, _NOTA_INDETERMINADA)
+        e = cargar_estado_receta("Test Paciente", "10-09-2026", notas_dir=tmp_path)
+        assert e == {"estado": "indeterminado", "bloque": ""}
+
+    def test_nota_sin_seccion_devuelve_none(self, tmp_path: Path) -> None:
+        _escribir_nota(tmp_path, "## Plan - Recetas\n\n_(sin recetas)_\n")
+        assert cargar_estado_receta("Test Paciente", "10-09-2026", notas_dir=tmp_path) is None
 
     def test_nota_ausente_devuelve_none(self, tmp_path: Path) -> None:
-        assert cargar_receta_cronica("Otro Pac", "10-09-2026", notas_dir=tmp_path) is None
-
-    def test_nota_sin_cronicas_devuelve_none(self, tmp_path: Path) -> None:
-        (tmp_path / "Test_Paciente_10-09-2026.md").write_text(
-            "## Plan - Recetas\n\n_(sin recetas)_\n", encoding="utf-8"
-        )
-        assert cargar_receta_cronica("Test Paciente", "10-09-2026", notas_dir=tmp_path) is None
+        assert cargar_estado_receta("Otro Pac", "10-09-2026", notas_dir=tmp_path) is None
 
 
 class TestInyectar:
-    def test_seccion_siempre_creada_al_final(self) -> None:
-        base = "> Control\n\nAnamnesis:\n   - dato"
-        out = inyectar_receta_cronica(base, "- [Cronica] Vigencia: 25 ago. 2027")
-        assert TITULO_SECCION in out
-        assert out.rstrip().endswith("- [Cronica] Vigencia: 25 ago. 2027")
+    def test_base_sin_seccion_se_crea_al_final(self) -> None:
+        base = "> Control\n\nAnamnesis:\n   - dato\n"
+        out = inyectar_receta_cronica(base, {"estado": "encontrada", "bloque": _BLOQUE})
+        assert TITULO_SECCION_NUEVA in out
+        assert out.rstrip().endswith(_BLOQUE)
 
-    def test_sin_bloque_deja_placeholder(self) -> None:
-        out = inyectar_receta_cronica("> Control\n\nAnamnesis:\n   - dato", None)
-        assert TITULO_SECCION in out
-        assert PLACEHOLDER_SIN_RECETA in out
+    def test_bloque_va_verbatim(self) -> None:
+        out = inyectar_receta_cronica("base", {"estado": "encontrada", "bloque": _BLOQUE})
+        assert _BLOQUE in out
+
+    def test_no_existe_placeholder_del_diseno(self) -> None:
+        out = inyectar_receta_cronica("base", {"estado": "no_existe", "bloque": ""})
+        assert SIN_MEDICAMENTOS in out
+
+    def test_indeterminado_visible(self) -> None:
+        out = inyectar_receta_cronica("base", {"estado": "indeterminado", "bloque": ""})
+        assert NO_VERIFICADO in out
+
+    def test_nota_sin_seccion_no_inyecta_nada(self) -> None:
+        base = "> Control\n\nAnamnesis:\n   - dato\n"
+        assert inyectar_receta_cronica(base, None) == base
 
     def test_antes_de_indicaciones_con_stubs(self) -> None:
         """Meterla despues de los stubs romperia el llenado REQ-098."""
         base = "> Control\n\nAnamnesis:\n   - dato\n\n5. INDICACIONES\n5.1.\n5.2."
-        out = inyectar_receta_cronica(base, "- [Cronica] Vigencia: 25 ago. 2027")
-        assert out.index(TITULO_SECCION) < out.index("5. INDICACIONES")
+        out = inyectar_receta_cronica(base, {"estado": "no_existe", "bloque": ""})
+        assert out.index(TITULO_SECCION_NUEVA) < out.index("5. INDICACIONES")
 
-    def test_antes_de_indicaciones_sin_numerar(self) -> None:
-        base = "> Control\n\nINDICACIONES:\n- hidratacion\n"
-        out = inyectar_receta_cronica(base, "- [Cronica] Vigencia: 1 dic. 2027")
-        assert out.index(TITULO_SECCION) < out.index("INDICACIONES:")
+    def test_seccion_vacia_de_plantilla_se_rellena(self) -> None:
+        base = "> Control\n\n3.3. Farmacos de uso diario:\n\n4. Otro:\n   - x\n"
+        out = inyectar_receta_cronica(base, {"estado": "encontrada", "bloque": _BLOQUE})
+        assert out.index("3.3. Farmacos de uso diario:") < out.index(_BLOQUE.splitlines()[0])
+        assert "4. Otro:" in out and out.index(_BLOQUE) < out.index("4. Otro:")
 
-    def test_bloque_va_verbatim(self) -> None:
-        bloque = "- [Cronica] Vigencia: 25 ago. 2027\n" + _FARMACO_GANADOR
-        out = inyectar_receta_cronica("base", bloque)
-        assert bloque in out
+    def test_lo_escrito_por_yadira_manda_y_el_bloque_va_debajo(self) -> None:
+        base = (
+            "> Control\n\nFármacos de uso diario:\n"
+            "losartan 50mg cada 24 horas\n\n5. INDICACIONES\n- control\n"
+        )
+        out = inyectar_receta_cronica(base, {"estado": "encontrada", "bloque": _BLOQUE})
+        assert "losartan 50mg cada 24 horas" in out, "jamás se borra lo suyo"
+        assert out.index("losartan 50mg") < out.index(_BLOQUE.splitlines()[0])
+        assert out.index(_BLOQUE.splitlines()[0]) < out.index("5. INDICACIONES")
+
+    def test_variante_medicamentos_con_contenido(self) -> None:
+        base = "> Control\n\nMEDICAMENTOS:\nMetformina 850\n\nAPF: sin antecedentes\n"
+        out = inyectar_receta_cronica(base, {"estado": "encontrada", "bloque": _BLOQUE})
+        assert "Metformina 850" in out
+        assert _BLOQUE.splitlines()[0] in out
 
 
 # --- interplay con el ensamblador ------------------------------------------
-
 
 _PLANTILLA = (
     "> Control\n\nAnamnesis:\n   - dato\n\n"
@@ -155,47 +135,32 @@ _PLANTILLA = (
 
 
 class TestEnsambladorConReceta:
-    def _base_inyectada(self, bloque: str | None) -> str:
-        return inyectar_receta_cronica(_PLANTILLA, bloque)
+    def _base_inyectada(self, estado: dict | None) -> str:
+        return inyectar_receta_cronica(_PLANTILLA, estado)
 
-    def test_receta_sobrevive_y_stubs_se_llenan(self) -> None:
-        base = self._base_inyectada(
-            "- [Cronica] Vigencia: 25 ago. 2027\n" + _FARMACO_GANADOR
-        )
+    def test_bloque_sobrevive_y_stubs_se_llenan(self) -> None:
+        base = self._base_inyectada({"estado": "encontrada", "bloque": _BLOQUE})
         llm = base.replace("5.1.\n5.2.", "") + (
-            "   - Tomar Metformina con alimentos\n   - Control de glicemia\n"
+            "   - Tomar los medicamentos con alimentos\n   - Control de presion\n"
         )
         r = ensamblar_ficha(base, llm)
-        assert _FARMACO_GANADOR in r.texto, "la receta queda byte-identica"
+        assert _BLOQUE in r.texto, "el bloque queda byte-identico"
         assert "INDICACIONES" in r.secciones_agregadas
-        assert "Tomar Metformina con alimentos" in r.texto
-        # orden: receta ANTES de la seccion INDICACIONES
-        assert r.texto.index(TITULO_SECCION) < r.texto.index("5. INDICACIONES")
+        assert "Tomar los medicamentos con alimentos" in r.texto
+        assert r.texto.index("FARMACOS DE USO DIARIO") < r.texto.index("5. INDICACIONES")
 
-    def test_llm_que_borra_la_receta_la_restaura_desde_la_base(self) -> None:
-        base = self._base_inyectada(
-            "- [Cronica] Vigencia: 25 ago. 2027\n" + _FARMACO_GANADOR
+    def test_llm_que_borra_el_bloque_lo_restaura_desde_la_base(self) -> None:
+        base = self._base_inyectada({"estado": "encontrada", "bloque": _BLOQUE})
+        llm = "\n".join(
+            ln for ln in base.splitlines() if "Medroxiprogesterona" not in ln
         )
-        llm = "\n".join(ln for ln in base.splitlines() if "Metformina" not in ln)
         r = ensamblar_ficha(base, llm)
-        assert _FARMACO_GANADOR in r.texto
-        assert "- [Cronica] Vigencia: 25 ago. 2027" in r.texto
+        assert _BLOQUE in r.texto
 
-    def test_placeholder_sin_cronicas_tambien_sobrevive(self) -> None:
-        base = self._base_inyectada(None)
-        llm = base
-        r = ensamblar_ficha(base, llm)
-        assert TITULO_SECCION in r.texto
-        assert PLACEHOLDER_SIN_RECETA in r.texto
-
-    def test_trigger_cerrado_no_arrasta_la_receta(self) -> None:
-        base = inyectar_receta_cronica(
-            "> Control\n\nAnamnesis:\n   - dato\n\n** Mortadelo\n\n- examenes adjuntos\n\n**",
-            "- [Cronica] Vigencia: 25 ago. 2027\n" + _FARMACO_GANADOR,
-        )
+    def test_placeholder_no_existe_tambien_sobrevive(self) -> None:
+        base = self._base_inyectada({"estado": "no_existe", "bloque": ""})
         r = ensamblar_ficha(base, base)
-        assert "mortadelo" not in r.texto.lower()
-        assert _FARMACO_GANADOR in r.texto
+        assert SIN_MEDICAMENTOS in r.texto
 
 
 # --- integracion generar_paciente ------------------------------------------
@@ -217,16 +182,12 @@ def _llm_fake(prompt: str) -> tuple[str, str]:
 
 
 class TestGenerarPacienteConReceta:
-    def _montar(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, nota: str
-    ) -> None:
+    def _montar(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, nota: str | None) -> None:
         from src.core.nombres import safe_filename
 
         monkeypatch.setattr("src.mortadelo.generar.ANAMNESIS_DIR", tmp_path / "anam")
         monkeypatch.setattr("src.mortadelo.generar.NOTAS_DIR", tmp_path / "notas")
-        monkeypatch.setattr(
-            "src.mortadelo.receta_cronica.NOTAS_DIR", tmp_path / "notas"
-        )
+        monkeypatch.setattr("src.mortadelo.receta_cronica.NOTAS_DIR", tmp_path / "notas")
         monkeypatch.setattr("src.mortadelo.generar.INFO_PACIENTE_DIR", tmp_path / "info")
         monkeypatch.setattr("src.mortadelo.generar.EXAMENES_DIR", tmp_path / "exam")
         (tmp_path / "anam").mkdir()
@@ -236,53 +197,46 @@ class TestGenerarPacienteConReceta:
         (tmp_path / "anam" / f"anam_{safe_filename('Test Paciente')}_10-09-2026.md").write_text(
             "> Control\n\nAnamnesis:\n   - dato\n", encoding="utf-8"
         )
-        (tmp_path / "notas" / f"{safe_filename('Test Paciente')}_10-09-2026.md").write_text(
-            nota, encoding="utf-8"
+        if nota is not None:
+            (tmp_path / "notas" / f"{safe_filename('Test Paciente')}_10-09-2026.md").write_text(
+                nota, encoding="utf-8"
+            )
+
+    def _generar(self, tmp_path: Path):
+        from src.mortadelo.generar import generar_paciente
+
+        return generar_paciente(
+            "Test Paciente",
+            "10-09-2026",
+            fichas_dir=tmp_path / "f",
+            informes_dir=tmp_path / "i",
+            llm=_llm_fake,
         )
 
-    def test_ficha_lleva_la_cronica_ganadora(
+    def test_ficha_lleva_el_bloque_de_la_nota(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        self._montar(tmp_path, monkeypatch, _NOTA)
-        r = _generar(tmp_path)
+        self._montar(tmp_path, monkeypatch, _NOTA_CON_BLOQUE)
+        r = self._generar(tmp_path)
         assert r.ok is True, r.error
         ficha = Path(r.ficha_path).read_text(encoding="utf-8")
-        assert TITULO_SECCION in ficha
-        assert _FARMACO_GANADOR in ficha, "queda el farmaco de la vigencia 2027"
-        assert "Metformina 850" not in ficha, "la vieja (2026) no entra"
-        assert "Ibuprofeno" not in ficha, "la aguda no entra"
+        assert _BLOQUE in ficha, "bloque verbatim en la ficha final"
 
-    def test_ficha_sin_cronicas_lleva_placeholder(
+    def test_nota_sin_receta_lleva_placeholder(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        self._montar(
-            tmp_path, monkeypatch, "## Plan - Recetas\n\n_(sin recetas)_\n"
-        )
-        r = _generar(tmp_path)
+        self._montar(tmp_path, monkeypatch, _NOTA_SIN)
+        r = self._generar(tmp_path)
         assert r.ok is True, r.error
         ficha = Path(r.ficha_path).read_text(encoding="utf-8")
-        assert TITULO_SECCION in ficha
-        assert PLACEHOLDER_SIN_RECETA in ficha
+        assert SIN_MEDICAMENTOS in ficha
 
-    def test_nota_ausente_lleva_placeholder(
+    def test_nota_sin_seccion_no_inyecta(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        self._montar(tmp_path, monkeypatch, _NOTA)
-        # nota de OTRO paciente (la de Test Paciente se borra)
-        (tmp_path / "notas" / "Test_Paciente_10-09-2026.md").unlink()
-        r = _generar(tmp_path)
+        self._montar(tmp_path, monkeypatch, "## Plan - Recetas\n\n_(sin recetas)_\n")
+        r = self._generar(tmp_path)
         assert r.ok is True, r.error
         ficha = Path(r.ficha_path).read_text(encoding="utf-8")
-        assert PLACEHOLDER_SIN_RECETA in ficha
-
-
-def _generar(tmp_path: Path):
-    from src.mortadelo.generar import generar_paciente
-
-    return generar_paciente(
-        "Test Paciente",
-        "10-09-2026",
-        fichas_dir=tmp_path / "f",
-        informes_dir=tmp_path / "i",
-        llm=_llm_fake,
-    )
+        assert TITULO_SECCION_NUEVA not in ficha
+        assert SIN_MEDICAMENTOS not in ficha

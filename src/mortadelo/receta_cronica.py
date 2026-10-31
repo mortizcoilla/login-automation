@@ -1,25 +1,31 @@
 """REQ-104: la receta cronica vigente entra SIEMPRE a la ficha.
 
-Diseno cerrado (11-10-2026; OK de implementacion 30-10). La prescripcion
-ganadora de Plan -> Recetas — la [Cronica] con Vigencia mas reciente,
-mismo criterio de REQ-029 — sale de la nota clinica que el paso 3 ya
-extrajo de Rayen y se INYECTA en la base de anamnesis ANTES del LLM,
-verbatim (farmacos y posologia sin tocar). Al quedar dentro de la base,
-el ensamblador la mantiene byte-identica en la ficha aunque el modelo
-la omita o la reformatee: la ficha siempre lleva la seccion.
+Diseno cerrado (11-10-2026; OK de implementacion 30-10). La cadena:
 
-La seccion se crea SIEMPRE: con la receta ganadora, o con el
-placeholder "(sin receta cronica vigente)" cuando la atencion no trae
-cronicas (agudas y de morbilidad no calzan: la seccion es de cronica).
+ 1. El paso 3 extrae la receta cronica MAS RECIENTE DEL PACIENTE desde
+    el arbol "Receta" del historial (incluye atenciones pasadas; ver
+    src/rayen/extraccion/receta_cronica.py) y la deja VERBATIM en la
+    seccion "## Receta cronica" de la nota clinica (portador
+    confirmado por Miguel).
+ 2. Esta funcion la lee de la nota y la INYECTA en la base de
+    anamnesis ANTES del LLM. Al quedar en la base, el ensamblador la
+    mantiene byte-identica en la ficha aunque el modelo la omita.
 
-Punto de insercion: ANTES del header INDICACIONES si la base trae la
-seccion (meterla despues de los stubs haria que el llenado REQ-098
-leyera el cuerpo como "ya escrito" y lo dejara vacio); si no, al final
-(despues de un trigger ** mortadelo el ensamblador lo elimina y la
-seccion queda como cola de la ficha, fuera del rango removido).
-
-Solo se lee el Plan de la atencion actual (lo que el paso 3 ya extrajo):
-no se navega al historico de Recetas/Farmacos de Rayen.
+Reglas de inyeccion (vuelta 13/18/19/20 del diseño):
+ - La base trae "Fármacos de uso diario" (control) o "Medicamentos"
+   (morbilidad), match tolerante a tildes/mayusculas/numeracion de
+   plantilla: cuerpo vacio -> se RELLENA; con contenido -> el bloque
+   va DEBAJO del texto de Yadira (jamas se borra lo suyo).
+ - La base NO trae la seccion -> se CREA con titulo canonico, antes
+   del header INDICACIONES si existe (meterla tras los stubs haria
+   que el llenado REQ-098 leyera el cuerpo como ya escrito), si no al
+   final.
+ - Estados: encontrada -> bloque verbatim; no_existe -> "Sin
+   medicamentos de uso diario"; indeterminado -> "...(no verificado -
+   revisar)" (el falso negativo esta prohibido: jamas se declara
+   inexistencia sin la prueba positiva del extractor).
+ - Nota sin la seccion "## Receta cronica" (feature no corrio o nota
+   previa al despliegue) -> NO se inyecta nada (comportamiento actual).
 """
 
 from __future__ import annotations
@@ -32,125 +38,132 @@ from src.core.rutas import NOTAS_DIR
 from src.mortadelo.ensamblador import (
     _SECCION_INDICACIONES_NUM_RE,
     _SECCION_INDICACIONES_RE,
+    _STUB_VACIO_RE,
 )
-from src.rayen.extraccion.plan import _parsear_vigencia
 
-TITULO_SECCION = "RECETA CRONICA VIGENTE"
-PLACEHOLDER_SIN_RECETA = "(sin receta cronica vigente)"
+TITULO_SECCION_NUEVA = "FARMACOS DE USO DIARIO"
+SIN_MEDICAMENTOS = "Sin medicamentos de uso diario"
+NO_VERIFICADO = "Sin medicamentos de uso diario (no verificado - revisar)"
 
-_SECCION_RECETAS_RE = re.compile(r"^##\s*Plan\s*-\s*Recetas\s*$")
-_CRONICA_RE = re.compile(r"\[\s*cronica\s*\]", re.IGNORECASE)
+_ESTADO_ENCONTRADA = "encontrada"
+_ESTADO_NO_EXISTE = "no_existe"
+_ESTADO_INDETERMINADO = "indeterminado"
+
+_SECCION_RECETA_RE = re.compile(r"^##\s*Receta cronica\s*$", re.IGNORECASE)
+_PLACEHOLDER_SIN = "(sin receta cronica vigente)"
+_PLACEHOLDER_NO_VERIFICADO = "(no verificado - revisar)"
+# Numeracion de plantilla opcional: "3.3. ", "4) ", "5. "
+_RX_NUMERACION = re.compile(r"^\d+(?:\.\d+)*[\.\)]?\s*")
+# Siguiente seccion numerada CON texto: fin del cuerpo de una seccion.
+_SIGUIENTE_SECCION_RE = re.compile(r"^\s*\d+(?:\.\d+)*[\.\)]\s+\S")
 
 
-def _lineas_seccion_recetas(nota_md: str) -> list[str]:
-    """Lineas del cuerpo de '## Plan - Recetas' (hasta el proximo '## ')."""
+def normalizar(texto: str) -> str:
+    """Minusculas, sin tildes, espacios colapsados."""
+    import unicodedata
+
+    sin_tildes = "".join(
+        c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn"
+    )
+    return re.sub(r"\s+", " ", sin_tildes).strip().lower()
+
+
+def _cuerpo_seccion_receta(nota_md: str) -> str | None:
+    """Texto de '## Receta cronica' de la nota (None si no existe)."""
     lineas = nota_md.splitlines()
     ini = next(
-        (i for i, ln in enumerate(lineas) if _SECCION_RECETAS_RE.match(ln.strip())),
+        (i for i, ln in enumerate(lineas) if _SECCION_RECETA_RE.match(ln.strip())),
         None,
     )
     if ini is None:
-        return []
+        return None
     fin = len(lineas)
     for j in range(ini + 1, len(lineas)):
         if lineas[j].strip().startswith("## "):
             fin = j
             break
-    return lineas[ini + 1 : fin]
+    return "\n".join(lineas[ini + 1 : fin]).strip()
 
 
-def _normalizar_header(cuerpo: str) -> str:
-    """Primera linea cruda de la prescripcion: '- [Cronica] Vigencia: ...'.
-
-    La nota duplica la marca (el escritor anteponia '- ' a una linea
-    cruda que ya la traia). Se deja una sola.
-    """
-    cuerpo = cuerpo.strip()
-    if cuerpo.startswith("- "):
-        return cuerpo
-    return f"- {cuerpo}" if cuerpo else "-"
-
-
-def extraer_prescripciones(nota_md: str) -> list[list[str]]:
-    """Prescripciones de la nota, una por lista de lineas.
-
-    Formato real de la nota (escritor de nota_clinica sobre la extraccion
-    cruda, marcadores duplicados):
-        - - [Cronica] Vigencia: 25 ago. 2027
-          - \\t- Sertralina 50 mg comprimidos (2 Comprimidos cada 24 Horas)
-
-    Devuelve una marca sola y el texto de farmaco/posologia byte-identico:
-        - [Cronica] Vigencia: 25 ago. 2027
-          - Sertralina 50 mg comprimidos (2 Comprimidos cada 24 Horas)
-    """
-    prescripciones: list[list[str]] = []
-    for ln in _lineas_seccion_recetas(nota_md):
-        if ln.startswith("- ") and ln.strip() != "-":
-            prescripciones.append([_normalizar_header(ln[2:])])
-        elif prescripciones and ln.startswith("  - "):
-            cuerpo = ln[4:].lstrip("\t ").rstrip()
-            if cuerpo.startswith("- "):
-                cuerpo = cuerpo[2:].rstrip()
-            if cuerpo:
-                prescripciones[-1].append(f"  - {cuerpo}")
-    return prescripciones
-
-
-def ganadora(prescripciones: list[list[str]]) -> list[str] | None:
-    """La [Cronica] con Vigencia mas reciente (None si no hay cronicas).
-
-    Sin fechas parseables queda la ULTIMA del orden de Rayen (suele ir de
-    mas viejo a mas nuevo), misma convencion de _filtrar_receta_mas_
-    reciente (REQ-029).
-    """
-    cronicas = [p for p in prescripciones if p and _CRONICA_RE.search(p[0])]
-    if not cronicas:
-        return None
-    if len(cronicas) == 1:
-        return cronicas[0]
-    con_fecha = [
-        (i, d)
-        for i, p in enumerate(cronicas)
-        if (d := _parsear_vigencia(p[0])) is not None
-    ]
-    if not con_fecha:
-        return cronicas[-1]
-    i_ganadora = max(con_fecha, key=lambda x: x[1])[0]
-    return cronicas[i_ganadora]
-
-
-def cargar_receta_cronica(
+def cargar_estado_receta(
     nombre: str, fecha: str, notas_dir: Path | None = None
-) -> str | None:
-    """Bloque de la receta cronica ganadora desde la nota del paso 3.
+) -> dict | None:
+    """Estado + bloque verbatim desde la nota del paso 3.
 
-    None si la nota no existe o no trae cronicas.
+    None si la nota no existe o no trae la seccion "## Receta cronica"
+    (la feature no corrio para esta nota: no se inyecta nada).
     """
     notas_dir = notas_dir or NOTAS_DIR
     nota_path = notas_dir / f"{safe_filename(nombre)}_{fecha}.md"
     if not nota_path.exists():
         return None
     nota = nota_path.read_text(encoding="utf-8", errors="replace")
-    bloque = ganadora(extraer_prescripciones(nota))
-    return "\n".join(bloque) if bloque else None
+    cuerpo = _cuerpo_seccion_receta(nota)
+    if cuerpo is None:
+        return None
+    if cuerpo == _PLACEHOLDER_SIN:
+        return {"estado": _ESTADO_NO_EXISTE, "bloque": ""}
+    if not cuerpo or cuerpo == _PLACEHOLDER_NO_VERIFICADO:
+        return {"estado": _ESTADO_INDETERMINADO, "bloque": ""}
+    return {"estado": _ESTADO_ENCONTRADA, "bloque": cuerpo}
 
 
-def inyectar_receta_cronica(base: str, bloque: str | None) -> str:
-    """Base con la seccion de receta cronica SIEMPRE creada.
+def _es_header_farmacos(linea: str) -> bool:
+    """True si la linea es el header 'Fármacos de uso diario' o
+    'Medicamentos' (con o sin numeracion de plantilla y dos puntos)."""
+    t = normalizar(linea).rstrip(":").strip()
+    t = _RX_NUMERACION.sub("", t).strip()
+    return t in ("farmacos de uso diario", "medicamentos")
 
-    bloque: texto de la prescripcion ganadora (o None -> placeholder).
-    """
+
+def _contenido(estado_receta: dict | None) -> list[str] | None:
+    """Lineas a inyectar segun el estado (None = no inyectar)."""
+    estado = (estado_receta or {}).get("estado", "")
+    if estado == _ESTADO_ENCONTRADA:
+        bloque = (estado_receta or {}).get("bloque", "").strip()
+        return bloque.splitlines() if bloque else [NO_VERIFICADO]
+    if estado == _ESTADO_NO_EXISTE:
+        return [SIN_MEDICAMENTOS]
+    if estado == _ESTADO_INDETERMINADO:
+        return [NO_VERIFICADO]
+    return None
+
+
+def _fin_de_cuerpo(lineas: list[str], idx_header: int) -> int:
+    """Fin del cuerpo de la seccion de farmacos: la siguiente seccion
+    numerada con texto, un header INDICACIONES (numerado o no) o EOF."""
+    fin = len(lineas)
+    for j in range(idx_header + 1, len(lineas)):
+        ln = lineas[j]
+        if _SIGUIENTE_SECCION_RE.match(ln) or _SECCION_INDICACIONES_NUM_RE.match(ln) or _SECCION_INDICACIONES_RE.match(ln):
+            return j
+    return fin
+
+
+def inyectar_receta_cronica(base: str, estado_receta: dict | None) -> str:
+    """Base con los farmacos de la receta cronica (o tal cual)."""
+    contenido = _contenido(estado_receta)
+    if contenido is None:
+        return base
+
     lineas = base.rstrip("\n").splitlines() if base.strip() else []
-    cuerpo = [TITULO_SECCION]
-    if bloque and bloque.strip():
-        cuerpo.extend(bloque.strip("\n").splitlines())
-    else:
-        cuerpo.append(PLACEHOLDER_SIN_RECETA)
 
-    if not lineas:
-        return "\n".join(cuerpo) + "\n"
+    idx = next((i for i, ln in enumerate(lineas) if _es_header_farmacos(ln)), None)
+    if idx is not None:
+        fin = _fin_de_cuerpo(lineas, idx)
+        cuerpo = lineas[idx + 1 : fin]
+        if all(not ln.strip() or _STUB_VACIO_RE.match(ln) for ln in cuerpo):
+            # Seccion vacia (stubs de plantilla): se rellena.
+            nuevas = lineas[: idx + 1] + contenido + lineas[fin:]
+        else:
+            # Yadira escribio farmacos: el bloque va DEBAJO, sin borrar.
+            nuevas = lineas[:fin] + ["", *contenido] + lineas[fin:]
+        return "\n".join(nuevas) + "\n"
 
-    idx = next(
+    # Sin la seccion: se crea antes del header INDICACIONES (si existe)
+    # para no romper el llenado de stubs REQ-098, o al final.
+    bloque = [TITULO_SECCION_NUEVA, *contenido]
+    idx_ind = next(
         (
             i
             for i, ln in enumerate(lineas)
@@ -158,6 +171,6 @@ def inyectar_receta_cronica(base: str, bloque: str | None) -> str:
         ),
         None,
     )
-    if idx is None:
-        return "\n".join(lineas + ["", *cuerpo]) + "\n"
-    return "\n".join(lineas[:idx] + ["", *cuerpo] + lineas[idx:]) + "\n"
+    if idx_ind is None:
+        return "\n".join(lineas + ["", *bloque]) + "\n"
+    return "\n".join(lineas[:idx_ind] + ["", *bloque] + lineas[idx_ind:]) + "\n"

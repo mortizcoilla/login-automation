@@ -47,6 +47,8 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
 ┃                  ──► src/rayen/tabla.py    (busca paciente, REQ-019)┃
 ┃                  ──► src/rayen/extraccion/ (7 secciones, REQ-024)   ┃
 ┃                     └─ ECICEP primero → identif. → historial 6m →   ┃
+┃                        receta crónica árbol "Receta" (REQ-104,      ┃
+┃                        tri-estado, en Historia clínica) →            ┃
 ┃                        atencion actual → dx → plan                  ┃
 ┃                  ──► src/notas/ (escribe los 3 documentos)          ┃
 ┃     Reset de sesion cada 8 fichas (REQ-017)                         ┃
@@ -88,10 +90,14 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
 |        + PCIC (REQ-103: pcic_base.txt como insumo al LLM,     |
 |        ensamblador lo coloca en la plantilla)                 |
 |        si el trigger las pidio) -> validacion (5 reglas)      |
-|     ANTES del LLM, la base recibe SIEMPRE la seccion          |
-|        RECETA CRONICA VIGENTE (REQ-104): nodo ganador         |
-|        ([Cronica], Vigencia maxima) verbatim desde la         |
-|        nota del paso 3, o placeholder si no hay cronicas      |
+|     ANTES del LLM, la base recibe la receta cronica            |
+|        vigente (REQ-104): bloque VERBATIM de la seccion        |
+|        '## Receta cronica' de la nota (arbol "Receta" del      |
+|        historial: busca atenciones pasadas; tri-estado,        |
+|        jamas falso negativo) -> seccion 'Farmacos de uso       |
+|        diario'/'Medicamentos' de Yadira (vacia se rellena,     |
+|        con contenido el bloque va debajo), o nueva al final.   |
+|        Nota sin la seccion = base tal cual.                    |
 |     2) prompt informe -> encabezado con MODELO USADO por      |
 |        codigo                                                 |
 +----------------------------+---------------------------------+

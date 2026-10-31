@@ -3,7 +3,8 @@
 Flujo por paciente (del informe de fichas abiertas):
   1. Cargar insumos: anamnesis base (anam_*.md o seccion Yadira de la
      nota), info_paciente, examenes (si existe) y receta cronica
-     vigente inyectada en la base (REQ-104, seccion siempre creada).
+     vigente inyectada en la base (REQ-104; nota sin la seccion ->
+     base tal cual).
   2. Detectar pedidos del trigger ** mortadelo.
   3. LLAMADA 1: prompt de ficha -> ensamblar con garantias -> validar
      -> escribir ficha_<pac>_<fecha>.md en data/fichas_generadas/.
@@ -42,7 +43,7 @@ from src.informes.parser import parsear_pacientes_objetivo
 from src.mortadelo.ensamblador import ensamblar_ficha
 from src.mortadelo.llm_cli import LLMError, llm_run
 from src.mortadelo.prompt import Pedidos, construir_prompt_ficha, construir_prompt_informe
-from src.mortadelo.receta_cronica import cargar_receta_cronica, inyectar_receta_cronica
+from src.mortadelo.receta_cronica import cargar_estado_receta, inyectar_receta_cronica
 from src.mortadelo.validacion import validar_ficha, validar_informe
 
 _ESPECIALIDAD_RE = re.compile(r"interconsulta(?:\s+a|\s+de)?\s+([a-záéíóúñ]+)", re.IGNORECASE)
@@ -189,11 +190,12 @@ def generar_paciente(
     pedidos = detectar_pedidos(base)
     pcic_base = cargar_pcic_base(logger) if pedidos.pcic else None
 
-    # REQ-104: la receta cronica vigente (ganadora de la nota del paso 3)
-    # entra a la base ANTES del LLM, seccion SIEMPRE creada. Rebind
-    # DESPUES de detectar_pedidos: el trigger se lee del texto de la
-    # doctora, no del bloque inyectado.
-    base = inyectar_receta_cronica(base, cargar_receta_cronica(nombre, fecha))
+    # REQ-104: la receta cronica vigente (arbol "Receta" del historial,
+    # portada en la nota del paso 3) entra a la base ANTES del LLM.
+    # Rebind DESPUES de detectar_pedidos: el trigger se lee del texto de
+    # la doctora, no del bloque inyectado. Nota sin seccion = feature
+    # no corrio -> la base queda tal cual.
+    base = inyectar_receta_cronica(base, cargar_estado_receta(nombre, fecha))
 
     # LLAMADA 1: ficha -> ensamblar -> validar
     try:

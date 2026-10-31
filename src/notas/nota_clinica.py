@@ -36,6 +36,7 @@ def guardar_nota_clinica(
     laboratorio: list[str] | None = None,
     notas_dir: Path | None = None,
     panel_cargo: bool = True,
+    receta_cronica: dict[str, Any] | None = None,
 ) -> Path | None:
     """Guarda la nota clinica extraida en un .md en armonia con manuales_md.
 
@@ -242,6 +243,14 @@ def guardar_nota_clinica(
         md.append("_(sin ordenes de laboratorio)_")
     md.append("")
 
+    # REQ-104: portador del bloque de la receta cronica vigente (arbol
+    # "Receta" del historial, busca tambien atenciones pasadas). Verbatim;
+    # placeholders tecnicos cuando no hay cronicas o no se pudo verificar.
+    md.append("## Receta cronica")
+    md.append("")
+    md.append(_texto_receta_cronica(receta_cronica))
+    md.append("")
+
     # SCOPE 2026-08-26: bloques quitados (fuera de scope):
     # - PAUTAS
     # - EXAMENES ADJUNTOS
@@ -255,6 +264,25 @@ def guardar_nota_clinica(
 
 
 # REQ-028: info_<pac>_<fecha>.md = todo menos anamnesis/motivo.
+
+
+def _texto_receta_cronica(receta_cronica: dict[str, Any] | None) -> str:
+    """Texto de la seccion '## Receta cronica' de la nota (REQ-104).
+
+    encontrada  -> bloque verbatim del nodo ganador (lineas cronica +
+                   farmacos; ya trae la fecha del nodo en la 1ra linea).
+    no_existe   -> '(sin receta cronica vigente)'.
+    resto       -> '(no verificado - revisar)' (indeterminado, None o
+                   dict inesperado: jamas se declara inexistencia sin
+                   la prueba positiva del extractor).
+    """
+    estado = (receta_cronica or {}).get("estado", "")
+    if estado == "encontrada":
+        bloque = (receta_cronica or {}).get("bloque", "").strip()
+        return bloque or "(no verificado - revisar)"
+    if estado == "no_existe":
+        return "(sin receta cronica vigente)"
+    return "(no verificado - revisar)"
 
 
 def _now_iso() -> str:
