@@ -88,6 +88,10 @@ Orden real de dependencias 4 -> 5 -> 3 -> 6 -> 7 (REQ-008).
 |        + PCIC (REQ-103: pcic_base.txt como insumo al LLM,     |
 |        ensamblador lo coloca en la plantilla)                 |
 |        si el trigger las pidio) -> validacion (5 reglas)      |
+|     ANTES del LLM, la base recibe SIEMPRE la seccion          |
+|        RECETA CRONICA VIGENTE (REQ-104): nodo ganador         |
+|        ([Cronica], Vigencia maxima) verbatim desde la         |
+|        nota del paso 3, o placeholder si no hay cronicas      |
 |     2) prompt informe -> encabezado con MODELO USADO por      |
 |        codigo                                                 |
 +----------------------------+---------------------------------+
